@@ -25,7 +25,10 @@ export default function Login() {
       await setSession(data.token, data.user);
       router.replace("/(app)/home");
     } catch (e: any) {
-      const msg = e?.response?.data?.message || "Login failed";
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Login failed (check API_BASE_URL and backend)";
       setError(msg);
     } finally {
       setLoading(false);
