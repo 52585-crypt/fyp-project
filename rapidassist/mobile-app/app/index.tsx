@@ -1,6 +1,9 @@
 import { Redirect } from "expo-router";
+import { useAuth } from "../src/auth/AuthProvider";
 
 export default function Index() {
-  return <Redirect href="/(auth)/welcome" />;
+  const { isLoading, token } = useAuth();
+  if (isLoading) return null;
+  return <Redirect href={token ? "/(app)/home" : "/(auth)/welcome"} />;
 }
 
