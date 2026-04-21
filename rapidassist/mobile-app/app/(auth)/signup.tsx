@@ -40,7 +40,10 @@ export default function Signup() {
       await setSession(data.token, data.user);
       router.replace("/(app)/home");
     } catch (e: any) {
-      const msg = e?.response?.data?.message || "Signup failed";
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Signup failed (check API_BASE_URL and backend)";
       setError(msg);
     } finally {
       setLoading(false);
