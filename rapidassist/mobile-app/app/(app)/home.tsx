@@ -34,6 +34,12 @@ export default function Home() {
 
         <View style={{ height: 12 }} />
 
+        <Link href="/(app)/request/create" asChild>
+          <RAButton title="Request Help" style={{ backgroundColor: colors.primary }} />
+        </Link>
+
+        <View style={{ height: 12 }} />
+
         <RAButton title="Logout" onPress={logout} style={{ backgroundColor: colors.text }} />
       </View>
     </SafeAreaView>
