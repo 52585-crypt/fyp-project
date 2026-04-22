@@ -20,6 +20,12 @@ function forbidden(message) {
   return err;
 }
 
+function requireMechanic(req) {
+  if (req.user?.role !== "mechanic") {
+    throw forbidden("Forbidden");
+  }
+}
+
 function normalizeStr(v) {
   return v == null ? "" : String(v).trim();
 }
@@ -79,5 +85,43 @@ async function listMyRequests(req, res, next) {
   }
 }
 
-module.exports = { createRequest, listMyRequests };
+async function listOpenRequests(req, res, next) {
+  try {
+    requireMechanic(req);
+
+    const requests = await ServiceRequest.find({ status: "open" })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "vehicleId",
+        select: "type make model year registrationNumber"
+      });
+
+    const payload = requests.map((r) => ({
+      id: r._id.toString(),
+      category: r.category,
+      unknownIssue: r.unknownIssue,
+      issueType: r.issueType,
+      location: {
+        addressText: r.location?.addressText || null
+      },
+      createdAt: r.createdAt,
+      vehicle: r.vehicleId
+        ? {
+            id: r.vehicleId._id.toString(),
+            type: r.vehicleId.type,
+            make: r.vehicleId.make,
+            model: r.vehicleId.model,
+            year: r.vehicleId.year,
+            registrationNumber: r.vehicleId.registrationNumber || null
+          }
+        : null
+    }));
+
+    res.json({ ok: true, requests: payload });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { createRequest, listMyRequests, listOpenRequests };
 
