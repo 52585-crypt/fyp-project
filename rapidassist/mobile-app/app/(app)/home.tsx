@@ -1,6 +1,7 @@
 import React from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { RAButton } from "../../src/components/RAButton";
 import { useAuth } from "../../src/auth/AuthProvider";
@@ -24,6 +25,12 @@ export default function Home() {
             </View>
           </View>
         </View>
+
+        <View style={{ height: 12 }} />
+
+        <Link href="/(app)/vehicles" asChild>
+          <RAButton title="My Vehicles" />
+        </Link>
 
         <View style={{ height: 12 }} />
 
