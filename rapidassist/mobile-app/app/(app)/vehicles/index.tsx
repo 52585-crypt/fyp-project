@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { SafeAreaView, StyleSheet, Text, View, Pressable, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import { colors } from "../../../src/theme/colors";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import type { Vehicle } from "../../../src/vehicles/vehicles.types";
@@ -49,11 +49,12 @@ export default function VehiclesIndex() {
             <Ionicons name="chevron-back" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.title}>My Vehicles</Text>
-          <Link href="/(app)/vehicles/add" asChild>
-            <Pressable style={[styles.iconBtn, { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" }]}>
-              <Ionicons name="add" size={22} color={colors.primaryDark} />
-            </Pressable>
-          </Link>
+          <Pressable
+            onPress={() => router.push("/vehicles/add")}
+            style={[styles.iconBtn, { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" }]}
+          >
+            <Ionicons name="add" size={22} color={colors.primaryDark} />
+          </Pressable>
         </View>
 
         <View style={{ height: 10 }} />
