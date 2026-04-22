@@ -1,6 +1,6 @@
 import React from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
-import { Link } from "expo-router";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
 import { RAButton } from "../../src/components/RAButton";
@@ -18,13 +18,13 @@ export default function Welcome() {
         </View>
 
         <View style={styles.card}>
-          <Link href="/(auth)/login" asChild>
-            <RAButton title="Login" />
-          </Link>
+          <RAButton title="Login" onPress={() => router.push("/login")} />
           <View style={{ height: 12 }} />
-          <Link href="/(auth)/signup" asChild>
-            <RAButton title="Create account" style={{ backgroundColor: colors.text }} />
-          </Link>
+          <RAButton
+            title="Create account"
+            onPress={() => router.push("/signup")}
+            style={{ backgroundColor: colors.text }}
+          />
         </View>
 
         <Text style={styles.footer}>
