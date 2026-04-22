@@ -3,6 +3,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const authRoutes = require("./routes/auth.routes");
+const vehiclesRoutes = require("./routes/vehicles.routes");
 
 function createApp() {
   const app = express();
@@ -19,6 +20,7 @@ function createApp() {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/vehicles", vehiclesRoutes);
 
   // Basic error handler
   // eslint-disable-next-line no-unused-vars
