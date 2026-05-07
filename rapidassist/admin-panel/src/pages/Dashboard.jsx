@@ -68,6 +68,7 @@ export function Dashboard() {
     () => (stats.activeRequests || 0) + (stats.completedRequests || 0) + (stats.cancelledRequests || 0),
     [stats.activeRequests, stats.cancelledRequests, stats.completedRequests]
   );
+  const completionRate = totalRequests ? Math.round(((stats.completedRequests || 0) / totalRequests) * 100) : 0;
 
   return (
     <div style={styles.page}>
@@ -98,11 +99,11 @@ export function Dashboard() {
             <div
               style={{
                 ...styles.progressFill,
-                width: `${totalRequests ? Math.min(100, ((stats.completedRequests || 0) / totalRequests) * 100) : 0}%`
+                width: `${completionRate}%`
               }}
             />
           </div>
-          <div style={styles.heroFoot}>{stats.completedRequests || 0} completed jobs</div>
+          <div style={styles.heroFoot}>{stats.completedRequests || 0} completed jobs - {completionRate}% completion rate</div>
         </div>
 
         <ActionCard
