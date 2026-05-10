@@ -70,6 +70,7 @@ export function Dashboard() {
   );
   const completionRate = totalRequests ? Math.round(((stats.completedRequests || 0) / totalRequests) * 100) : 0;
   const averageJobValue = stats.completedRequests ? Math.round((stats.revenue || 0) / stats.completedRequests) : 0;
+  const providerReadiness = stats.providers ? Math.round(((stats.onlineProviders || 0) / stats.providers) * 100) : 0;
 
   return (
     <div style={styles.page}>
@@ -128,7 +129,7 @@ export function Dashboard() {
         <ActionCard
           title="Online providers"
           value={stats.onlineProviders || 0}
-          text="Providers currently available for service requests."
+          text={`${providerReadiness}% of providers are currently available.`}
           tone="success"
         />
         <ActionCard
