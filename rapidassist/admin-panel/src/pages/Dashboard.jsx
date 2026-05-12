@@ -27,6 +27,16 @@ function formatCurrency(value) {
   return `PKR ${Number(value || 0).toLocaleString()}`;
 }
 
+function formatDateTime(value) {
+  if (!value) return "Unknown time";
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 export function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -205,6 +215,7 @@ export function Dashboard() {
                     <div style={styles.rowMeta}>
                       Provider: {request.provider?.name || "Not assigned"}
                     </div>
+                    <div style={styles.rowMeta}>Created: {formatDateTime(request.createdAt)}</div>
                   </div>
                   <span style={{ ...styles.badge, ...statusTone(request.status) }}>{statusLabel(request.status)}</span>
                   <div style={styles.amount}>{formatCurrency(request.estimate?.total)}</div>
