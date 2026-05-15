@@ -5,6 +5,8 @@ import { router } from "expo-router";
 import { ui } from "./system";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
+const bottomNavHeight = 86;
+const screenBottomPadding = bottomNavHeight + 28;
 
 export function AppShell({
   title,
@@ -34,7 +36,13 @@ export function AppShell({
 
   return (
     <SafeAreaView style={styles.safe}>
-      {scroll ? <ScrollView contentContainerStyle={{ paddingBottom: 104 }} showsVerticalScrollIndicator={false}>{body}</ScrollView> : body}
+      {scroll ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {body}
+        </ScrollView>
+      ) : (
+        <View style={styles.staticContent}>{body}</View>
+      )}
     </SafeAreaView>
   );
 }
@@ -174,6 +182,8 @@ export function SectionTitle({ title, action }: { title: string; action?: string
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ui.colors.bg },
+  scrollContent: { paddingBottom: screenBottomPadding },
+  staticContent: { flex: 1, paddingBottom: screenBottomPadding },
   content: { padding: 18 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   title: { color: ui.colors.text, fontSize: 24, fontWeight: "900", letterSpacing: 0 },
@@ -196,7 +206,7 @@ const styles = StyleSheet.create({
   metric: { flex: 1, minHeight: 124, gap: 8 },
   metricValue: { color: ui.colors.text, fontSize: 19, fontWeight: "900" },
   metricLabel: { color: ui.colors.muted, fontSize: 12, fontWeight: "800" },
-  bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: 78, borderTopWidth: 1, borderTopColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 8 },
+  bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: bottomNavHeight, borderTopWidth: 1, borderTopColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10 },
   navItem: { minWidth: 62, alignItems: "center", justifyContent: "center" },
   navText: { marginTop: 4, color: ui.colors.muted, fontSize: 10, fontWeight: "900" },
   navTextActive: { color: ui.colors.primary },
@@ -204,4 +214,3 @@ const styles = StyleSheet.create({
   sectionTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
   sectionAction: { color: ui.colors.primary, fontSize: 12, fontWeight: "900" }
 });
-
