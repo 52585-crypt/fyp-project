@@ -328,7 +328,7 @@ export default function Signup() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Ionicons name="person-add" size={24} color={colors.primary} />
           <Text style={styles.title}>Create account</Text>
@@ -506,7 +506,7 @@ export default function Signup() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 18, paddingBottom: 36 },
+  container: { padding: 18, paddingBottom: 72 },
   header: { paddingTop: 16, paddingBottom: 18 },
   title: { marginTop: 10, fontSize: 28, fontWeight: "800", color: colors.text },
   subtitle: { marginTop: 6, fontSize: 14, lineHeight: 20, color: colors.mutedText },
