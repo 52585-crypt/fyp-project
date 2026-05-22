@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { approveExtraWork, listMyRequests } from "../../../src/requests/requests.api";
+import { approveExtraWork, listMyRequests, updateRequestStatus } from "../../../src/requests/requests.api";
 import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
-import { AppShell, BottomNav, Card, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
+import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
 const TRACKING_REFRESH_MS = 5000;
@@ -71,20 +72,42 @@ function providerLocationText(request?: ServiceRequest | null) {
 export default function UserTracking() {
   const { token } = useAuth();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const trackedRequestIdRef = useRef<string | null>(null);
+  const redirectedAfterCompletionRef = useRef(false);
   const steps = useMemo(() => stepsFor(request?.category), [request?.category]);
   const step = useMemo(() => activeStep(request?.status, request?.category), [request?.category, request?.status]);
   const providerLocation = useMemo(() => providerLocationText(request), [request?.providerLocation]);
   const extraWork = request?.mechanicDetails?.extraWork;
+  const isClosed = request?.status === "completed" || request?.status === "cancelled";
 
   async function load() {
     if (!token) return;
     try {
       setError(null);
       const requests = await listMyRequests(token);
-      setRequest(
-        requests.find((item) => item.status !== "completed" && item.status !== "cancelled") || requests[0] || null
-      );
+      const activeRequest = requests.find((item) => item.status !== "completed" && item.status !== "cancelled");
+      const trackedCompletedRequest = trackedRequestIdRef.current
+        ? requests.find((item) => item.id === trackedRequestIdRef.current && item.status === "completed")
+        : null;
+      const latestRequest = requests[0] || null;
+
+      if (trackedCompletedRequest || (!activeRequest && latestRequest?.status === "completed")) {
+        setRequest(trackedCompletedRequest || latestRequest);
+        if (!redirectedAfterCompletionRef.current) {
+          redirectedAfterCompletionRef.current = true;
+          router.replace("/(user)/home");
+        }
+        return;
+      }
+
+      if (activeRequest) {
+        trackedRequestIdRef.current = activeRequest.id;
+      }
+      setRequest(activeRequest || latestRequest);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to load tracking");
     }
@@ -97,6 +120,26 @@ export default function UserTracking() {
       setRequest(updated);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to update extra work");
+    }
+  }
+
+  async function onCancelRequest() {
+    if (!token || !request) return;
+    try {
+      setUpdating(true);
+      setError(null);
+      const updated = await updateRequestStatus(
+        token,
+        request.id,
+        "cancelled",
+        cancelReason.trim() || "User cancelled the request"
+      );
+      setRequest(updated);
+      setShowCancel(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to cancel request");
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -126,13 +169,30 @@ export default function UserTracking() {
               </Text>
               {request ? <Text style={styles.locationMeta}>{providerLocation}</Text> : null}
             </View>
-            {request ? <StatusPill label={request.status.replaceAll("_", " ")} tone="warning" /> : null}
+            {request ? (
+              <StatusPill
+                label={request.status.replaceAll("_", " ")}
+                tone={request.status === "completed" ? "success" : request.status === "cancelled" ? "danger" : "warning"}
+              />
+            ) : null}
           </View>
           <View style={styles.actions}>
             <PrimaryButton title="Refresh" icon="refresh" style={{ flex: 1 }} onPress={load} />
-            <PrimaryButton title="Chat" icon="chatbubble" variant="outline" style={{ flex: 1 }} />
+            <PrimaryButton
+              title="Chat"
+              icon="chatbubble"
+              variant="outline"
+              style={{ flex: 1 }}
+              disabled={!request?.providerId}
+              onPress={() => {
+                if (!request) return;
+                router.push({ pathname: "/(user)/chat/[requestId]", params: { requestId: request.id } });
+              }}
+            />
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {request?.status === "cancelled" ? <Text style={styles.cancelledText}>This request has been cancelled.</Text> : null}
+          {request?.status === "completed" ? <Text style={styles.doneText}>This request is completed.</Text> : null}
         </Card>
 
         {extraWork && request?.status === "extra_work_requested" ? (
@@ -155,6 +215,35 @@ export default function UserTracking() {
             </View>
           ))}
         </Card>
+
+        {request && !isClosed ? (
+          showCancel ? (
+            <Card style={styles.cancelBox}>
+              <Text style={styles.cancelTitle}>Cancel this request?</Text>
+              <Text style={styles.cancelText}>The provider will see this request as cancelled.</Text>
+              <Field
+                label="Reason"
+                icon="document-text"
+                placeholder="Reason for cancellation"
+                value={cancelReason}
+                onChangeText={setCancelReason}
+              />
+              <View style={styles.actions}>
+                <PrimaryButton title="Keep Request" variant="outline" style={{ flex: 1 }} onPress={() => setShowCancel(false)} />
+                <PrimaryButton
+                  title={updating ? "Cancelling..." : "Confirm Cancel"}
+                  icon="close-circle"
+                  variant="danger"
+                  disabled={updating}
+                  style={{ flex: 1 }}
+                  onPress={onCancelRequest}
+                />
+              </View>
+            </Card>
+          ) : (
+            <PrimaryButton title="Cancel Request" icon="close-circle" variant="outline" onPress={() => setShowCancel(true)} />
+          )
+        ) : null}
       </AppShell>
       <BottomNav role="user" active="Track" />
     </View>
@@ -183,5 +272,10 @@ const styles = StyleSheet.create({
   stepDotActive: { backgroundColor: ui.colors.primary },
   stepText: { color: ui.colors.muted, fontSize: 13, fontWeight: "800" },
   stepTextActive: { color: ui.colors.text },
+  doneText: { color: ui.colors.success, fontSize: 12, fontWeight: "800", lineHeight: 17 },
+  cancelledText: { color: ui.colors.danger, fontSize: 12, fontWeight: "800", lineHeight: 17 },
+  cancelBox: { marginTop: 12, gap: 12, borderColor: ui.colors.dangerSoft },
+  cancelTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
+  cancelText: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
   error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
 });
