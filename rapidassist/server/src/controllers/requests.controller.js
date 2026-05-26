@@ -8,6 +8,7 @@ const {
 } = require("../models/ServiceRequest");
 const { Vehicle } = require("../models/Vehicle");
 const { User } = require("../models/User");
+const { ChatMessage } = require("../models/ChatMessage");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -53,6 +54,13 @@ function normalizeCategory(category) {
 function providerCategoryForRequest(category) {
   if (category === "car_towing") return "towing";
   return category;
+}
+
+function canAccessRequestChat(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  return Boolean(request.providerId && request.providerId.toString() === userId);
 }
 
 function canAccessRequestDetails(request, user) {
@@ -566,6 +574,52 @@ async function approveExtraWork(req, res, next) {
   }
 }
 
+async function getRequestMessages(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestChat(request, req.user)) throw forbidden("Forbidden");
+
+    const messages = await ChatMessage.find({ requestId: request._id })
+      .sort({ createdAt: 1 })
+      .limit(100)
+      .populate({ path: "senderId", select: "name phone role" });
+
+    res.json({ ok: true, messages: messages.map((message) => message.toJSONSafe()) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function sendRequestMessage(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const body = normalizeStr(req.body?.body);
+    if (!body) throw badRequest("Message is required");
+    if (body.length > 1000) throw badRequest("Message must be 1000 characters or less");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestChat(request, req.user)) throw forbidden("Forbidden");
+    if (!request.providerId) throw badRequest("Chat is available after provider assignment");
+
+    const message = await ChatMessage.create({
+      requestId: request._id,
+      senderId: req.user._id,
+      senderRole: req.user.role,
+      body
+    });
+
+    await message.populate({ path: "senderId", select: "name phone role" });
+    res.status(201).json({ ok: true, message: message.toJSONSafe() });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createRequest,
   getRequest,
@@ -579,6 +633,8 @@ module.exports = {
   getProviderActiveRequest,
   getProviderHistory,
   getProviderEarnings,
+  getRequestMessages,
   requestExtraWork,
-  approveExtraWork
+  approveExtraWork,
+  sendRequestMessage
 };
