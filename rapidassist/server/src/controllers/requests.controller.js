@@ -77,6 +77,20 @@ function canAccessRequestDetails(request, user) {
   );
 }
 
+function canCancelRequest(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  if (request.providerId && request.providerId.toString() === userId) return true;
+  if (user.role !== "mechanic") return false;
+
+  return (
+    request.status === "searching_provider" &&
+    !request.providerId &&
+    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
+  );
+}
+
 function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
@@ -382,7 +396,8 @@ async function updateRequestStatus(req, res, next) {
 
     const isOwner = request.userId.toString() === req.user._id.toString();
     const isProvider = request.providerId && request.providerId.toString() === req.user._id.toString();
-    if (!isOwner && !isProvider) throw forbidden("Forbidden");
+    const isOpenMatchingProviderCancel = status === "cancelled" && canCancelRequest(request, req.user);
+    if (!isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
 
     if (["completed", "provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started"].includes(status) && !isProvider) {
       throw forbidden("Only assigned provider can set this status");
