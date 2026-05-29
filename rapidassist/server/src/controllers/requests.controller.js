@@ -455,6 +455,39 @@ async function updateRequestStatus(req, res, next) {
   }
 }
 
+async function submitRequestReview(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (request.userId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
+    if (request.status !== "completed") throw badRequest("Only completed requests can be reviewed");
+    if (!request.providerId) throw badRequest("Cannot review a request without an assigned provider");
+
+    const rating = Number(req.body?.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw badRequest("rating must be an integer between 1 and 5");
+    }
+
+    const comment = normalizeStr(req.body?.comment);
+    if (comment.length > 400) throw badRequest("comment must be 400 characters or less");
+
+    request.review = {
+      rating,
+      comment: comment || null,
+      byUserId: req.user._id,
+      reviewedAt: new Date()
+    };
+    await request.save();
+    await refreshProviderRating(request.providerId);
+
+    res.json({ ok: true, request: request.toJSONSafe() });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateProviderAvailability(req, res, next) {
   try {
     requireProvider(req);
@@ -681,5 +714,6 @@ module.exports = {
   getRequestMessages,
   requestExtraWork,
   approveExtraWork,
+  submitRequestReview,
   sendRequestMessage
 };
