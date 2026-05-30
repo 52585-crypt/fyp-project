@@ -149,6 +149,12 @@ export function Dashboard() {
           text={`${formatCurrency(averageJobValue)} average completed job value.`}
           tone="primary"
         />
+        <ActionCard
+          title="Average rating"
+          value={stats.averageRating ? `${Number(stats.averageRating).toFixed(1)} / 5` : "No reviews"}
+          text={`${stats.reviewedRequests || 0} completed jobs reviewed by users.`}
+          tone="success"
+        />
       </div>
 
       <div style={styles.grid}>
@@ -160,6 +166,7 @@ export function Dashboard() {
         <StatCard title="Cancelled" value={stats.cancelledRequests ?? 0} />
         <StatCard title="Today Requests" value={stats.todayRequests ?? 0} />
         <StatCard title="Complaints" value={stats.complaints ?? 0} />
+        <StatCard title="Reviews" value={stats.reviewedRequests ?? 0} />
       </div>
 
       <div style={styles.twoColumn}>
@@ -217,6 +224,11 @@ export function Dashboard() {
                     <div style={styles.rowMeta}>
                       Provider: {request.provider?.name || "Not assigned"}
                     </div>
+                    {request.review?.rating ? (
+                      <div style={styles.rowMeta}>
+                        Rating: {request.review.rating}/5{request.review.comment ? ` - ${request.review.comment}` : ""}
+                      </div>
+                    ) : null}
                     <div style={styles.rowMeta}>Created: {formatDateTime(request.createdAt)}</div>
                   </div>
                   <span style={{ ...styles.badge, ...statusTone(request.status) }}>{statusLabel(request.status)}</span>
@@ -340,7 +352,7 @@ const styles = {
   alertTitle: { color: "#92400e", fontSize: 14, fontWeight: 900 },
   alertText: { marginTop: 3, color: "#92400e", fontSize: 12, fontWeight: 700 },
   alertLink: { color: "#92400e", fontSize: 12, fontWeight: 900 },
-  heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(3, 1fr)", gap: 12 },
+  heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(4, minmax(0, 1fr))", gap: 12 },
   heroPanel: { border: "1px solid var(--border)", borderRadius: 18, padding: 18, background: "#111827", color: "white" },
   eyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 900 },
   heroValue: { marginTop: 8, fontSize: 38, fontWeight: 900 },
