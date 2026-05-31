@@ -1,5 +1,5 @@
 import { api } from "../config/api";
-import type { ChatMessage, CreateRequestInput, ExtraWorkInput, ProviderEarnings, RequestLocation, ServiceRequest } from "./requests.types";
+import type { ChatMessage, CreateRequestInput, ExtraWorkInput, NearbyProvider, ProviderEarnings, RequestCategory, RequestLocation, ServiceRequest } from "./requests.types";
 
 export async function createRequest(token: string, input: CreateRequestInput) {
   const res = await api.post<{ ok: boolean; request: ServiceRequest }>("/api/requests", input, {
@@ -20,6 +20,20 @@ export async function listOpenRequests(token: string) {
     headers: { Authorization: `Bearer ${token}` }
   });
   return res.data.requests;
+}
+
+export async function listNearbyProviders(
+  token: string,
+  input: { category: RequestCategory; lat: number; lng: number; radiusKm?: number }
+) {
+  const res = await api.get<{ ok: boolean; radiusKm: number; providers: NearbyProvider[] }>(
+    "/api/requests/nearby-providers",
+    {
+      params: input,
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
+  return res.data;
 }
 
 export async function getRequest(token: string, id: string) {

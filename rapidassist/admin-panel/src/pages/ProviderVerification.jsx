@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "../config/api";
+import { adminApi } from "../config/api";
 const filters = ["pending", "verified", "rejected", "all"];
 
 function serviceTitle(serviceCategory) {
@@ -18,13 +17,22 @@ function statusTone(status) {
 
 function providerDocs(provider) {
   const profile = provider?.mechanicProfile || {};
-  return [
+  const docs = [
     { label: "Selfie", value: profile.selfieUrl },
     { label: "ID front", value: profile.idCardFrontUrl },
-    { label: "ID back", value: profile.idCardBackUrl },
-    { label: "Workshop photo", value: profile.workshopPhotoUrl },
-    { label: "Certificate", value: profile.certificateUrl }
+    { label: "ID back", value: profile.idCardBackUrl }
   ];
+
+  if (profile.serviceCategory === "mechanic") {
+    docs.push(
+      { label: "Workshop photo", value: profile.workshopPhotoUrl },
+      { label: "Certificate", value: profile.certificateUrl }
+    );
+  } else {
+    docs.push({ label: "Driving licence", value: profile.drivingLicenseUrl });
+  }
+
+  return docs;
 }
 
 export function ProviderVerification() {
@@ -44,7 +52,7 @@ export function ProviderVerification() {
     try {
       setLoading(true);
       setError("");
-      const res = await axios.get(`${API_BASE_URL}/api/admin/providers`, { params: { status: nextFilter } });
+      const res = await adminApi.get("/api/admin/providers", { params: { status: nextFilter } });
       setProviders(res.data.providers || []);
       setSelectedId((current) => {
         const exists = (res.data.providers || []).some((provider) => provider.id === current);
@@ -63,7 +71,7 @@ export function ProviderVerification() {
     try {
       setActionLoading(true);
       setError("");
-      const res = await axios.patch(`${API_BASE_URL}/api/admin/providers/${selected.id}/verification`, { status });
+      const res = await adminApi.patch(`/api/admin/providers/${selected.id}/verification`, { status });
       const updated = res.data.provider;
       setProviders((current) => {
         if (filter !== "all" && updated.verificationStatus !== filter) {

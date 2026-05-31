@@ -41,6 +41,23 @@ function parseNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+function toRadians(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
+function distanceKm(from, to) {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(to.lat - from.lat);
+  const dLng = toRadians(to.lng - from.lng);
+  const lat1 = toRadians(from.lat);
+  const lat2 = toRadians(to.lat);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
 function normalizeCategory(category) {
   const aliases = {
     towing: "car_towing",
@@ -54,6 +71,25 @@ function normalizeCategory(category) {
 function providerCategoryForRequest(category) {
   if (category === "car_towing") return "towing";
   return category;
+}
+
+function defaultSearchRadiusKm(category) {
+  if (category === "car_towing") return 15;
+  if (category === "fuel_delivery") return 8;
+  return 5;
+}
+
+function estimateArrivalMinutes(distance) {
+  return Math.max(3, Math.round((distance / 25) * 60));
+}
+
+function nearbyProviderScore(provider, distance) {
+  const rating = Number(provider.ratingAvg || 0);
+  const completedJobs = Number(provider.completedJobs || 0);
+  const distanceScore = Math.max(0, 50 - distance * 3);
+  const ratingScore = rating * 8;
+  const experienceScore = Math.min(15, completedJobs / 4);
+  return Math.round((distanceScore + ratingScore + experienceScore) * 10) / 10;
 }
 
 function canAccessRequestChat(request, user) {
@@ -145,6 +181,20 @@ function optionalLocation(input) {
   };
 }
 
+function locationFromMechanicProfile(provider) {
+  const saved = provider?.mechanicProfile?.liveLocation;
+  const lat = parseNum(saved?.lat);
+  const lng = parseNum(saved?.lng);
+  if (lat == null || lng == null) return null;
+
+  return {
+    lat,
+    lng,
+    addressText: normalizeStr(saved?.addressText) || "Saved provider location",
+    updatedAt: new Date()
+  };
+}
+
 function providerLocationFromUser(provider) {
   const location = provider?.providerState?.currentLocation;
   const lat = parseNum(location?.lat);
@@ -196,7 +246,8 @@ function activeStatuses() {
     "fuel_delivered",
     "inspection_started",
     "extra_work_requested",
-    "work_started"
+    "work_started",
+    "service_finished"
   ];
 }
 
@@ -383,6 +434,68 @@ async function listProviderRequests(req, res, next) {
   }
 }
 
+async function listNearbyProviders(req, res, next) {
+  try {
+    const category = normalizeCategory(req.query?.category);
+    if (!category || !REQUEST_CATEGORIES.includes(category)) {
+      throw badRequest(`category must be one of: ${REQUEST_CATEGORIES.join(", ")}`);
+    }
+
+    const origin = {
+      lat: parseNum(req.query?.lat),
+      lng: parseNum(req.query?.lng)
+    };
+    if (origin.lat == null || origin.lng == null) throw badRequest("lat and lng are required");
+
+    const requestedRadius = parseNum(req.query?.radiusKm);
+    const radiusKm = Math.min(50, Math.max(1, requestedRadius || defaultSearchRadiusKm(category)));
+    const staleAfter = new Date(Date.now() - 30 * 60 * 1000);
+
+    const candidates = await User.find({
+      role: "mechanic",
+      verificationStatus: "verified",
+      "mechanicProfile.serviceCategory": providerCategoryForRequest(category),
+      "providerState.isOnline": true,
+      "providerState.activeRequestId": null,
+      "providerState.currentLocation.lat": { $type: "number" },
+      "providerState.currentLocation.lng": { $type: "number" },
+      "providerState.lastSeenAt": { $gte: staleAfter }
+    })
+      .select("name mechanicProfile.serviceCategory providerState ratingAvg ratingCount completedJobs")
+      .limit(100);
+
+    const providers = candidates
+      .map((provider) => {
+        const location = provider.providerState?.currentLocation;
+        const distance = distanceKm(origin, { lat: location.lat, lng: location.lng });
+        return {
+          id: provider._id.toString(),
+          name: provider.name,
+          serviceCategory: provider.mechanicProfile?.serviceCategory || null,
+          ratingAvg: provider.ratingAvg || 0,
+          ratingCount: provider.ratingCount || 0,
+          completedJobs: provider.completedJobs || 0,
+          distanceKm: Math.round(distance * 10) / 10,
+          etaMinutes: estimateArrivalMinutes(distance),
+          score: nearbyProviderScore(provider, distance),
+          location: {
+            lat: location.lat,
+            lng: location.lng,
+            addressText: location.addressText || null,
+            updatedAt: location.updatedAt || provider.providerState?.lastSeenAt || null
+          }
+        };
+      })
+      .filter((provider) => provider.distanceKm <= radiusKm)
+      .sort((a, b) => b.score - a.score || a.distanceKm - b.distanceKm)
+      .slice(0, 20);
+
+    res.json({ ok: true, radiusKm, providers });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function acceptRequest(req, res, next) {
   try {
     requireProvider(req);
@@ -427,9 +540,15 @@ async function updateRequestStatus(req, res, next) {
     const isOwner = request.userId.toString() === req.user._id.toString();
     const isProvider = request.providerId && request.providerId.toString() === req.user._id.toString();
     const isOpenMatchingProviderCancel = status === "cancelled" && canCancelRequest(request, req.user);
-    if (!isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
+    const isOwnerCompletion = status === "completed" && isOwner;
+    if (!isOwnerCompletion && !isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
 
-    if (["completed", "provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started"].includes(status) && !isProvider) {
+    if (status === "completed") {
+      if (!isOwner) throw forbidden("Only the customer can complete the job after provider finishes");
+      if (request.status !== "service_finished") throw badRequest("Provider must mark service finished before customer completion");
+    }
+
+    if (["provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started", "service_finished"].includes(status) && !isProvider) {
       throw forbidden("Only assigned provider can set this status");
     }
 
@@ -492,7 +611,7 @@ async function updateProviderAvailability(req, res, next) {
   try {
     requireProvider(req);
     const isOnline = Boolean(req.body?.isOnline);
-    const location = optionalLocation(req.body?.location);
+    const location = optionalLocation(req.body?.location) || (isOnline ? locationFromMechanicProfile(req.user) : null);
 
     const $set = {
       "providerState.isOnline": isOnline,
@@ -702,6 +821,7 @@ module.exports = {
   createRequest,
   getRequest,
   listMyRequests,
+  listNearbyProviders,
   listOpenRequests: listProviderRequests,
   listProviderRequests,
   acceptRequest,

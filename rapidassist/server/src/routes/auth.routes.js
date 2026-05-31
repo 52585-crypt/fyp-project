@@ -55,7 +55,15 @@ function validateMechanicProfile(input) {
   const selfieUrl = normalizeImageData(input?.selfieUrl, "Real-time selfie");
   const idCardFrontUrl = normalizeImageData(input?.idCardFrontUrl, "ID card front photo");
   const idCardBackUrl = normalizeImageData(input?.idCardBackUrl, "ID card back photo");
-  const workshopPhotoUrl = normalizeImageData(input?.workshopPhotoUrl, "Workshop photo");
+  const workshopPhotoUrl = normalizeImageData(input?.workshopPhotoUrl, "Workshop photo", {
+    optional: serviceCategory !== "mechanic"
+  });
+  const certificatePhotoUrl = normalizeImageData(input?.certificateUrl, "Certificate photo", {
+    optional: serviceCategory !== "mechanic"
+  });
+  const drivingLicenseUrl = normalizeImageData(input?.drivingLicenseUrl, "Driving licence photo", {
+    optional: serviceCategory === "mechanic"
+  });
 
   const lat = parseNum(input?.liveLocation?.lat);
   const lng = parseNum(input?.liveLocation?.lng);
@@ -80,7 +88,8 @@ function validateMechanicProfile(input) {
     idCardFrontUrl,
     idCardBackUrl,
     workshopPhotoUrl,
-    certificateUrl: normalizeImageData(input?.certificateUrl, "Certificate photo", { optional: true }),
+    certificateUrl: certificatePhotoUrl,
+    drivingLicenseUrl,
     liveLocation,
     identityMatch: {
       status: "pending",
