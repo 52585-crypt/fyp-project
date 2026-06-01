@@ -241,3 +241,64 @@ export async function login(req, res) {
     return res.json(buildAuthResponse(user, providerProfile));
   } catch (error) {
     return res.status(500).json({ message: "Login failed", error: getErrorMessage(error) });
+  }
+}
+
+export async function getMe(req, res) {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const providerProfile =
+      user.role === "provider" ? await ProviderProfile.findOne({ user: user._id }).lean() : null;
+
+    return res.json({
+      user: {
+        ...sanitizeUser(user),
+        providerProfile: user.role === "provider" ? sanitizeProviderProfile(providerProfile) : null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to load profile", error: getErrorMessage(error) });
+  }
+}
+
+export async function updateMe(req, res) {
+  const {
+    name,
+    profilePicture,
+    workshopPicture,
+    mechanicCertificateImage,
+    cnicFrontImage,
+    cnicBackImage,
+    selfieImage,
+    cnic,
+    city,
+    serviceCodes,
+  } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (typeof name === "string" && name.trim()) {
+      user.name = name.trim();
+    }
+
+    if (typeof profilePicture === "string") {
+      user.profilePicture = profilePicture.trim() || null;
+    }
+
+    await user.save();
+
+    let providerProfile = null;
+
+    if (user.role === "provider") {
+      providerProfile = await ProviderProfile.findOne({ user: user._id });
+      let identityFieldsChanged = false;
