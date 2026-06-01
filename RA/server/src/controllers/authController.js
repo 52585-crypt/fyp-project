@@ -120,3 +120,63 @@ export async function register(req, res) {
     return res.status(400).json({ message: "Workshop picture is required for providers" });
   }
 
+  if (role === "provider" && (!Array.isArray(serviceCodes) || serviceCodes.length === 0)) {
+    return res.status(400).json({ message: "At least one provider service must be selected" });
+  }
+
+  if (
+    role === "provider" &&
+    Array.isArray(serviceCodes) &&
+    serviceCodes.includes("mechanic") &&
+    !mechanicCertificateImage?.trim()
+  ) {
+    return res.status(400).json({ message: "Mechanic certificate image is required for mechanic providers" });
+  }
+
+  try {
+    const existingUser = await User.exists({ phone });
+
+    if (existingUser) {
+      return res.status(409).json({ message: "Phone number already registered" });
+    }
+
+    let verification = null;
+
+    if (role === "provider") {
+      verification = await verifyProviderIdentity({
+        name,
+        cnic,
+        cnicFrontImage,
+        cnicBackImage,
+        selfieImage,
+      });
+
+      if (!verification.ok) {
+        return res.status(400).json({
+          message: verification.reason || "Provider identity verification failed",
+          verification: {
+            provider: verification.provider || process.env.IDENTITY_VERIFICATION_PROVIDER || "local",
+            extractedCnic: verification.extractedCnic || null,
+            faceSimilarity:
+              typeof verification.faceSimilarity === "number" ? verification.faceSimilarity : null,
+            verificationRef: verification.verificationRef || null,
+          },
+        });
+      }
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await User.create({
+      role,
+      name,
+      phone,
+      passwordHash,
+      profilePicture: profilePicture || null,
+    });
+
+    try {
+      if (role === "provider") {
+        await ProviderProfile.create({
+          user: user._id,
+          workshopPicture: workshopPicture || null,
+          mechanicCertificateImage: mechanicCertificateImage || null,
