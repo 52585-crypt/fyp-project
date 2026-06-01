@@ -47,3 +47,27 @@ export function calculateTowingPricing(service, pickupLocation, destinationLocat
     routeDistanceKm,
     distanceCharge,
     extraWorkTotal: 0,
+    total: toMoney(visitFee + towingBaseFee + distanceCharge),
+  };
+}
+
+export function calculateMechanicPricing(service, categoryCode, approvedExtraWorkTotal = 0) {
+  const categories = service.config?.categories || [];
+  const category = categories.find((entry) => entry.code === categoryCode);
+  const visitFee = Number(category?.visitFee || service.pricing?.defaultVisitFee || 0);
+  const extraWorkTotal = toMoney(approvedExtraWorkTotal);
+
+  return {
+    currency: service.pricing?.currency || "PKR",
+    fuelPricePerLiter: 0,
+    quantitySubtotal: 0,
+    deliveryFee: 0,
+    visitFee,
+    towingBaseFee: 0,
+    perKmRate: 0,
+    routeDistanceKm: 0,
+    distanceCharge: 0,
+    extraWorkTotal,
+    total: toMoney(visitFee + extraWorkTotal),
+  };
+}
