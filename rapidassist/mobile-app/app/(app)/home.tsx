@@ -1,6 +1,7 @@
 import React from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { RAButton } from "../../src/components/RAButton";
 import { useAuth } from "../../src/auth/AuthProvider";
@@ -24,6 +25,18 @@ export default function Home() {
             </View>
           </View>
         </View>
+
+        <View style={{ height: 12 }} />
+
+        <RAButton title="My Vehicles" onPress={() => router.push("/vehicles")} />
+
+        <View style={{ height: 12 }} />
+
+        <RAButton
+          title="Request Help"
+          onPress={() => router.push("/request/create")}
+          style={{ backgroundColor: colors.primary }}
+        />
 
         <View style={{ height: 12 }} />
 
