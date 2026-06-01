@@ -86,3 +86,90 @@ const extraWorkRequestSchema = new mongoose.Schema(
     requestedTotal: {
       type: Number,
       required: true,
+      min: 0,
+    },
+    approvedTotal: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    respondedAt: {
+      type: Date,
+      default: null,
+    },
+    items: {
+      type: [extraWorkItemSchema],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
+const orderSchema = new mongoose.Schema(
+  {
+    orderNo: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    provider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    service: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Service",
+      required: true,
+    },
+    serviceCode: {
+      type: String,
+      enum: ["fuel_delivery", "car_towing", "mechanic"],
+      required: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: [
+        "open",
+        "assigned",
+        "arrived",
+        "inspection_pending",
+        "awaiting_extra_work_approval",
+        "in_progress",
+        "awaiting_fuel_confirmation",
+        "tow_in_transit",
+        "completed",
+        "cancelled",
+      ],
+      default: "open",
+      index: true,
+    },
+    pickupLocation: {
+      type: locationSchema,
+      required: true,
+    },
+    destinationLocation: {
+      type: locationSchema,
+      default: null,
+    },
+    customerVehicle: {
+      make: {
+        type: String,
+        default: null,
+        trim: true,
+        maxlength: 80,
+      },
+      model: {
+        type: String,
+        default: null,
+        trim: true,
