@@ -278,3 +278,73 @@ export async function verifyProviderIdentityLocally({ cnic, cnicFrontImage, cnic
       provider: "local_phase_1",
       details: error.message,
     });
+  }
+
+  const expectedCnic = String(cnic || "").replace(/\D/g, "");
+  const matchedCandidate =
+    frontOcr.candidates.find((value) => value === expectedCnic) ||
+    backOcr.candidates.find((value) => value === expectedCnic) ||
+    null;
+  const extractedCnic = matchedCandidate || frontOcr.extractedCnic || backOcr.extractedCnic || null;
+
+  if (!matchedCandidate) {
+    return buildFailure(
+      extractedCnic
+        ? "Entered CNIC number does not match the uploaded CNIC images"
+        : "Could not read a valid CNIC number from the uploaded images",
+      {
+        provider: "local_phase_1",
+        extractedCnic,
+      }
+    );
+  }
+
+  let cnicFace;
+  let selfieFace;
+
+  try {
+    [cnicFace, selfieFace] = await Promise.all([
+      describeFaceFromImageBuffer(cnicFrontBuffer, "document"),
+      describeFaceFromImageBuffer(selfieBuffer, "selfie"),
+    ]);
+  } catch (error) {
+    return buildFailure("Face verification failed while processing the uploaded images", {
+      provider: "local_phase_1",
+      extractedCnic,
+      details: error.message,
+    });
+  }
+
+  if (!cnicFace) {
+    return buildFailure("No clear face was detected on the CNIC front image", {
+      provider: "local_phase_1",
+      extractedCnic,
+    });
+  }
+
+  if (!selfieFace) {
+    return buildFailure("No clear face was detected in the captured selfie", {
+      provider: "local_phase_1",
+      extractedCnic,
+    });
+  }
+
+  const faceSimilarity = Number(
+    cosineSimilarity(cnicFace.descriptor, selfieFace.descriptor).toFixed(4)
+  );
+
+  if (!Number.isFinite(faceSimilarity) || faceSimilarity < FACE_MATCH_THRESHOLD) {
+    return buildFailure("The captured selfie does not match the CNIC photo", {
+      provider: "local_phase_1",
+      extractedCnic,
+      faceSimilarity: Number.isFinite(faceSimilarity) ? faceSimilarity : 0,
+    });
+  }
+
+  return {
+    ok: true,
+    provider: "local_phase_1",
+    extractedCnic,
+    faceSimilarity,
+  };
+}
