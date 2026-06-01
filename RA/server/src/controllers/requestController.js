@@ -183,3 +183,64 @@ export async function getNearbyRequests(req, res) {
       .map((request) => {
         const distanceKm = getDistanceKm(
           latitude,
+          longitude,
+          Number(request.currentLatitude),
+          Number(request.currentLongitude)
+        );
+
+        const extraDistanceCharge = getExtraDistanceCharge(distanceKm, Number(request.service.extraPerKm));
+
+        return {
+          id: request._id.toString(),
+          userName: request.user.name,
+          serviceName: request.service.name,
+          description: request.description,
+          vehicleNumber: request.vehicleNumber,
+          latitude: Number(request.currentLatitude),
+          longitude: Number(request.currentLongitude),
+          status: request.status,
+          distanceKm,
+          suggestedBasePrice: Number(request.service.basePrice),
+          extraDistanceCharge,
+        };
+      })
+      .filter((request) => request.distanceKm <= radiusKm);
+
+    return res.json(nearby);
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to fetch nearby requests", error: error.message });
+  }
+}
+
+export async function createOffer(req, res) {
+  const { requestId, price, estimatedMinutes, message } = req.body;
+  const offerPrice = parseFiniteNumber(price);
+  const etaMinutes = parseFiniteNumber(estimatedMinutes);
+
+  if (!requestId || offerPrice == null || etaMinutes == null) {
+    return res.status(400).json({ message: "requestId, price and estimatedMinutes are required" });
+  }
+
+  if (!isValidObjectId(requestId)) {
+    return res.status(400).json({ message: "Invalid requestId" });
+  }
+
+  if (offerPrice <= 0 || etaMinutes <= 0) {
+    return res.status(400).json({ message: "price and estimatedMinutes must be greater than zero" });
+  }
+
+  try {
+    const request = await ServiceRequest.findById(requestId).populate("service", "extraPerKm");
+
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    if (!["pending", "offered"].includes(request.status)) {
+      return res.status(409).json({ message: "Request is no longer accepting offers" });
+    }
+
+    const providerProfile = await ProviderProfile.findOne({ user: req.user.id });
+
+    if (!providerProfile) {
+      return res.status(404).json({ message: "Provider profile missing" });
