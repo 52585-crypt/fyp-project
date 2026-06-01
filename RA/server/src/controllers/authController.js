@@ -180,3 +180,64 @@ export async function register(req, res) {
           user: user._id,
           workshopPicture: workshopPicture || null,
           mechanicCertificateImage: mechanicCertificateImage || null,
+          cnicFrontImage: cnicFrontImage || null,
+          cnicBackImage: cnicBackImage || null,
+          selfieImage: selfieImage || null,
+          cnic: normalizeCnic(cnic),
+          cnicVerificationStatus: "verified",
+          cnicVerificationReason: null,
+          cnicVerificationProvider: verification?.provider || null,
+          cnicVerifiedAt: new Date(),
+          cnicExtractedNumber: verification?.extractedCnic || normalizeCnic(cnic),
+          cnicFaceSimilarity:
+            typeof verification?.faceSimilarity === "number" ? verification.faceSimilarity : null,
+          serviceCodes: [...new Set(serviceCodes || [])],
+          city: city?.trim() || "Lahore",
+          currentLatitude: optionalNumber(latitude),
+          currentLongitude: optionalNumber(longitude),
+        });
+      }
+
+      return res.status(201).json({
+        message: "Registration successful",
+        user: sanitizeUser(user),
+      });
+    } catch (error) {
+      await User.deleteOne({ _id: user._id });
+      throw error;
+    }
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Phone number already registered" });
+    }
+
+    return res.status(500).json({ message: "Registration failed", error: getErrorMessage(error) });
+  }
+}
+
+export async function login(req, res) {
+  const { phone, password } = req.body;
+
+  if (!phone || !password) {
+    return res.status(400).json({ message: "phone and password are required" });
+  }
+
+  try {
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const passwordMatches = await comparePassword(password, user.passwordHash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const providerProfile =
+      user.role === "provider" ? await ProviderProfile.findOne({ user: user._id }).lean() : null;
+
+    return res.json(buildAuthResponse(user, providerProfile));
+  } catch (error) {
+    return res.status(500).json({ message: "Login failed", error: getErrorMessage(error) });
