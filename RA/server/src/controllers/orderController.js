@@ -643,3 +643,132 @@ export async function startOrderProgress(req, res) {
     } else if (order.serviceCode === "car_towing") {
       if (!["assigned", "arrived", "tow_in_transit"].includes(order.status)) {
         return res.status(409).json({ message: "Towing order is not ready to start" });
+      }
+
+      order.status = "tow_in_transit";
+    } else {
+      if (!["assigned", "arrived", "in_progress"].includes(order.status)) {
+        return res.status(409).json({ message: "Fuel order is not ready to start" });
+      }
+
+      order.status = "in_progress";
+    }
+
+    order.tracking.startedAt = new Date();
+    await order.save();
+
+    return res.json({ message: "Order progress updated", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to start order progress", error: error.message });
+  }
+}
+
+export async function submitExtraWorkRequest(req, res) {
+  const { id } = req.params;
+  const { providerNote, items } = req.body;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "At least one extra work item is required" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode !== "mechanic") {
+      return res.status(409).json({ message: "Extra work requests are only allowed for mechanic orders" });
+    }
+
+    const pendingRequest = order.extraWorkRequests.find((entry) => entry.status === "pending");
+
+    if (pendingRequest) {
+      return res.status(409).json({ message: "Resolve the current pending extra work request first" });
+    }
+
+    const mappedItems = items.map((item) => {
+      const partsCost = Number(item.partsCost || 0);
+      const laborCost = Number(item.laborCost || 0);
+      const quantity = Number(item.quantity || 1);
+      const lineTotal = Number(((partsCost + laborCost) * quantity).toFixed(2));
+
+      return {
+        title: item.title?.trim(),
+        description: item.description?.trim() || null,
+        partsCost,
+        laborCost,
+        quantity,
+        lineTotal,
+      };
+    });
+
+    if (mappedItems.some((item) => !item.title || item.quantity <= 0 || item.lineTotal < 0)) {
+      return res.status(400).json({ message: "Each extra work item needs a title, valid quantity, and valid costs" });
+    }
+
+    const requestedTotal = Number(
+      mappedItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0).toFixed(2)
+    );
+
+    order.extraWorkRequests.push({
+      providerNote: providerNote?.trim() || null,
+      requestedTotal,
+      approvedTotal: 0,
+      status: "pending",
+      items: mappedItems,
+    });
+    order.status = "awaiting_extra_work_approval";
+    await order.save();
+
+    const createdRequest = order.extraWorkRequests[order.extraWorkRequests.length - 1];
+
+    return res.status(201).json({
+      message: "Extra work request submitted",
+      extraWorkRequest: mapExtraWorkRequest(createdRequest),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to submit extra work request", error: error.message });
+  }
+}
+
+export async function respondToExtraWorkRequest(req, res) {
+  const { id, requestId } = req.params;
+  const { items } = req.body;
+
+  if (!isValidObjectId(id) || !isValidObjectId(requestId)) {
+    return res.status(400).json({ message: "Invalid order or request id" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "At least one item decision is required" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const extraWorkRequest = order.extraWorkRequests.id(requestId);
+
+    if (!extraWorkRequest || extraWorkRequest.status !== "pending") {
+      return res.status(404).json({ message: "Pending extra work request not found" });
+    }
+
+    const decisionMap = new Map(
+      items.map((item) => [String(item.itemId), item.decision])
