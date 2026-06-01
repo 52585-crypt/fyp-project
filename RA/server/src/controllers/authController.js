@@ -302,3 +302,63 @@ export async function updateMe(req, res) {
     if (user.role === "provider") {
       providerProfile = await ProviderProfile.findOne({ user: user._id });
       let identityFieldsChanged = false;
+
+      if (!providerProfile) {
+        return res.status(404).json({ message: "Provider profile missing" });
+      }
+
+      if (typeof workshopPicture === "string") {
+        providerProfile.workshopPicture = workshopPicture.trim() || null;
+      }
+
+      if (typeof mechanicCertificateImage === "string") {
+        providerProfile.mechanicCertificateImage = mechanicCertificateImage.trim() || null;
+      }
+
+      if (typeof cnicFrontImage === "string") {
+        providerProfile.cnicFrontImage = cnicFrontImage.trim() || null;
+        identityFieldsChanged = true;
+      }
+
+      if (typeof cnicBackImage === "string") {
+        providerProfile.cnicBackImage = cnicBackImage.trim() || null;
+        identityFieldsChanged = true;
+      }
+
+      if (typeof selfieImage === "string") {
+        providerProfile.selfieImage = selfieImage.trim() || null;
+        identityFieldsChanged = true;
+      }
+
+      if (typeof cnic === "string" && cnic.trim()) {
+        providerProfile.cnic = normalizeCnic(cnic);
+        identityFieldsChanged = true;
+      }
+
+      if (typeof city === "string" && city.trim()) {
+        providerProfile.city = city.trim();
+      }
+
+      if (Array.isArray(serviceCodes) && serviceCodes.length > 0) {
+        providerProfile.serviceCodes = [...new Set(serviceCodes)];
+      }
+
+      if (identityFieldsChanged) {
+        providerProfile.cnicVerificationStatus = "rejected";
+        providerProfile.cnicVerificationReason =
+          "Identity documents changed. Re-verification is required.";
+        providerProfile.cnicVerificationProvider = null;
+        providerProfile.cnicVerifiedAt = null;
+        providerProfile.cnicExtractedNumber = null;
+        providerProfile.cnicFaceSimilarity = null;
+        providerProfile.isAvailable = false;
+      }
+
+      await providerProfile.save();
+    }
+
+    return res.json(buildAuthResponse(user, providerProfile));
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to update profile", error: getErrorMessage(error) });
+  }
+}
