@@ -256,3 +256,132 @@ export async function createOrder(req, res) {
 
   const pickupLocation = buildLocation(pickupLatitude, pickupLongitude, pickupAddress);
 
+  if (!pickupLocation) {
+    return res.status(400).json({ message: "Valid pickup latitude and longitude are required" });
+  }
+
+  let destinationLocation = null;
+  let pricing = null;
+
+  if (serviceCode === "fuel_delivery") {
+    const quantity = parseFiniteNumber(fuelQuantityLiters);
+
+    if (!service.config?.fuelTypes?.includes(fuelType)) {
+      return res.status(400).json({ message: "Invalid fuel type" });
+    }
+
+    if (!service.config?.vehicleTypes?.includes(vehicleType)) {
+      return res.status(400).json({ message: "Invalid vehicle type" });
+    }
+
+    if (!service.config?.quantities?.includes(quantity)) {
+      return res.status(400).json({ message: "Invalid fuel quantity" });
+    }
+
+    pricing = calculateFuelPricing(service, fuelType, quantity);
+  }
+
+  if (serviceCode === "car_towing") {
+    destinationLocation = buildLocation(destinationLatitude, destinationLongitude, destinationAddress);
+
+    if (!destinationLocation) {
+      return res.status(400).json({ message: "Valid destination latitude and longitude are required" });
+    }
+
+    if (!service.config?.problemTypes?.includes(towingProblemType)) {
+      return res.status(400).json({ message: "Invalid towing problem type" });
+    }
+
+    pricing = calculateTowingPricing(service, pickupLocation, destinationLocation);
+  }
+
+  if (serviceCode === "mechanic") {
+    const categories = service.config?.categories || [];
+
+    if (!categories.some((entry) => entry.code === mechanicCategory)) {
+      return res.status(400).json({ message: "Invalid mechanic category" });
+    }
+
+    pricing = calculateMechanicPricing(service, mechanicCategory);
+  }
+
+  try {
+    const order = await Order.create({
+      orderNo: createOrderNumber(),
+      customer: req.user.id,
+      service: service._id,
+      serviceCode,
+      status: "open",
+      pickupLocation,
+      destinationLocation,
+      customerVehicle: {
+        make: vehicleMake?.trim() || null,
+        model: vehicleModel?.trim() || null,
+        licensePlate: licensePlate.trim(),
+        vehicleType: vehicleType || null,
+        fuelType: fuelType || null,
+      },
+      notes: notes?.trim() || null,
+      towingProblemType: towingProblemType || null,
+      mechanicCategory: mechanicCategory || null,
+      fuelQuantityLiters: serviceCode === "fuel_delivery" ? Number(fuelQuantityLiters) : null,
+      pricing,
+    });
+
+    await order.populate([
+      { path: "service", select: "name code" },
+      { path: "customer", select: "name phone profilePicture" },
+    ]);
+
+    const nearbyProviders = await findNearbyProviders(
+      pickupLocation.latitude,
+      pickupLocation.longitude,
+      serviceCode,
+      DEFAULT_PROVIDER_RADIUS_KM
+    );
+
+    return res.status(201).json({
+      order: {
+        ...mapOrder(order),
+        nearbyProviders: mapNearbyProviders(nearbyProviders),
+      },
+      nearbyProvidersCount: nearbyProviders.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to create order", error: error.message });
+  }
+}
+
+export async function getMyActiveOrder(req, res) {
+  try {
+    const field = req.user.role === "provider" ? "provider" : "customer";
+    const order = await findActiveOrderForUser(req.user.id, field);
+
+    if (!order) {
+      return res.json({ order: null });
+    }
+
+    return res.json({ order: await attachNearbyProvidersToOrder(order) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to fetch active order", error: error.message });
+  }
+}
+
+export async function getOrderDetails(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id)
+      .populate("service", "name code")
+      .populate("customer", "name phone profilePicture")
+      .populate("provider", "name phone profilePicture")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
