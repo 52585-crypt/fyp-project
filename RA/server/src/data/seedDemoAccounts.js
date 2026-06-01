@@ -95,3 +95,51 @@ async function upsertDemoAccount(account, passwordHash) {
         profilePicture: account.profilePicture,
       },
     },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+
+  if (account.role === "provider") {
+    await ProviderProfile.findOneAndUpdate(
+      { user: user._id },
+      { $set: buildProviderProfile(user._id, account) },
+      {
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+  } else {
+    await ProviderProfile.deleteOne({ user: user._id });
+  }
+
+  return user;
+}
+
+async function seedDemoAccounts() {
+  await connectDatabase();
+  await seedServices();
+
+  const passwordHash = await hashPassword(demoPassword);
+  const users = [];
+
+  for (const account of demoAccounts) {
+    users.push(await upsertDemoAccount(account, passwordHash));
+  }
+
+  console.log("Seeded demo accounts:");
+  for (const user of users) {
+    console.log(`- ${user.role}: ${user.name} | phone ${user.phone} | password ${demoPassword}`);
+  }
+}
+
+seedDemoAccounts()
+  .catch((error) => {
+    console.error("Unable to seed demo accounts", error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await mongoose.disconnect();
+  });
