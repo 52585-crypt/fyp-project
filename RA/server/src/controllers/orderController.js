@@ -385,3 +385,132 @@ export async function getOrderDetails(req, res) {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    const isCustomer = order.customer?._id?.toString() === req.user.id;
+    const isProvider = order.provider?._id?.toString() === req.user.id;
+
+    if (!isCustomer && !isProvider) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    return res.json({ order: await attachNearbyProvidersToOrder(order) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to fetch order", error: error.message });
+  }
+}
+
+export async function getOrderHistory(req, res) {
+  try {
+    const queryField = req.user.role === "provider" ? "provider" : "customer";
+    const orders = await Order.find({ [queryField]: req.user.id })
+      .sort({ createdAt: -1 })
+      .populate("service", "name code")
+      .populate("customer", "name phone profilePicture")
+      .populate("provider", "name phone profilePicture")
+      .lean();
+
+    return res.json(orders.map(mapOrder));
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to fetch order history", error: error.message });
+  }
+}
+
+export async function listOpenOrders(req, res) {
+  const latitude = parseFiniteNumber(req.query.latitude);
+  const longitude = parseFiniteNumber(req.query.longitude);
+  const radiusKm = parseFiniteNumber(req.query.radiusKm || DEFAULT_PROVIDER_RADIUS_KM);
+
+  if (latitude == null || longitude == null) {
+    return res.status(400).json({ message: "latitude and longitude are required" });
+  }
+
+  try {
+    const providerProfile = await ProviderProfile.findOne({ user: req.user.id }).lean();
+
+    if (!providerProfile) {
+      return res.status(404).json({ message: "Provider profile missing" });
+    }
+
+    const orders = await Order.find({
+      status: "open",
+      provider: null,
+      serviceCode: { $in: providerProfile.serviceCodes || [] },
+    })
+      .sort({ createdAt: -1 })
+      .populate("service", "name code")
+      .populate("customer", "name phone profilePicture")
+      .lean();
+
+    const nearbyOrders = orders
+      .map((order) => {
+        const providerDistanceKm = getDistanceKm(
+          latitude,
+          longitude,
+          order.pickupLocation.latitude,
+          order.pickupLocation.longitude
+        );
+
+        return {
+          ...mapOrder(order),
+          providerDistanceKm,
+        };
+      })
+      .filter((order) => order.providerDistanceKm <= radiusKm)
+      .sort((a, b) => a.providerDistanceKm - b.providerDistanceKm);
+
+    return res.json(nearbyOrders);
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to list open orders", error: error.message });
+  }
+}
+
+export async function updateProviderLocation(req, res) {
+  const latitude = parseFiniteNumber(req.body.latitude);
+  const longitude = parseFiniteNumber(req.body.longitude);
+  const { isAvailable } = req.body;
+
+  if (latitude == null || longitude == null) {
+    return res.status(400).json({ message: "latitude and longitude are required" });
+  }
+
+  try {
+    const profile = await ProviderProfile.findOneAndUpdate(
+      { user: req.user.id },
+      {
+        currentLatitude: latitude,
+        currentLongitude: longitude,
+        ...(typeof isAvailable === "boolean" ? { isAvailable } : {}),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!profile) {
+      return res.status(404).json({ message: "Provider profile missing" });
+    }
+
+    const activeOrder = await Order.findOne({
+      provider: req.user.id,
+      status: { $in: ACTIVE_STATUSES },
+    });
+
+    if (activeOrder) {
+      activeOrder.tracking.providerLatitude = latitude;
+      activeOrder.tracking.providerLongitude = longitude;
+      activeOrder.tracking.providerUpdatedAt = new Date();
+      await activeOrder.save();
+    }
+
+    return res.json({
+      message: "Provider location updated",
+      profile: {
+        currentLatitude: profile.currentLatitude,
+        currentLongitude: profile.currentLongitude,
+        isAvailable: profile.isAvailable,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to update provider location", error: error.message });
+  }
+}
+
+export async function acceptOrder(req, res) {
+  const { id } = req.params;
