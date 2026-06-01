@@ -173,3 +173,91 @@ const orderSchema = new mongoose.Schema(
         type: String,
         default: null,
         trim: true,
+        maxlength: 80,
+      },
+      licensePlate: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 40,
+      },
+      vehicleType: {
+        type: String,
+        enum: ["bike", "car"],
+        default: null,
+      },
+      fuelType: {
+        type: String,
+        enum: ["petrol", "diesel"],
+        default: null,
+      },
+    },
+    notes: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 800,
+    },
+    towingProblemType: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 80,
+    },
+    mechanicCategory: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 80,
+    },
+    fuelQuantityLiters: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    pricing: {
+      currency: {
+        type: String,
+        default: "PKR",
+      },
+      fuelPricePerLiter: {
+        type: Number,
+        default: 0,
+      },
+      quantitySubtotal: {
+        type: Number,
+        default: 0,
+      },
+      deliveryFee: {
+        type: Number,
+        default: 0,
+      },
+      visitFee: {
+        type: Number,
+        default: 0,
+      },
+      towingBaseFee: {
+        type: Number,
+        default: 0,
+      },
+      perKmRate: {
+        type: Number,
+        default: 0,
+      },
+      routeDistanceKm: {
+        type: Number,
+        default: 0,
+      },
+      distanceCharge: {
+        type: Number,
+        default: 0,
+      },
+      extraWorkTotal: {
+        type: Number,
+        default: 0,
+      },
+      total: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
