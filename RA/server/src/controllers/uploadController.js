@@ -30,3 +30,34 @@ export async function uploadImage(req, res) {
         api_secret: process.env.CLOUDINARY_API_SECRET,
       });
 
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: process.env.CLOUDINARY_UPLOAD_FOLDER || "roadside-assistance",
+        resource_type: "image",
+      });
+
+      await removeLocalFile(req.file.path);
+
+      return res.status(201).json({
+        message: "Upload successful",
+        fileUrl: uploadResult.secure_url,
+        filename: uploadResult.public_id,
+        provider: "cloudinary",
+      });
+    } catch (error) {
+      await removeLocalFile(req.file.path);
+      return res.status(500).json({
+        message: "Cloudinary upload failed",
+        error: error.message,
+      });
+    }
+  }
+
+  const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+  const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
+  return res.status(201).json({
+    message: "Upload successful",
+    fileUrl,
+    filename: req.file.filename,
+  });
+}
