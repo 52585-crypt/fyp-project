@@ -1,0 +1,3994 @@
+import { StatusBar } from "expo-status-bar";
+import { Feather } from "@expo/vector-icons";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import api, { setToken } from "./src/api";
+import { getCurrentDeviceLocation, searchAddress } from "./src/location";
+import { MapPreview } from "./src/MapPreview";
+import { uploadImageFromUri } from "./src/upload";
+
+const LAHORE_COORDS = {
+  latitude: "31.5204",
+  longitude: "74.3587",
+};
+
+const PROVIDER_QUEUE_RADIUS_KM = 300;
+
+const PROVIDER_SERVICE_OPTIONS = [
+  { code: "fuel_delivery", label: "Fuel Delivery", short: "FD", icon: "droplet" },
+  { code: "car_towing", label: "Car Towing", short: "CT", icon: "truck" },
+  { code: "mechanic", label: "Mechanic", short: "MC", icon: "tool" },
+];
+
+const FONT_FAMILY = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+});
+
+const COLORS = {
+  canvas: "#F4F8FF",
+  surface: "#FFFFFF",
+  surfaceSoft: "#F8FAFC",
+  blueSoft: "#EAF3FF",
+  ink: "#0F172A",
+  muted: "#64748B",
+  line: "#DDE8F8",
+  lineStrong: "#B9CFF0",
+  action: "#0B5FFF",
+  actionText: "#FFFFFF",
+  primary: "#0B5FFF",
+  primaryDark: "#084FC7",
+  secondary: "#2563EB",
+  danger: "#D92D20",
+};
+
+const CUSTOMER_TAB_ITEMS = [
+  { key: "home", label: "Request", icon: "navigation" },
+  { key: "history", label: "History", icon: "clock" },
+  { key: "profile", label: "Profile", icon: "user" },
+];
+
+const CUSTOMER_BOOKING_STEPS = [
+  { key: "service", label: "Service", icon: "grid" },
+  { key: "details", label: "Details", icon: "edit-3" },
+  { key: "review", label: "Review", icon: "check-circle" },
+];
+
+const PROVIDER_TAB_ITEMS = [
+  { key: "home", label: "Queue", icon: "briefcase" },
+  { key: "history", label: "History", icon: "clock" },
+  { key: "profile", label: "Profile", icon: "user" },
+];
+
+const SECTION_ICON_BY_LABEL = {
+  Identity: "user",
+  "Provider setup": "shield",
+  Service: "grid",
+  Pickup: "map-pin",
+  Vehicle: "truck",
+  "Fuel request": "droplet",
+  "Tow request": "navigation",
+  "Mechanic request": "tool",
+  Estimate: "credit-card",
+  Progress: "activity",
+  Tracking: "map",
+  "Approval loop": "check-square",
+  "Cash confirmation": "dollar-sign",
+  Availability: "toggle-right",
+  "Nearby jobs": "briefcase",
+  Route: "map",
+  Arrival: "map-pin",
+  "Fuel workflow": "droplet",
+  "Towing workflow": "navigation",
+  Completion: "check-circle",
+  Filters: "filter",
+  Profile: "user",
+};
+
+const TOWING_PROBLEM_OPTIONS = [
+  { code: "accident", label: "Accident" },
+  { code: "flat_tyre", label: "Flat Tyre" },
+  { code: "battery_dead", label: "Battery Dead" },
+  { code: "engine_not_starting", label: "Engine Not Starting" },
+  { code: "other", label: "Other" },
+];
+
+const DEFAULT_SERVICES = [
+  {
+    id: "fuel_delivery",
+    code: "fuel_delivery",
+    name: "Fuel Delivery",
+    description: "Emergency fuel delivery for cars and bikes across Lahore.",
+    pricing: {
+      currency: "PKR",
+      flatDeliveryFee: 250,
+      fuelPrices: {
+        petrol: 272,
+        diesel: 280,
+      },
+    },
+    config: {
+      fuelTypes: ["petrol", "diesel"],
+      vehicleTypes: ["bike", "car"],
+      quantities: [1, 2, 5, 10],
+    },
+  },
+  {
+    id: "car_towing",
+    code: "car_towing",
+    name: "Car Towing",
+    description: "Tow vehicle from pickup point to workshop or destination.",
+    pricing: {
+      currency: "PKR",
+      visitFee: 600,
+      towingBaseFee: 2200,
+      perKmRate: 180,
+    },
+    config: {
+      problemTypes: ["accident", "flat_tyre", "battery_dead", "engine_not_starting", "other"],
+    },
+  },
+  {
+    id: "mechanic",
+    code: "mechanic",
+    name: "Mechanic Service",
+    description: "On-demand roadside mechanic with visit fee and extra work approval.",
+    pricing: {
+      currency: "PKR",
+      defaultVisitFee: 800,
+    },
+    config: {
+      categories: [
+        { code: "general_repair", name: "General Repair", visitFee: 800 },
+        { code: "battery_jump_start", name: "Battery Jump Start", visitFee: 700 },
+        { code: "ac_repair", name: "AC Repair", visitFee: 1000 },
+        { code: "lockout", name: "Lockout", visitFee: 650 },
+        { code: "brake_check", name: "Brake Check", visitFee: 850 },
+      ],
+    },
+  },
+];
+
+function createInitialRegister() {
+  return {
+    role: "user",
+    name: "",
+    phone: "",
+    password: "",
+    workshopPicture: "",
+    mechanicCertificateImage: "",
+    cnicFrontImage: "",
+    cnicBackImage: "",
+    selfieImage: "",
+    cnic: "",
+    city: "Lahore",
+    serviceCodes: ["fuel_delivery"],
+    latitude: LAHORE_COORDS.latitude,
+    longitude: LAHORE_COORDS.longitude,
+  };
+}
+
+function createInitialOrderForm() {
+  return {
+    serviceCode: "fuel_delivery",
+    pickupLatitude: LAHORE_COORDS.latitude,
+    pickupLongitude: LAHORE_COORDS.longitude,
+    pickupAddress: "",
+    destinationLatitude: LAHORE_COORDS.latitude,
+    destinationLongitude: LAHORE_COORDS.longitude,
+    destinationAddress: "",
+    destinationQuery: "",
+    vehicleMake: "",
+    vehicleModel: "",
+    licensePlate: "",
+    vehicleType: "car",
+    fuelType: "petrol",
+    fuelQuantityLiters: "2",
+    towingProblemType: "battery_dead",
+    mechanicCategory: "general_repair",
+    notes: "",
+  };
+}
+
+function createEmptyExtraWorkItem() {
+  return {
+    title: "",
+    description: "",
+    partsCost: "",
+    laborCost: "",
+    quantity: "1",
+  };
+}
+
+function profileFormFromUser(user) {
+  return {
+    name: user?.name || "",
+    profilePicture: user?.profilePicture || "",
+    city: user?.providerProfile?.city || "Lahore",
+    workshopPicture: user?.providerProfile?.workshopPicture || "",
+    mechanicCertificateImage: user?.providerProfile?.mechanicCertificateImage || "",
+    cnicFrontImage: user?.providerProfile?.cnicFrontImage || "",
+    cnicBackImage: user?.providerProfile?.cnicBackImage || "",
+    selfieImage: user?.providerProfile?.selfieImage || "",
+    cnic: user?.providerProfile?.cnic || "",
+    serviceCodes: user?.providerProfile?.serviceCodes || ["fuel_delivery"],
+  };
+}
+
+function formatMoney(amount) {
+  return `PKR ${Number(amount || 0).toFixed(0)}`;
+}
+
+function normalizeCnic(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function titleFromCode(code) {
+  return String(code || "")
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function haversineDistance(fromLat, fromLng, toLat, toLng) {
+  if (![fromLat, fromLng, toLat, toLng].every(Number.isFinite)) {
+    return 0;
+  }
+
+  const earthRadiusKm = 6371;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+  const lat1 = toRadians(fromLat);
+  const lat2 = toRadians(toLat);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  return Number((earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(2));
+}
+
+function hasFiniteCoordinates(location) {
+  return Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude));
+}
+
+function formatLocationState(location) {
+  return {
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+  };
+}
+
+function buildEstimate(service, form, activeOrder) {
+  if (!service) {
+    return null;
+  }
+
+  if (activeOrder) {
+    return activeOrder.pricing;
+  }
+
+  if (service.code === "fuel_delivery") {
+    const fuelPricePerLiter = Number(service.pricing?.fuelPrices?.[form.fuelType] || 0);
+    const quantity = Number(form.fuelQuantityLiters || 0);
+    const quantitySubtotal = fuelPricePerLiter * quantity;
+    const deliveryFee = Number(service.pricing?.flatDeliveryFee || 0);
+
+    return {
+      total: quantitySubtotal + deliveryFee,
+      quantitySubtotal,
+      deliveryFee,
+      fuelPricePerLiter,
+      visitFee: 0,
+      towingBaseFee: 0,
+      routeDistanceKm: 0,
+      distanceCharge: 0,
+      extraWorkTotal: 0,
+    };
+  }
+
+  if (service.code === "car_towing") {
+    const routeDistanceKm = haversineDistance(
+      Number(form.pickupLatitude || 0),
+      Number(form.pickupLongitude || 0),
+      Number(form.destinationLatitude || 0),
+      Number(form.destinationLongitude || 0)
+    );
+    const visitFee = Number(service.pricing?.visitFee || 0);
+    const towingBaseFee = Number(service.pricing?.towingBaseFee || 0);
+    const distanceCharge = routeDistanceKm * Number(service.pricing?.perKmRate || 0);
+
+    return {
+      total: visitFee + towingBaseFee + distanceCharge,
+      quantitySubtotal: 0,
+      deliveryFee: 0,
+      fuelPricePerLiter: 0,
+      visitFee,
+      towingBaseFee,
+      routeDistanceKm,
+      distanceCharge,
+      extraWorkTotal: 0,
+    };
+  }
+
+  const category = (service.config?.categories || []).find(
+    (entry) => entry.code === form.mechanicCategory
+  );
+  const visitFee = Number(category?.visitFee || service.pricing?.defaultVisitFee || 0);
+
+  return {
+    total: visitFee,
+    quantitySubtotal: 0,
+    deliveryFee: 0,
+    fuelPricePerLiter: 0,
+    visitFee,
+    towingBaseFee: 0,
+    routeDistanceKm: 0,
+    distanceCharge: 0,
+    extraWorkTotal: 0,
+  };
+}
+
+function normalizeOrderFormForService(form, service) {
+  if (!service) {
+    return form;
+  }
+
+  const next = { ...form, serviceCode: service.code };
+
+  if (service.code === "fuel_delivery") {
+    const vehicleTypes = service.config?.vehicleTypes || ["bike", "car"];
+    const fuelTypes = service.config?.fuelTypes || ["petrol", "diesel"];
+    const quantities = service.config?.quantities || [1, 2, 5, 10];
+
+    next.vehicleType = vehicleTypes.includes(next.vehicleType) ? next.vehicleType : vehicleTypes[0];
+    next.fuelType = fuelTypes.includes(next.fuelType) ? next.fuelType : fuelTypes[0];
+    next.fuelQuantityLiters = quantities.map(String).includes(String(next.fuelQuantityLiters))
+      ? String(next.fuelQuantityLiters)
+      : String(quantities[0]);
+  }
+
+  if (service.code === "car_towing") {
+    const problemTypes = service.config?.problemTypes || TOWING_PROBLEM_OPTIONS.map((item) => item.code);
+    next.towingProblemType = problemTypes.includes(next.towingProblemType)
+      ? next.towingProblemType
+      : problemTypes[0];
+  }
+
+  if (service.code === "mechanic") {
+    const categories = service.config?.categories || [];
+    const categoryCodes = categories.map((category) => category.code);
+    next.mechanicCategory = categoryCodes.includes(next.mechanicCategory)
+      ? next.mechanicCategory
+      : categoryCodes[0] || "";
+  }
+
+  return next;
+}
+
+function getServiceVisual(serviceCode) {
+  if (serviceCode === "fuel_delivery") {
+    return {
+      title: "Fuel to your pin.",
+      subtitle: "Quantity, rider, confirmation.",
+      icon: "droplet",
+      accent: COLORS.primary,
+      bg: COLORS.surface,
+      border: COLORS.line,
+    };
+  }
+
+  if (serviceCode === "car_towing") {
+    return {
+      title: "Tow truck to pickup.",
+      subtitle: "Pickup, destination, trip total.",
+      icon: "truck",
+      accent: COLORS.secondary,
+      bg: COLORS.surface,
+      border: COLORS.line,
+    };
+  }
+
+  return {
+    title: "Mechanic at location.",
+    subtitle: "Visit fee, inspection, approval.",
+    icon: "tool",
+    accent: COLORS.primaryDark,
+    bg: COLORS.surface,
+    border: COLORS.line,
+  };
+}
+
+function getStatusTone(status) {
+  if (["completed"].includes(status)) {
+    return { bg: COLORS.blueSoft, text: COLORS.primaryDark, border: COLORS.lineStrong };
+  }
+
+  if (["awaiting_fuel_confirmation", "awaiting_extra_work_approval"].includes(status)) {
+    return { bg: "#EEF6FF", text: COLORS.primaryDark, border: COLORS.lineStrong };
+  }
+
+  if (["cancelled"].includes(status)) {
+    return { bg: "#FBEAE7", text: COLORS.danger, border: "#EBC6C0" };
+  }
+
+  return { bg: COLORS.surfaceSoft, text: COLORS.ink, border: COLORS.line };
+}
+
+function getCashConfirmationCopy(order, providerMode = false) {
+  const customerConfirmed = Boolean(order?.payment?.customerConfirmed);
+  const providerConfirmed = Boolean(order?.payment?.providerConfirmed);
+
+  if (customerConfirmed && providerConfirmed) {
+    return {
+      title: "Cash confirmation complete.",
+      body: "Both sides have confirmed the COD handoff.",
+    };
+  }
+
+  if (providerMode) {
+    if (providerConfirmed && !customerConfirmed) {
+      return {
+        title: "Waiting for customer confirmation.",
+        body: "You marked cash as received. The order will close once the customer confirms payment.",
+      };
+    }
+
+    if (!providerConfirmed && customerConfirmed) {
+      return {
+        title: "Customer has already confirmed cash.",
+        body: "Confirm receipt to close the COD loop and remove the order from active state.",
+      };
+    }
+
+    return {
+      title: "Cash is still pending.",
+      body: "Complete the service first, then confirm once cash is in hand.",
+    };
+  }
+
+  if (customerConfirmed && !providerConfirmed) {
+    return {
+      title: "Waiting for provider confirmation.",
+      body: "You marked cash as paid. The order will close once the provider confirms receipt.",
+    };
+  }
+
+  if (!customerConfirmed && providerConfirmed) {
+    return {
+      title: "Provider has already confirmed receipt.",
+      body: "Confirm payment to close the COD loop from your side.",
+    };
+  }
+
+  return {
+    title: "Cash is still pending.",
+    body: "Confirm only after cash has changed hands.",
+  };
+}
+
+function buildTimeline(order) {
+  if (!order) {
+    return [];
+  }
+
+  if (order.serviceCode === "fuel_delivery") {
+    return [
+      { key: "open", label: "Request placed" },
+      { key: "assigned", label: "Provider assigned" },
+      { key: "in_progress", label: "Fuel on the way" },
+      { key: "awaiting_fuel_confirmation", label: "Awaiting quantity check" },
+      { key: "completed", label: "Service completed" },
+      { key: "payment", label: "Cash confirmed" },
+    ];
+  }
+
+  if (order.serviceCode === "car_towing") {
+    return [
+      { key: "open", label: "Tow request placed" },
+      { key: "assigned", label: "Tow provider assigned" },
+      { key: "arrived", label: "Tow truck arrived" },
+      { key: "tow_in_transit", label: "Transit to workshop" },
+      { key: "completed", label: "Drop-off completed" },
+      { key: "payment", label: "Cash confirmed" },
+    ];
+  }
+
+  return [
+    { key: "open", label: "Mechanic request placed" },
+    { key: "assigned", label: "Mechanic assigned" },
+    { key: "inspection_pending", label: "Inspection phase" },
+    { key: "awaiting_extra_work_approval", label: "Approval loop" },
+    { key: "in_progress", label: "Work in progress" },
+    { key: "completed", label: "Service completed" },
+    { key: "payment", label: "Cash confirmed" },
+  ];
+}
+
+function isTimelineStepComplete(order, key) {
+  if (!order) {
+    return false;
+  }
+
+  if (key === "payment") {
+    return order.payment?.status === "confirmed";
+  }
+
+  if (key === "completed") {
+    return order.status === "completed" || order.payment?.status === "confirmed";
+  }
+
+  if (key === "awaiting_fuel_confirmation") {
+    return [
+      "awaiting_fuel_confirmation",
+      "completed",
+    ].includes(order.status);
+  }
+
+  if (key === "awaiting_extra_work_approval") {
+    return [
+      "awaiting_extra_work_approval",
+      "in_progress",
+      "completed",
+    ].includes(order.status);
+  }
+
+  const orderMap = [
+    "open",
+    "assigned",
+    "arrived",
+    "inspection_pending",
+    "in_progress",
+    "tow_in_transit",
+    "completed",
+  ];
+
+  return orderMap.indexOf(order.status) >= orderMap.indexOf(key);
+}
+
+function Reveal({ children, delay = 0, style }) {
+  const animateIn = Platform.OS !== "web";
+  const opacity = useRef(new Animated.Value(animateIn ? 0 : 1)).current;
+  const translateY = useRef(new Animated.Value(animateIn ? 18 : 0)).current;
+
+  useEffect(() => {
+    if (!animateIn) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 420,
+          delay: 0,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 420,
+          delay: 0,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [animateIn, delay, opacity, translateY]);
+
+  return (
+    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+function AppIcon({ name, size = 18, color = COLORS.primary, style }) {
+  return <Feather name={name} size={size} color={color} style={style} />;
+}
+
+export default function App() {
+  const [mode, setMode] = useState("register");
+  const [registerForm, setRegisterForm] = useState(createInitialRegister);
+  const [loginForm, setLoginForm] = useState({ phone: "", password: "" });
+  const [profileForm, setProfileForm] = useState(profileFormFromUser(null));
+  const [services, setServices] = useState(DEFAULT_SERVICES);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [servicesUsingFallback, setServicesUsingFallback] = useState(true);
+  const [session, setSession] = useState({ token: "", user: null });
+  const [screenTab, setScreenTab] = useState("home");
+  const [bookingStep, setBookingStep] = useState("service");
+  const [historyFilter, setHistoryFilter] = useState("all");
+  const [orderForm, setOrderForm] = useState(createInitialOrderForm);
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [providerOrders, setProviderOrders] = useState([]);
+  const [providerAvailable, setProviderAvailable] = useState(true);
+  const [providerLocation, setProviderLocation] = useState(LAHORE_COORDS);
+  const [deviceLocation, setDeviceLocation] = useState({
+    latitude: Number(LAHORE_COORDS.latitude),
+    longitude: Number(LAHORE_COORDS.longitude),
+    address: "Locating your device...",
+  });
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [destinationResults, setDestinationResults] = useState([]);
+  const [destinationLoading, setDestinationLoading] = useState(false);
+  const [uploadingField, setUploadingField] = useState("");
+  const [authLoading, setAuthLoading] = useState("");
+  const [busyAction, setBusyAction] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [userExtraWorkDecisions, setUserExtraWorkDecisions] = useState({});
+  const [providerExtraWorkDraft, setProviderExtraWorkDraft] = useState({
+    providerNote: "",
+    items: [createEmptyExtraWorkItem()],
+  });
+
+  const selectedService =
+    services.find((service) => service.code === orderForm.serviceCode) || services[0] || null;
+  const pricingEstimate = buildEstimate(selectedService, orderForm, activeOrder);
+  const tabs = session.user?.role === "provider" ? PROVIDER_TAB_ITEMS : CUSTOMER_TAB_ITEMS;
+  const serviceVisual = getServiceVisual(orderForm.serviceCode);
+  const filteredHistory = useMemo(() => {
+    if (historyFilter === "all") {
+      return orderHistory;
+    }
+
+    if (historyFilter === "active") {
+      return orderHistory.filter((order) => order.status !== "completed" && order.status !== "cancelled");
+    }
+
+    return orderHistory.filter((order) => order.status === "completed");
+  }, [historyFilter, orderHistory]);
+
+  function showMessage(text, type = "info") {
+    setMessage(text);
+    setMessageType(type);
+  }
+
+  function getErrorMessage(error, fallback) {
+    const responseMessage = error?.response?.data?.message;
+    const verification = error?.response?.data?.verification;
+
+    if (responseMessage) {
+      if (verification?.faceSimilarity != null) {
+        return `${responseMessage} (face match: ${Number(verification.faceSimilarity).toFixed(2)})`;
+      }
+
+      if (verification?.extractedCnic) {
+        return `${responseMessage} (read CNIC: ${verification.extractedCnic})`;
+      }
+
+      return responseMessage;
+    }
+
+    if (error?.code === "ECONNABORTED") {
+      return "Registration verification took too long. Please try again with clearer CNIC and selfie images.";
+    }
+
+    if (error?.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }
+
+  function updateSessionUser(nextUser) {
+    setSession((current) => ({ ...current, user: nextUser }));
+    setProfileForm(profileFormFromUser(nextUser));
+    if (nextUser?.role === "provider") {
+      setProviderAvailable(nextUser.providerProfile?.isAvailable ?? true);
+    }
+  }
+
+  function resetProviderExtraWorkDraft() {
+    setProviderExtraWorkDraft({
+      providerNote: "",
+      items: [createEmptyExtraWorkItem()],
+    });
+  }
+
+  function resetSession() {
+    setSession({ token: "", user: null });
+    setScreenTab("home");
+    setBookingStep("service");
+    setHistoryFilter("all");
+    setActiveOrder(null);
+    setOrderHistory([]);
+    setProviderOrders([]);
+    setUserExtraWorkDecisions({});
+    resetProviderExtraWorkDraft();
+    setMessage("");
+  }
+
+  function updateOrderField(field, value) {
+    setOrderForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function selectOrderService(service) {
+    setOrderForm((current) => normalizeOrderFormForService(current, service));
+    setBookingStep("service");
+  }
+
+  function toggleProviderServiceInRegister(serviceCode) {
+    setRegisterForm((current) => {
+      const exists = current.serviceCodes.includes(serviceCode);
+
+      return {
+        ...current,
+        serviceCodes: exists
+          ? current.serviceCodes.filter((code) => code !== serviceCode)
+          : [...current.serviceCodes, serviceCode],
+      };
+    });
+  }
+
+  function toggleProfileProviderService(serviceCode) {
+    setProfileForm((current) => {
+      const exists = current.serviceCodes.includes(serviceCode);
+
+      return {
+        ...current,
+        serviceCodes: exists
+          ? current.serviceCodes.filter((code) => code !== serviceCode)
+          : [...current.serviceCodes, serviceCode],
+      };
+    });
+  }
+
+  async function syncCurrentLocation({ silent = false, includeProviderRefresh = false } = {}) {
+    setLocationLoading(true);
+
+    try {
+      const location = await getCurrentDeviceLocation();
+      setDeviceLocation(location);
+      setRegisterForm((current) => ({
+        ...current,
+        latitude: String(location.latitude),
+        longitude: String(location.longitude),
+      }));
+      setOrderForm((current) => ({
+        ...current,
+        pickupLatitude: String(location.latitude),
+        pickupLongitude: String(location.longitude),
+        pickupAddress: location.address || current.pickupAddress,
+      }));
+      setProviderLocation(formatLocationState(location));
+
+      if (includeProviderRefresh && session.user?.role === "provider") {
+        await refreshProviderOrders(true, {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          isAvailable: providerAvailable,
+        });
+      }
+
+      if (!silent) {
+        showMessage("Current location updated", "success");
+      }
+    } catch (error) {
+      if (!silent) {
+        showMessage(error.message || "Unable to fetch current location", "error");
+      }
+    } finally {
+      setLocationLoading(false);
+    }
+  }
+
+  async function loadServices() {
+    setServicesLoading(true);
+
+    try {
+      const response = await api.get("/services");
+      const nextServices = Array.isArray(response.data) && response.data.length > 0 ? response.data : DEFAULT_SERVICES;
+      setServices(nextServices);
+      setServicesUsingFallback(nextServices === DEFAULT_SERVICES);
+      setOrderForm((current) => {
+        const service = nextServices.find((entry) => entry.code === current.serviceCode) || nextServices[0];
+        return normalizeOrderFormForService(current, service);
+      });
+    } catch (_error) {
+      setServices(DEFAULT_SERVICES);
+      setServicesUsingFallback(true);
+    } finally {
+      setServicesLoading(false);
+    }
+  }
+
+  async function refreshProfile(silent = false) {
+    if (!session.token) {
+      return;
+    }
+
+    try {
+      const response = await api.get("/auth/me");
+      updateSessionUser(response.data.user);
+    } catch (error) {
+      if (!silent) {
+        showMessage(error.response?.data?.message || "Unable to refresh profile", "error");
+      }
+    }
+  }
+
+  async function loadActiveOrder(silent = false) {
+    if (!session.token) {
+      return;
+    }
+
+    try {
+      const response = await api.get("/orders/mine/active");
+      setActiveOrder(response.data.order);
+    } catch (error) {
+      if (!silent) {
+        showMessage(error.response?.data?.message || "Unable to load active order", "error");
+      }
+    }
+  }
+
+  async function loadOrderHistory(silent = false) {
+    if (!session.token) {
+      return;
+    }
+
+    try {
+      const response = await api.get("/orders/history");
+      setOrderHistory(response.data);
+    } catch (error) {
+      if (!silent) {
+        showMessage(error.response?.data?.message || "Unable to load order history", "error");
+      }
+    }
+  }
+
+  async function refreshProviderOrders(silent = false, options = {}) {
+    if (session.user?.role !== "provider") {
+      return;
+    }
+
+    const latitude = Number(
+      options.latitude ??
+        (hasFiniteCoordinates(deviceLocation) ? deviceLocation.latitude : providerLocation.latitude)
+    );
+    const longitude = Number(
+      options.longitude ??
+        (hasFiniteCoordinates(deviceLocation) ? deviceLocation.longitude : providerLocation.longitude)
+    );
+    const isAvailable = options.isAvailable ?? providerAvailable;
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      if (!silent) {
+        showMessage("Current provider location is not ready yet", "error");
+      }
+      return;
+    }
+
+    try {
+      setProviderLocation(formatLocationState({ latitude, longitude }));
+      await api.patch("/orders/provider/location", {
+        latitude,
+        longitude,
+        isAvailable,
+      });
+
+      const response = await api.get("/orders/open", {
+        params: {
+          latitude,
+          longitude,
+          radiusKm: PROVIDER_QUEUE_RADIUS_KM,
+        },
+      });
+      setProviderOrders(response.data);
+    } catch (error) {
+      if (!silent) {
+        showMessage(error.response?.data?.message || "Unable to load nearby jobs", "error");
+      }
+    }
+  }
+
+  useEffect(() => {
+    setToken(session.token);
+  }, [session.token]);
+
+  useEffect(() => {
+    loadServices();
+    syncCurrentLocation({ silent: true });
+  }, []);
+
+  useEffect(() => {
+    if (!session.user) {
+      return;
+    }
+
+    setProfileForm(profileFormFromUser(session.user));
+    loadActiveOrder(true);
+    loadOrderHistory(true);
+
+    if (session.user.role === "provider") {
+      const initialProviderLocation = hasFiniteCoordinates(deviceLocation)
+        ? deviceLocation
+        : {
+            latitude:
+              session.user.providerProfile?.currentLatitude ?? Number(LAHORE_COORDS.latitude),
+            longitude:
+              session.user.providerProfile?.currentLongitude ?? Number(LAHORE_COORDS.longitude),
+          };
+      const initialAvailability = session.user.providerProfile?.isAvailable ?? true;
+
+      setProviderLocation(formatLocationState(initialProviderLocation));
+      setProviderAvailable(initialAvailability);
+      refreshProviderOrders(true, {
+        latitude: initialProviderLocation.latitude,
+        longitude: initialProviderLocation.longitude,
+        isAvailable: initialAvailability,
+      });
+    }
+  }, [session.user, session.token]);
+
+  useEffect(() => {
+    if (!session.user) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      loadActiveOrder(true);
+
+      if (session.user.role === "provider" && !activeOrder) {
+        refreshProviderOrders(true);
+      }
+    }, 6000);
+
+    return () => clearInterval(timer);
+  }, [session.user, session.token, activeOrder, providerLocation.latitude, providerLocation.longitude, providerAvailable]);
+
+  useEffect(() => {
+    const request = activeOrder?.activeExtraWorkRequest;
+
+    if (!request) {
+      setUserExtraWorkDecisions({});
+      return;
+    }
+
+    setUserExtraWorkDecisions((current) => {
+      if (current.__requestId === request.id) {
+        return current;
+      }
+
+      return { __requestId: request.id };
+    });
+  }, [activeOrder?.activeExtraWorkRequest?.id]);
+
+  async function pickImage(field, setter) {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        showMessage("Media library permission is required", "error");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setter((current) => ({ ...current, [field]: result.assets[0].uri }));
+      showMessage("Image selected", "success");
+    } catch (error) {
+      showMessage(error.message || "Unable to select image", "error");
+    }
+  }
+
+  async function pickAndUploadImage(field, setter) {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        showMessage("Media library permission is required", "error");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setUploadingField(field);
+      const fileUrl = await uploadImageFromUri(result.assets[0].uri);
+      setter((current) => ({ ...current, [field]: fileUrl }));
+      showMessage("Image uploaded", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || error.message || "Image upload failed", "error");
+    } finally {
+      setUploadingField("");
+    }
+  }
+
+  async function captureSelfie(field, setter) {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        showMessage("Camera permission is required", "error");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        cameraType: ImagePicker.CameraType.front,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setter((current) => ({ ...current, [field]: result.assets[0].uri }));
+      showMessage("Live selfie captured", "success");
+    } catch (error) {
+      showMessage(error.message || "Unable to capture selfie", "error");
+    }
+  }
+
+  async function register() {
+    if (registerForm.role === "provider") {
+      if (!registerForm.cnic.trim()) {
+        showMessage("CNIC number is required for providers", "error");
+        return;
+      }
+
+      if (!/^\d{13}$/.test(normalizeCnic(registerForm.cnic))) {
+        showMessage("CNIC number must contain exactly 13 digits", "error");
+        return;
+      }
+
+      if (!registerForm.workshopPicture) {
+        showMessage("Upload a workshop picture before registering", "error");
+        return;
+      }
+
+      if (!registerForm.cnicFrontImage) {
+        showMessage("Upload the CNIC front image before registering", "error");
+        return;
+      }
+
+      if (!registerForm.cnicBackImage) {
+        showMessage("Upload the CNIC back image before registering", "error");
+        return;
+      }
+
+      if (!registerForm.selfieImage) {
+        showMessage("Capture a live selfie before registering", "error");
+        return;
+      }
+
+      if (
+        registerForm.serviceCodes.includes("mechanic") &&
+        !registerForm.mechanicCertificateImage
+      ) {
+        showMessage("Select the mechanic certificate before registering", "error");
+        return;
+      }
+    }
+
+    setAuthLoading("register");
+
+    try {
+      const payload = { ...registerForm };
+
+      if (registerForm.role === "provider") {
+        payload.workshopPicture = await uploadImageFromUri(registerForm.workshopPicture);
+        if (registerForm.serviceCodes.includes("mechanic")) {
+          payload.mechanicCertificateImage = await uploadImageFromUri(
+            registerForm.mechanicCertificateImage
+          );
+        }
+        payload.cnicFrontImage = await uploadImageFromUri(registerForm.cnicFrontImage);
+        payload.cnicBackImage = await uploadImageFromUri(registerForm.cnicBackImage);
+        payload.selfieImage = await uploadImageFromUri(registerForm.selfieImage);
+      }
+
+      await api.post("/auth/register", payload, { timeout: 60000 });
+      setMode("login");
+      setRegisterForm(createInitialRegister());
+      showMessage("Registration complete. Please log in.", "success");
+    } catch (error) {
+      showMessage(getErrorMessage(error, "Registration failed"), "error");
+    } finally {
+      setAuthLoading("");
+    }
+  }
+
+  async function login() {
+    setAuthLoading("login");
+
+    try {
+      const response = await api.post("/auth/login", loginForm);
+      setSession(response.data);
+      setScreenTab("home");
+      setLoginForm({ phone: "", password: "" });
+      setMessage("");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Login failed", "error");
+    } finally {
+      setAuthLoading("");
+    }
+  }
+
+  async function createOrder() {
+    if (!selectedService) {
+      showMessage("Services are still loading", "error");
+      return;
+    }
+
+    if (!orderForm.pickupLatitude || !orderForm.pickupLongitude) {
+      showMessage("Current location is required to create an order", "error");
+      return;
+    }
+
+    if (orderForm.serviceCode === "car_towing" && !orderForm.destinationAddress.trim()) {
+      showMessage("Towing requires a destination workshop before review and request creation", "error");
+      return;
+    }
+
+    setBusyAction("create-order");
+
+    try {
+      const payload = {
+        serviceCode: orderForm.serviceCode,
+        pickupLatitude: orderForm.pickupLatitude,
+        pickupLongitude: orderForm.pickupLongitude,
+        pickupAddress: orderForm.pickupAddress,
+        vehicleMake: orderForm.vehicleMake,
+        vehicleModel: orderForm.vehicleModel,
+        licensePlate: orderForm.licensePlate,
+        notes: orderForm.notes,
+      };
+
+      if (orderForm.serviceCode === "fuel_delivery") {
+        payload.vehicleType = orderForm.vehicleType;
+        payload.fuelType = orderForm.fuelType;
+        payload.fuelQuantityLiters = Number(orderForm.fuelQuantityLiters);
+      }
+
+      if (orderForm.serviceCode === "car_towing") {
+        payload.destinationLatitude = orderForm.destinationLatitude;
+        payload.destinationLongitude = orderForm.destinationLongitude;
+        payload.destinationAddress = orderForm.destinationAddress;
+        payload.towingProblemType = orderForm.towingProblemType;
+      }
+
+      if (orderForm.serviceCode === "mechanic") {
+        payload.mechanicCategory = orderForm.mechanicCategory;
+      }
+
+      const response = await api.post("/orders", payload);
+      setActiveOrder(response.data.order);
+      setBookingStep("service");
+      await loadOrderHistory(true);
+      showMessage(
+        `Request created. ${response.data.nearbyProvidersCount} provider(s) are currently in range.`,
+        "success"
+      );
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to create order", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function searchDestination() {
+    if (!orderForm.destinationQuery.trim()) {
+      showMessage("Enter a destination address first", "error");
+      return;
+    }
+
+    setDestinationLoading(true);
+
+    try {
+      const results = await searchAddress(orderForm.destinationQuery, deviceLocation);
+      setDestinationResults(results);
+
+      if (results.length === 0) {
+        showMessage("No destination found. Try a more specific workshop or address.", "error");
+      }
+    } catch (error) {
+      showMessage(error.message || "Unable to search destination", "error");
+    } finally {
+      setDestinationLoading(false);
+    }
+  }
+
+  function chooseDestination(result) {
+    setOrderForm((current) => ({
+      ...current,
+      destinationLatitude: String(result.latitude),
+      destinationLongitude: String(result.longitude),
+      destinationAddress: result.label,
+      destinationQuery: result.label,
+    }));
+    setDestinationResults([]);
+    showMessage("Destination selected", "success");
+  }
+
+  async function saveProfile() {
+    if (session.user?.role === "provider") {
+      if (!profileForm.cnic.trim()) {
+        showMessage("CNIC number is required for providers", "error");
+        return;
+      }
+
+      if (!profileForm.workshopPicture || !profileForm.cnicFrontImage || !profileForm.cnicBackImage) {
+        showMessage("Provider profile must include workshop, CNIC front, and CNIC back images", "error");
+        return;
+      }
+    }
+
+    setBusyAction("save-profile");
+
+    try {
+      const payload = {
+        name: profileForm.name,
+        profilePicture: profileForm.profilePicture,
+      };
+
+      if (session.user?.role === "provider") {
+        payload.city = profileForm.city;
+        payload.workshopPicture = profileForm.workshopPicture;
+        payload.cnicFrontImage = profileForm.cnicFrontImage;
+        payload.cnicBackImage = profileForm.cnicBackImage;
+        payload.cnic = profileForm.cnic;
+        payload.serviceCodes = profileForm.serviceCodes;
+      }
+
+      const response = await api.patch("/auth/me", payload);
+      setSession(response.data);
+      showMessage("Profile updated", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to update profile", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function acceptOrder(orderId) {
+    setBusyAction(`accept-${orderId}`);
+
+    try {
+      const response = await api.post(`/orders/${orderId}/accept`);
+      setActiveOrder(response.data.order);
+      setProviderOrders([]);
+      await loadOrderHistory(true);
+      showMessage("Job accepted", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to accept job", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function markArrived() {
+    setBusyAction("mark-arrived");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/arrive`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Arrival marked", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to mark arrival", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function startOrder() {
+    setBusyAction("start-order");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/start`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Order progress updated", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to update order progress", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function markFuelDelivered() {
+    setBusyAction("fuel-delivered");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/fuel-delivered`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Waiting for customer quantity confirmation", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to mark fuel delivered", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function confirmFuelDelivered() {
+    setBusyAction("fuel-confirm");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/fuel-confirm`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Fuel delivery confirmed. COD confirmation is now open.", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to confirm fuel delivery", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function completeOrder() {
+    setBusyAction("complete-order");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/complete`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Service completed. Awaiting cash confirmation.", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to complete order", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function confirmCustomerPayment() {
+    setBusyAction("customer-payment");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/payment/customer-confirm`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Customer cash confirmation saved", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to confirm payment", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function confirmProviderPayment() {
+    setBusyAction("provider-payment");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/payment/provider-confirm`);
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Provider cash confirmation saved", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to confirm payment", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function raiseSos() {
+    setBusyAction("sos");
+
+    try {
+      const response = await api.post(`/orders/${activeOrder.id}/sos`, {
+        message: "Customer raised SOS during towing transit",
+      });
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("SOS alert recorded on the order", "error");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to raise SOS alert", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  function updateExtraWorkItem(index, field, value) {
+    setProviderExtraWorkDraft((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  }
+
+  function addExtraWorkItem() {
+    setProviderExtraWorkDraft((current) => ({
+      ...current,
+      items: [...current.items, createEmptyExtraWorkItem()],
+    }));
+  }
+
+  async function submitExtraWorkRequest() {
+    setBusyAction("extra-work");
+
+    try {
+      await api.post(`/orders/${activeOrder.id}/extra-work`, {
+        providerNote: providerExtraWorkDraft.providerNote,
+        items: providerExtraWorkDraft.items.map((item) => ({
+          title: item.title,
+          description: item.description,
+          partsCost: Number(item.partsCost || 0),
+          laborCost: Number(item.laborCost || 0),
+          quantity: Number(item.quantity || 1),
+        })),
+      });
+      await loadActiveOrder(true);
+      await loadOrderHistory(true);
+      resetProviderExtraWorkDraft();
+      showMessage("Extra work request sent to customer", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to submit extra work request", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function submitExtraWorkDecisions() {
+    const request = activeOrder?.activeExtraWorkRequest;
+
+    if (!request) {
+      return;
+    }
+
+    const items = request.items.map((item) => ({
+      itemId: item.id,
+      decision: userExtraWorkDecisions[item.id],
+    }));
+
+    if (items.some((item) => item.decision !== "approved" && item.decision !== "rejected")) {
+      showMessage("Approve or reject every extra work item before submitting.", "error");
+      return;
+    }
+
+    setBusyAction("extra-work-decision");
+
+    try {
+      const response = await api.post(
+        `/orders/${activeOrder.id}/extra-work/${request.id}/respond`,
+        { items }
+      );
+      setActiveOrder(response.data.order);
+      await loadOrderHistory(true);
+      showMessage("Extra work decision submitted", "success");
+    } catch (error) {
+      showMessage(error.response?.data?.message || "Unable to submit extra work decision", "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  function renderAuthScreen() {
+    return (
+      <AppCanvas>
+        <StatusBar style="dark" />
+        <ScrollView contentContainerStyle={styles.screen}>
+          <Reveal delay={0}>
+            <BrandMark />
+            <Text style={styles.authTitle}>Road help, fast.</Text>
+            <Text style={styles.authSubtitle}>
+              Fuel, towing, and mechanic help in Lahore.
+            </Text>
+          </Reveal>
+
+          <Reveal delay={80} style={styles.switchWrap}>
+            <SegmentedControl
+              items={[
+                { key: "register", label: "Register" },
+                { key: "login", label: "Login" },
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
+            <SegmentedControl
+              items={[
+                { key: "user", label: "Customer" },
+                { key: "provider", label: "Provider" },
+              ]}
+              value={registerForm.role}
+              onChange={(value) => setRegisterForm((current) => ({ ...current, role: value }))}
+            />
+          </Reveal>
+
+          {mode === "register" ? (
+            <Reveal delay={160} style={styles.formPanel}>
+              <SectionEyebrow label="Identity" />
+              <Field label="Full name" value={registerForm.name} onChangeText={(value) => setRegisterForm((current) => ({ ...current, name: value }))} />
+              <Field label="Phone" value={registerForm.phone} onChangeText={(value) => setRegisterForm((current) => ({ ...current, phone: value }))} />
+              <Field
+                label="Password"
+                secureTextEntry
+                value={registerForm.password}
+                onChangeText={(value) => setRegisterForm((current) => ({ ...current, password: value }))}
+              />
+
+              <LocationCard
+                title="Detected location"
+                subtitle={deviceLocation.address || "Location still resolving"}
+                loading={locationLoading}
+                onPress={() => syncCurrentLocation({ silent: false })}
+              />
+
+              {registerForm.role === "provider" ? (
+                <>
+                  <SectionEyebrow label="Provider setup" />
+                  <Field
+                    label="CNIC number"
+                    value={registerForm.cnic}
+                    onChangeText={(value) => setRegisterForm((current) => ({ ...current, cnic: value }))}
+                  />
+                  <PrimaryButton
+                    label="Select workshop image"
+                    icon="image"
+                    onPress={() => pickImage("workshopPicture", setRegisterForm)}
+                    tone="secondary"
+                    disabled={authLoading !== ""}
+                  />
+                  {registerForm.workshopPicture ? (
+                    <Image source={{ uri: registerForm.workshopPicture }} style={styles.previewImage} />
+                  ) : null}
+                  {registerForm.serviceCodes.includes("mechanic") ? (
+                    <>
+                      <PrimaryButton
+                        label="Select mechanic certificate"
+                        icon="award"
+                        onPress={() => pickImage("mechanicCertificateImage", setRegisterForm)}
+                        tone="secondary"
+                        disabled={authLoading !== ""}
+                      />
+                      {registerForm.mechanicCertificateImage ? (
+                        <Image
+                          source={{ uri: registerForm.mechanicCertificateImage }}
+                          style={styles.previewImage}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                  <PrimaryButton
+                    label="Select CNIC front"
+                    icon="credit-card"
+                    onPress={() => pickImage("cnicFrontImage", setRegisterForm)}
+                    tone="secondary"
+                    disabled={authLoading !== ""}
+                  />
+                  {registerForm.cnicFrontImage ? (
+                    <Image source={{ uri: registerForm.cnicFrontImage }} style={styles.previewImage} />
+                  ) : null}
+                  <PrimaryButton
+                    label="Select CNIC back"
+                    icon="credit-card"
+                    onPress={() => pickImage("cnicBackImage", setRegisterForm)}
+                    tone="secondary"
+                    disabled={authLoading !== ""}
+                  />
+                  {registerForm.cnicBackImage ? (
+                    <Image source={{ uri: registerForm.cnicBackImage }} style={styles.previewImage} />
+                  ) : null}
+                  <PrimaryButton
+                    label="Capture live selfie"
+                    icon="camera"
+                    onPress={() => captureSelfie("selfieImage", setRegisterForm)}
+                    tone="secondary"
+                    disabled={authLoading !== ""}
+                  />
+                  {registerForm.selfieImage ? (
+                    <Image source={{ uri: registerForm.selfieImage }} style={styles.previewImage} />
+                  ) : null}
+                  <Text style={styles.inlineHint}>Selfie and CNIC must match before your profile goes online.</Text>
+                  <ChoiceGrid
+                    title="Services you handle"
+                    items={PROVIDER_SERVICE_OPTIONS.map((item) => ({
+                      key: item.code,
+                      label: item.label,
+                      active: registerForm.serviceCodes.includes(item.code),
+                      onPress: () => toggleProviderServiceInRegister(item.code),
+                      short: item.short,
+                      icon: item.icon,
+                    }))}
+                  />
+                </>
+              ) : null}
+
+              <PrimaryButton
+                label={authLoading === "register" ? "Verifying..." : "Create account"}
+                icon="user-plus"
+                onPress={register}
+                loading={authLoading === "register"}
+                disabled={authLoading !== ""}
+              />
+            </Reveal>
+          ) : (
+            <Reveal delay={160} style={styles.formPanel}>
+              <SectionEyebrow label="Sign in" />
+              <Field label="Phone" value={loginForm.phone} onChangeText={(value) => setLoginForm((current) => ({ ...current, phone: value }))} />
+              <Field label="Password" secureTextEntry value={loginForm.password} onChangeText={(value) => setLoginForm((current) => ({ ...current, password: value }))} />
+              <PrimaryButton
+                label={authLoading === "login" ? "Signing in..." : "Continue"}
+                icon="log-in"
+                onPress={login}
+                loading={authLoading === "login"}
+                disabled={authLoading !== ""}
+              />
+            </Reveal>
+          )}
+
+          {!!message ? <FeedbackMessage message={message} type={messageType} /> : null}
+        </ScrollView>
+      </AppCanvas>
+    );
+  }
+
+  function renderCustomerHome() {
+    const activeExtraWorkRequest = activeOrder?.activeExtraWorkRequest;
+
+    if (!activeOrder) {
+      return (
+        <>
+          <Reveal delay={0}>
+            <HeroPanel
+              title={serviceVisual.title}
+              subtitle={serviceVisual.subtitle}
+              icon={serviceVisual.icon}
+              accent={serviceVisual.accent}
+              bg={serviceVisual.bg}
+              border={serviceVisual.border}
+            />
+          </Reveal>
+
+          <Reveal delay={80} style={styles.panel}>
+            <SegmentedControl
+              items={CUSTOMER_BOOKING_STEPS}
+              value={bookingStep}
+              onChange={setBookingStep}
+            />
+          </Reveal>
+
+          {bookingStep === "service" ? (
+            <Reveal delay={120} style={styles.panel}>
+              <SectionEyebrow label="Service" />
+              <Text style={styles.sectionTitle}>What do you need?</Text>
+              {servicesUsingFallback ? (
+                <View style={styles.serviceSyncCard}>
+                  <Text style={styles.inlineHint}>
+                    Offline catalog shown until the backend reconnects.
+                  </Text>
+                  <PrimaryButton
+                    label={servicesLoading ? "Checking..." : "Retry services"}
+                    icon="refresh-cw"
+                    onPress={loadServices}
+                    loading={servicesLoading}
+                    tone="secondary"
+                    compact
+                    disabled={servicesLoading}
+                  />
+                </View>
+              ) : null}
+              <View style={styles.serviceGrid}>
+                {services.map((service) => {
+                  const visual = getServiceVisual(service.code);
+                  const option = PROVIDER_SERVICE_OPTIONS.find((item) => item.code === service.code);
+
+                  return (
+                    <ServiceCard
+                      key={service.code}
+                      title={service.name}
+                      short={option?.short || "SR"}
+                      icon={visual.icon}
+                      subtitle={visual.subtitle}
+                      active={orderForm.serviceCode === service.code}
+                      accent={visual.accent}
+                      onPress={() => selectOrderService(service)}
+                    />
+                  );
+                })}
+              </View>
+              <SectionEyebrow label="Pickup" />
+              <Text style={styles.sectionTitle}>Pickup location</Text>
+              <LocationCard
+                title="Current pickup point"
+                subtitle={deviceLocation.address || "Location still resolving"}
+                loading={locationLoading}
+                onPress={() => syncCurrentLocation({ silent: false })}
+              />
+              <Field
+                label="Pickup address or landmark"
+                value={orderForm.pickupAddress}
+                onChangeText={(value) => updateOrderField("pickupAddress", value)}
+              />
+              <PrimaryButton
+                label="Continue to details"
+                icon="arrow-right"
+                onPress={() => setBookingStep("details")}
+                tone="secondary"
+              />
+            </Reveal>
+          ) : null}
+
+          {bookingStep === "details" ? (
+            <Reveal delay={120} style={styles.panel}>
+              <SectionEyebrow label="Vehicle" />
+              <Text style={styles.sectionTitle}>Vehicle details</Text>
+              <Field label="Vehicle make" value={orderForm.vehicleMake} onChangeText={(value) => updateOrderField("vehicleMake", value)} />
+              <Field label="Vehicle model" value={orderForm.vehicleModel} onChangeText={(value) => updateOrderField("vehicleModel", value)} />
+              <Field label="License plate" value={orderForm.licensePlate} onChangeText={(value) => updateOrderField("licensePlate", value)} />
+
+              {orderForm.serviceCode === "fuel_delivery" ? (
+                <>
+                  <SectionEyebrow label="Fuel request" />
+                  <ChoiceGrid
+                    title="Vehicle type"
+                    items={(selectedService?.config?.vehicleTypes || ["bike", "car"]).map((item) => ({
+                      key: item,
+                      label: titleFromCode(item),
+                      active: orderForm.vehicleType === item,
+                      onPress: () => updateOrderField("vehicleType", item),
+                      short: item === "bike" ? "BK" : "CR",
+                      icon: item === "bike" ? "navigation" : "truck",
+                    }))}
+                  />
+                  <ChoiceGrid
+                    title="Fuel type"
+                    items={(selectedService?.config?.fuelTypes || ["petrol", "diesel"]).map((item) => ({
+                      key: item,
+                      label: titleFromCode(item),
+                      active: orderForm.fuelType === item,
+                      onPress: () => updateOrderField("fuelType", item),
+                      short: item === "petrol" ? "PT" : "DS",
+                      icon: "droplet",
+                    }))}
+                  />
+                  <ChoiceGrid
+                    title="Quantity"
+                    items={(selectedService?.config?.quantities || [1, 2, 5, 10]).map((item) => ({
+                      key: String(item),
+                      label: `${item} Ltr`,
+                      active: Number(orderForm.fuelQuantityLiters) === Number(item),
+                      onPress: () => updateOrderField("fuelQuantityLiters", String(item)),
+                      short: `${item}L`,
+                      icon: "plus-circle",
+                    }))}
+                  />
+                </>
+              ) : null}
+
+              {orderForm.serviceCode === "car_towing" ? (
+                <>
+                  <SectionEyebrow label="Tow request" />
+                  <ChoiceGrid
+                    title="Problem type"
+                    items={(selectedService?.config?.problemTypes || TOWING_PROBLEM_OPTIONS.map((item) => item.code)).map((item) => ({
+                      key: item,
+                      label: titleFromCode(item),
+                      active: orderForm.towingProblemType === item,
+                      onPress: () => updateOrderField("towingProblemType", item),
+                      short: titleFromCode(item).slice(0, 2).toUpperCase(),
+                      icon: "alert-circle",
+                    }))}
+                  />
+                  <Field
+                    label="Workshop or destination search"
+                    value={orderForm.destinationQuery}
+                    onChangeText={(value) => updateOrderField("destinationQuery", value)}
+                  />
+                  <PrimaryButton
+                    label={destinationLoading ? "Searching..." : "Find destination"}
+                    icon="search"
+                    onPress={searchDestination}
+                    loading={destinationLoading}
+                    tone="secondary"
+                    disabled={busyAction !== ""}
+                  />
+                  {orderForm.destinationAddress ? (
+                    <Text style={styles.inlineHint}>Selected destination: {orderForm.destinationAddress}</Text>
+                  ) : null}
+                  {destinationResults.map((result) => (
+                    <Pressable
+                      key={`${result.latitude}-${result.longitude}-${result.label}`}
+                      style={({ pressed }) => [styles.searchCard, pressed && styles.searchCardPressed]}
+                      onPress={() => chooseDestination(result)}
+                    >
+                      <Text style={styles.searchCardText}>{result.label}</Text>
+                    </Pressable>
+                  ))}
+                  <Field
+                    label="Destination address"
+                    value={orderForm.destinationAddress}
+                    onChangeText={(value) => updateOrderField("destinationAddress", value)}
+                  />
+                  <View style={styles.row}>
+                    <View style={styles.rowField}>
+                      <Field
+                        label="Destination latitude"
+                        value={orderForm.destinationLatitude}
+                        onChangeText={(value) => updateOrderField("destinationLatitude", value)}
+                      />
+                    </View>
+                    <View style={styles.rowField}>
+                      <Field
+                        label="Destination longitude"
+                        value={orderForm.destinationLongitude}
+                        onChangeText={(value) => updateOrderField("destinationLongitude", value)}
+                      />
+                    </View>
+                  </View>
+                </>
+              ) : null}
+
+              {orderForm.serviceCode === "mechanic" ? (
+                <>
+                  <SectionEyebrow label="Mechanic request" />
+                  <ChoiceGrid
+                    title="Category"
+                    items={(selectedService?.config?.categories || []).map((item) => ({
+                      key: item.code,
+                      label: `${item.name} • ${formatMoney(item.visitFee)}`,
+                      active: orderForm.mechanicCategory === item.code,
+                      onPress: () => updateOrderField("mechanicCategory", item.code),
+                      short: item.name
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((word) => word[0])
+                        .join("")
+                        .toUpperCase(),
+                      icon: "tool",
+                    }))}
+                  />
+                  <Field
+                    label="Mechanic service address"
+                    value={orderForm.pickupAddress}
+                    onChangeText={(value) => updateOrderField("pickupAddress", value)}
+                  />
+                  <Text style={styles.inlineHint}>Refresh location if the map pin is not correct.</Text>
+                </>
+              ) : null}
+              <View style={styles.row}>
+                <PrimaryButton
+                  label="Back"
+                  icon="arrow-left"
+                  onPress={() => setBookingStep("service")}
+                  tone="secondary"
+                />
+                <PrimaryButton
+                  label="Continue to review"
+                  icon="check-circle"
+                  onPress={() => {
+                    if (
+                      orderForm.serviceCode === "car_towing" &&
+                      !orderForm.destinationAddress.trim()
+                    ) {
+                      showMessage("Select a towing destination before continuing to review", "error");
+                      return;
+                    }
+
+                    setBookingStep("review");
+                  }}
+                />
+              </View>
+            </Reveal>
+          ) : null}
+
+          {bookingStep === "review" ? (
+            <Reveal delay={120} style={styles.panel}>
+            <SectionEyebrow label="Estimate" />
+            <Text style={styles.sectionTitle}>Review price</Text>
+            {pricingEstimate ? (
+              <>
+                {selectedService?.code === "fuel_delivery" ? (
+                  <>
+                    <MetricRow label="Fuel price / liter" value={formatMoney(pricingEstimate.fuelPricePerLiter)} />
+                    <MetricRow label="Fuel subtotal" value={formatMoney(pricingEstimate.quantitySubtotal)} />
+                    <MetricRow label="Delivery fee" value={formatMoney(pricingEstimate.deliveryFee)} />
+                  </>
+                ) : null}
+                {selectedService?.code === "car_towing" ? (
+                  <>
+                    <MetricRow label="Visit fee" value={formatMoney(pricingEstimate.visitFee)} />
+                    <MetricRow label="Towing base fee" value={formatMoney(pricingEstimate.towingBaseFee)} />
+                    <MetricRow label={`Distance (${pricingEstimate.routeDistanceKm} km)`} value={formatMoney(pricingEstimate.distanceCharge)} />
+                  </>
+                ) : null}
+                {selectedService?.code === "mechanic" ? (
+                  <MetricRow label="Visit fee" value={formatMoney(pricingEstimate.visitFee)} />
+                ) : null}
+                <MetricRow label="Estimated total" value={formatMoney(pricingEstimate.total)} emphasized />
+              </>
+            ) : null}
+            <Field label="Issue note" value={orderForm.notes} multiline onChangeText={(value) => updateOrderField("notes", value)} />
+            <View style={styles.row}>
+              <PrimaryButton
+                label="Back"
+                icon="arrow-left"
+                onPress={() => setBookingStep("details")}
+                tone="secondary"
+              />
+              <PrimaryButton
+                label={busyAction === "create-order" ? "Submitting..." : "Create request"}
+                icon="send"
+                onPress={createOrder}
+                loading={busyAction === "create-order"}
+                disabled={busyAction !== ""}
+              />
+            </View>
+            </Reveal>
+          ) : null}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Reveal delay={0}>
+          <ActiveOrderHero order={activeOrder} />
+        </Reveal>
+        <Reveal delay={80} style={styles.panel}>
+          <SectionEyebrow label="Progress" />
+          <OrderTimeline order={activeOrder} />
+        </Reveal>
+        <Reveal delay={140} style={styles.panel}>
+          <SectionEyebrow label="Tracking" />
+          <MapPreview
+            requestLocation={activeOrder.pickupLocation}
+            destinationLocation={activeOrder.destinationLocation}
+            providerLocation={
+              activeOrder.tracking.providerLatitude != null &&
+              activeOrder.tracking.providerLongitude != null
+                ? {
+                    latitude: Number(activeOrder.tracking.providerLatitude),
+                    longitude: Number(activeOrder.tracking.providerLongitude),
+                  }
+                : null
+            }
+            nearbyRequests={(activeOrder.nearbyProviders || []).map((provider) => ({
+              latitude: provider.latitude,
+              longitude: provider.longitude,
+              distanceKm: provider.distanceKm,
+              markerLabel: provider.name || "Nearby provider",
+            }))}
+          />
+          <InfoRow label="Pickup" value={activeOrder.pickupLocation.address || "Pinned location"} />
+          {activeOrder.destinationLocation ? (
+            <InfoRow label="Destination" value={activeOrder.destinationLocation.address || "Pinned location"} />
+          ) : null}
+          <InfoRow label="Current total" value={formatMoney(activeOrder.pricing.total)} strong />
+          {activeOrder.provider ? (
+            <ProviderStrip provider={activeOrder.provider} />
+          ) : (
+            <Text style={styles.inlineHint}>
+              Searching nearby providers. {(activeOrder.nearbyProviders || []).length} visible now.
+            </Text>
+          )}
+        </Reveal>
+
+        {activeExtraWorkRequest ? (
+          <Reveal delay={200} style={styles.panel}>
+            <SectionEyebrow label="Approval loop" />
+            <Text style={styles.sectionTitle}>Approve extra work</Text>
+            {activeExtraWorkRequest.items.map((item) => (
+              <View style={styles.workItemCard} key={item.id}>
+                <Text style={styles.workItemTitle}>{item.title}</Text>
+                {item.description ? <Text style={styles.inlineHint}>{item.description}</Text> : null}
+                <Text style={styles.inlineHint}>
+                  Parts {formatMoney(item.partsCost)} • Labor {formatMoney(item.laborCost)} • Qty {item.quantity}
+                </Text>
+                <Text style={styles.workItemValue}>{formatMoney(item.lineTotal)}</Text>
+                <View style={styles.row}>
+                  <ChoicePill
+                    label="Approve"
+                    active={userExtraWorkDecisions[item.id] === "approved"}
+                    onPress={() =>
+                      setUserExtraWorkDecisions((current) => ({ ...current, [item.id]: "approved" }))
+                    }
+                  />
+                  <ChoicePill
+                    label="Reject"
+                    active={userExtraWorkDecisions[item.id] === "rejected"}
+                    onPress={() =>
+                      setUserExtraWorkDecisions((current) => ({ ...current, [item.id]: "rejected" }))
+                    }
+                    tone="danger"
+                  />
+                </View>
+              </View>
+            ))}
+            <PrimaryButton
+              label={busyAction === "extra-work-decision" ? "Submitting..." : "Submit decision"}
+              icon="check-circle"
+              onPress={submitExtraWorkDecisions}
+              loading={busyAction === "extra-work-decision"}
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.serviceCode === "fuel_delivery" &&
+        activeOrder.status === "awaiting_fuel_confirmation" ? (
+          <Reveal delay={260} style={styles.signalPanel}>
+            <Text style={styles.signalTitle}>Check fuel quantity.</Text>
+            <Text style={styles.signalBody}>Confirm after delivery.</Text>
+            <PrimaryButton
+              label={busyAction === "fuel-confirm" ? "Confirming..." : "Confirm quantity delivered"}
+              icon="check-circle"
+              onPress={confirmFuelDelivered}
+              loading={busyAction === "fuel-confirm"}
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.serviceCode === "car_towing" &&
+        ["assigned", "arrived", "tow_in_transit"].includes(activeOrder.status) ? (
+          <Reveal delay={260} style={styles.sosPanel}>
+            <Text style={styles.sosTitle}>Need urgent help?</Text>
+            <PrimaryButton
+              label={busyAction === "sos" ? "Sending SOS..." : "Raise SOS"}
+              icon="alert-triangle"
+              onPress={raiseSos}
+              loading={busyAction === "sos"}
+              disabled={busyAction !== ""}
+              tone="danger"
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.status === "completed" && !activeOrder.payment.customerConfirmed ? (
+          <Reveal delay={260} style={styles.panel}>
+            <SectionEyebrow label="Cash confirmation" />
+            <Text style={styles.sectionTitle}>Confirm cash</Text>
+            <Text style={styles.inlineHint}>{getCashConfirmationCopy(activeOrder).body}</Text>
+            <PrimaryButton
+              label={busyAction === "customer-payment" ? "Confirming..." : "I paid in cash"}
+              icon="dollar-sign"
+              onPress={confirmCustomerPayment}
+              loading={busyAction === "customer-payment"}
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.payment?.status === "partially_confirmed" ? (
+          <Reveal delay={320} style={styles.waitingPanel}>
+            <Text style={styles.waitingTitle}>{getCashConfirmationCopy(activeOrder).title}</Text>
+            <Text style={styles.waitingBody}>{getCashConfirmationCopy(activeOrder).body}</Text>
+          </Reveal>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderProviderHome() {
+    if (!activeOrder) {
+      return (
+        <>
+          <Reveal delay={0}>
+            <HeroPanel
+              title="Jobs near your pin."
+              subtitle="Nearest requests, route, payout."
+              icon="briefcase"
+              accent={COLORS.primary}
+              bg={COLORS.surface}
+              border={COLORS.line}
+            />
+          </Reveal>
+          <Reveal delay={80} style={styles.panel}>
+            <SectionEyebrow label="Availability" />
+            <Text style={styles.sectionTitle}>Availability</Text>
+            <LocationCard
+              title="Detected provider location"
+              subtitle={deviceLocation.address || "Location still resolving"}
+              loading={locationLoading}
+              onPress={() => syncCurrentLocation({ silent: false, includeProviderRefresh: true })}
+            />
+            <View style={styles.row}>
+              <ChoicePill label="Available" active={providerAvailable} onPress={() => setProviderAvailable(true)} />
+              <ChoicePill label="Offline" active={!providerAvailable} onPress={() => setProviderAvailable(false)} />
+            </View>
+            <PrimaryButton
+              label="Refresh nearby jobs"
+              icon="refresh-cw"
+              onPress={() => refreshProviderOrders(false)}
+              tone="secondary"
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+          <Reveal delay={160} style={styles.panel}>
+            <SectionEyebrow label="Nearby jobs" />
+            <Text style={styles.sectionTitle}>Dispatch queue</Text>
+            <MapPreview
+              requestLocation={{
+                latitude: Number(providerLocation.latitude),
+                longitude: Number(providerLocation.longitude),
+              }}
+              nearbyRequests={providerOrders.map((order) => ({
+                latitude: order.pickupLocation.latitude,
+                longitude: order.pickupLocation.longitude,
+                serviceName: order.serviceName,
+                distanceKm: order.providerDistanceKm,
+              }))}
+            />
+            {providerOrders.length === 0 ? (
+              <Text style={styles.inlineHint}>No open jobs are inside your radius right now.</Text>
+            ) : (
+              providerOrders.map((order) => (
+                <ProviderQueueCard
+                  key={order.id}
+                  order={order}
+                  busy={busyAction === `accept-${order.id}`}
+                  onAccept={() => acceptOrder(order.id)}
+                />
+              ))
+            )}
+          </Reveal>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Reveal delay={0}>
+          <ActiveOrderHero order={activeOrder} providerMode />
+        </Reveal>
+        <Reveal delay={80} style={styles.panel}>
+          <SectionEyebrow label="Progress" />
+          <OrderTimeline order={activeOrder} />
+        </Reveal>
+        <Reveal delay={140} style={styles.panel}>
+          <SectionEyebrow label="Route" />
+          <MapPreview
+            requestLocation={activeOrder.pickupLocation}
+            destinationLocation={activeOrder.destinationLocation}
+            providerLocation={{
+              latitude: Number(providerLocation.latitude),
+              longitude: Number(providerLocation.longitude),
+            }}
+          />
+          <InfoRow label="Customer" value={activeOrder.customer?.name || "Customer"} />
+          <InfoRow label="Pickup" value={activeOrder.pickupLocation.address || "Pinned location"} />
+          {activeOrder.destinationLocation ? (
+            <InfoRow label="Destination" value={activeOrder.destinationLocation.address || "Pinned location"} />
+          ) : null}
+          <InfoRow label="Current total" value={formatMoney(activeOrder.pricing.total)} strong />
+          {activeOrder.tracking.sosRaisedAt ? (
+            <Text style={styles.alertText}>
+              SOS raised: {activeOrder.tracking.sosMessage || "Customer requested emergency help"}
+            </Text>
+          ) : null}
+        </Reveal>
+
+        {activeOrder.status === "assigned" ? (
+          <Reveal delay={200} style={styles.panel}>
+            <SectionEyebrow label="Arrival" />
+            <PrimaryButton
+              label={busyAction === "mark-arrived" ? "Saving..." : "Mark arrived"}
+              icon="map-pin"
+              onPress={markArrived}
+              loading={busyAction === "mark-arrived"}
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.serviceCode === "fuel_delivery" ? (
+          <Reveal delay={260} style={styles.panel}>
+            <SectionEyebrow label="Fuel workflow" />
+            {["arrived"].includes(activeOrder.status) ? (
+              <PrimaryButton
+                label={busyAction === "start-order" ? "Starting..." : "Start delivery"}
+                icon="play"
+                onPress={startOrder}
+                loading={busyAction === "start-order"}
+                disabled={busyAction !== ""}
+              />
+            ) : null}
+            {["in_progress"].includes(activeOrder.status) ? (
+              <PrimaryButton
+                label={busyAction === "fuel-delivered" ? "Saving..." : "Mark fuel delivered"}
+                icon="check-circle"
+                onPress={markFuelDelivered}
+                loading={busyAction === "fuel-delivered"}
+                disabled={busyAction !== ""}
+              />
+            ) : null}
+            {activeOrder.status === "awaiting_fuel_confirmation" ? (
+              <Text style={styles.inlineHint}>Waiting for customer quantity confirmation.</Text>
+            ) : null}
+          </Reveal>
+        ) : null}
+
+        {activeOrder.serviceCode === "car_towing" ? (
+          <Reveal delay={260} style={styles.panel}>
+            <SectionEyebrow label="Towing workflow" />
+            {["arrived"].includes(activeOrder.status) ? (
+              <PrimaryButton
+                label={busyAction === "start-order" ? "Starting..." : "Start towing transit"}
+                icon="navigation"
+                onPress={startOrder}
+                loading={busyAction === "start-order"}
+                disabled={busyAction !== ""}
+              />
+            ) : null}
+            {["tow_in_transit"].includes(activeOrder.status) ? (
+              <PrimaryButton
+                label={busyAction === "complete-order" ? "Completing..." : "Complete towing job"}
+                icon="check-circle"
+                onPress={completeOrder}
+                loading={busyAction === "complete-order"}
+                disabled={busyAction !== ""}
+              />
+            ) : null}
+          </Reveal>
+        ) : null}
+
+        {activeOrder.serviceCode === "mechanic" ? (
+          <>
+            {["inspection_pending", "arrived"].includes(activeOrder.status) ? (
+              <Reveal delay={260} style={styles.panel}>
+                <SectionEyebrow label="Approval loop" />
+                <Text style={styles.sectionTitle}>Extra work request</Text>
+                <Field
+                  label="Provider note"
+                  value={providerExtraWorkDraft.providerNote}
+                  multiline
+                  onChangeText={(value) =>
+                    setProviderExtraWorkDraft((current) => ({ ...current, providerNote: value }))
+                  }
+                />
+                {providerExtraWorkDraft.items.map((item, index) => (
+                  <View key={index} style={styles.workDraftCard}>
+                    <Field
+                      label={`Item ${index + 1} title`}
+                      value={item.title}
+                      onChangeText={(value) => updateExtraWorkItem(index, "title", value)}
+                    />
+                    <Field
+                      label="Description"
+                      value={item.description}
+                      multiline
+                      onChangeText={(value) => updateExtraWorkItem(index, "description", value)}
+                    />
+                    <View style={styles.row}>
+                      <View style={styles.rowField}>
+                        <Field
+                          label="Parts"
+                          value={item.partsCost}
+                          onChangeText={(value) => updateExtraWorkItem(index, "partsCost", value)}
+                        />
+                      </View>
+                      <View style={styles.rowField}>
+                        <Field
+                          label="Labor"
+                          value={item.laborCost}
+                          onChangeText={(value) => updateExtraWorkItem(index, "laborCost", value)}
+                        />
+                      </View>
+                      <View style={styles.rowField}>
+                        <Field
+                          label="Qty"
+                          value={item.quantity}
+                          onChangeText={(value) => updateExtraWorkItem(index, "quantity", value)}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                ))}
+                <PrimaryButton label="Add another item" icon="plus" onPress={addExtraWorkItem} tone="secondary" disabled={busyAction !== ""} />
+                <PrimaryButton
+                  label={busyAction === "extra-work" ? "Sending..." : "Send extra work request"}
+                  icon="send"
+                  onPress={submitExtraWorkRequest}
+                  loading={busyAction === "extra-work"}
+                  disabled={busyAction !== ""}
+                />
+                <PrimaryButton
+                  label={busyAction === "start-order" ? "Starting..." : "Start work without extras"}
+                  icon="play"
+                  onPress={startOrder}
+                  tone="secondary"
+                  loading={busyAction === "start-order"}
+                  disabled={busyAction !== ""}
+                />
+              </Reveal>
+            ) : null}
+
+            {activeOrder.status === "awaiting_extra_work_approval" ? (
+              <Reveal delay={260} style={styles.signalPanel}>
+                <Text style={styles.signalTitle}>Customer approval pending.</Text>
+                <Text style={styles.signalBody}>The job is paused until the customer approves or rejects the extra work items.</Text>
+              </Reveal>
+            ) : null}
+
+            {activeOrder.status === "in_progress" ? (
+              <Reveal delay={260} style={styles.panel}>
+                <SectionEyebrow label="Completion" />
+                <PrimaryButton
+                  label={busyAction === "complete-order" ? "Completing..." : "Complete mechanic job"}
+                  icon="check-circle"
+                  onPress={completeOrder}
+                  loading={busyAction === "complete-order"}
+                  disabled={busyAction !== ""}
+                />
+              </Reveal>
+            ) : null}
+          </>
+        ) : null}
+
+        {activeOrder.status === "completed" && !activeOrder.payment.providerConfirmed ? (
+          <Reveal delay={320} style={styles.panel}>
+            <SectionEyebrow label="Cash confirmation" />
+            <Text style={styles.inlineHint}>{getCashConfirmationCopy(activeOrder, true).body}</Text>
+            <PrimaryButton
+              label={busyAction === "provider-payment" ? "Confirming..." : "I received cash"}
+              icon="dollar-sign"
+              onPress={confirmProviderPayment}
+              loading={busyAction === "provider-payment"}
+              disabled={busyAction !== ""}
+            />
+          </Reveal>
+        ) : null}
+
+        {activeOrder.payment?.status === "partially_confirmed" ? (
+          <Reveal delay={380} style={styles.waitingPanel}>
+            <Text style={styles.waitingTitle}>{getCashConfirmationCopy(activeOrder, true).title}</Text>
+            <Text style={styles.waitingBody}>{getCashConfirmationCopy(activeOrder, true).body}</Text>
+          </Reveal>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderHistory() {
+    return (
+      <>
+        <Reveal delay={0}>
+          <HeroPanel
+            title="Trips and payments."
+            subtitle="Past requests and completed jobs."
+            icon="clock"
+            accent={COLORS.secondary}
+            bg={COLORS.surface}
+            border={COLORS.line}
+          />
+        </Reveal>
+        <Reveal delay={80} style={styles.panel}>
+          <View style={styles.panelHead}>
+            <View>
+              <SectionEyebrow label="Filters" />
+              <Text style={styles.sectionTitle}>Order history</Text>
+            </View>
+            <PrimaryButton label="Refresh" icon="refresh-cw" onPress={() => loadOrderHistory(false)} tone="secondary" disabled={busyAction !== ""} />
+          </View>
+          <View style={styles.row}>
+            <ChoicePill label="All" active={historyFilter === "all"} onPress={() => setHistoryFilter("all")} />
+            <ChoicePill label="Active" active={historyFilter === "active"} onPress={() => setHistoryFilter("active")} />
+            <ChoicePill label="Completed" active={historyFilter === "completed"} onPress={() => setHistoryFilter("completed")} />
+          </View>
+          {filteredHistory.length === 0 ? (
+            <Text style={styles.inlineHint}>No orders found for this filter.</Text>
+          ) : (
+            filteredHistory.map((order) => <HistoryCard key={order.id} order={order} />)
+          )}
+        </Reveal>
+      </>
+    );
+  }
+
+  function renderProfile() {
+    const isProvider = session.user?.role === "provider";
+
+    return (
+      <>
+        <Reveal delay={0}>
+          <HeroPanel
+            title={isProvider ? "Provider profile." : "Account details."}
+            subtitle={isProvider ? "Documents, services, dispatch location." : "Name, photo, current location."}
+            icon={isProvider ? "shield" : "user"}
+            accent={isProvider ? COLORS.primary : COLORS.secondary}
+            bg={COLORS.surface}
+            border={COLORS.line}
+          />
+        </Reveal>
+        <Reveal delay={80} style={styles.panel}>
+          <SectionEyebrow label="Profile" />
+          <Field
+            label="Name"
+            value={profileForm.name}
+            onChangeText={(value) => setProfileForm((current) => ({ ...current, name: value }))}
+          />
+          <PrimaryButton
+            label={uploadingField === "profilePicture" ? "Uploading profile image..." : "Upload profile image"}
+            icon="upload"
+            onPress={() => pickAndUploadImage("profilePicture", setProfileForm)}
+            tone="secondary"
+            disabled={uploadingField !== ""}
+          />
+          {profileForm.profilePicture ? (
+            <Image source={{ uri: profileForm.profilePicture }} style={styles.previewImage} />
+          ) : null}
+
+          {isProvider ? (
+            <>
+              <Field
+                label="City"
+                value={profileForm.city}
+                onChangeText={(value) => setProfileForm((current) => ({ ...current, city: value }))}
+              />
+              <LocationCard
+                title="Live dispatch location"
+                subtitle={deviceLocation.address || "Location still resolving"}
+                loading={locationLoading}
+                onPress={() => syncCurrentLocation({ silent: false, includeProviderRefresh: true })}
+              />
+              <PrimaryButton
+                label={uploadingField === "workshopPicture" ? "Uploading workshop image..." : "Upload workshop image"}
+                icon="image"
+                onPress={() => pickAndUploadImage("workshopPicture", setProfileForm)}
+                tone="secondary"
+                disabled={uploadingField !== ""}
+              />
+              {profileForm.workshopPicture ? (
+                <Image source={{ uri: profileForm.workshopPicture }} style={styles.previewImage} />
+              ) : null}
+              <Field
+                label="CNIC number"
+                value={profileForm.cnic}
+                onChangeText={(value) => setProfileForm((current) => ({ ...current, cnic: value }))}
+              />
+              <PrimaryButton
+                label={uploadingField === "cnicFrontImage" ? "Uploading CNIC front..." : "Upload CNIC front"}
+                icon="credit-card"
+                onPress={() => pickAndUploadImage("cnicFrontImage", setProfileForm)}
+                tone="secondary"
+                disabled={uploadingField !== ""}
+              />
+              {profileForm.cnicFrontImage ? (
+                <Image source={{ uri: profileForm.cnicFrontImage }} style={styles.previewImage} />
+              ) : null}
+              <PrimaryButton
+                label={uploadingField === "cnicBackImage" ? "Uploading CNIC back..." : "Upload CNIC back"}
+                icon="credit-card"
+                onPress={() => pickAndUploadImage("cnicBackImage", setProfileForm)}
+                tone="secondary"
+                disabled={uploadingField !== ""}
+              />
+              {profileForm.cnicBackImage ? (
+                <Image source={{ uri: profileForm.cnicBackImage }} style={styles.previewImage} />
+              ) : null}
+              <ChoiceGrid
+                title="Enabled services"
+                items={PROVIDER_SERVICE_OPTIONS.map((item) => ({
+                  key: item.code,
+                  label: item.label,
+                  active: profileForm.serviceCodes.includes(item.code),
+                  onPress: () => toggleProfileProviderService(item.code),
+                  short: item.short,
+                  icon: item.icon,
+                }))}
+              />
+            </>
+          ) : (
+            <LocationCard
+              title="Current device location"
+              subtitle={deviceLocation.address || "Location still resolving"}
+              loading={locationLoading}
+              onPress={() => syncCurrentLocation({ silent: false })}
+            />
+          )}
+
+          <PrimaryButton
+            label={busyAction === "save-profile" ? "Saving..." : "Save profile"}
+            icon="save"
+            onPress={saveProfile}
+            loading={busyAction === "save-profile"}
+            disabled={busyAction !== "" || uploadingField !== ""}
+          />
+        </Reveal>
+      </>
+    );
+  }
+
+  function renderDashboard() {
+    const isProvider = session.user?.role === "provider";
+
+    return (
+      <AppCanvas>
+        <StatusBar style="dark" />
+        <ScrollView contentContainerStyle={styles.screen}>
+          <Reveal delay={0}>
+            <TopHeader
+              title={session.user?.name || "Rapid Assist"}
+              subtitle={
+                isProvider
+                  ? "Nearby jobs and active route"
+                  : "Request roadside help"
+              }
+              phone={session.user?.phone}
+              onLogout={resetSession}
+            />
+          </Reveal>
+
+          <Reveal delay={60} style={styles.tabWrap}>
+            <SegmentedControl items={tabs} value={screenTab} onChange={setScreenTab} />
+          </Reveal>
+
+          {screenTab === "home" ? (isProvider ? renderProviderHome() : renderCustomerHome()) : null}
+          {screenTab === "history" ? renderHistory() : null}
+          {screenTab === "profile" ? renderProfile() : null}
+
+          {!!message ? <FeedbackMessage message={message} type={messageType} /> : null}
+        </ScrollView>
+      </AppCanvas>
+    );
+  }
+
+  if (!session.user) {
+    return renderAuthScreen();
+  }
+
+  return renderDashboard();
+}
+
+function AppCanvas({ children }) {
+  return (
+    <View style={styles.safeArea}>
+      <View style={styles.backdropGrid} />
+      {children}
+    </View>
+  );
+}
+
+function TopHeader({ title, subtitle, phone, onLogout }) {
+  const firstName = String(title || "Ali").trim().split(" ")[0];
+
+  return (
+    <View style={styles.topHeader}>
+      <View style={styles.topHeaderCopy}>
+        <BrandMark />
+        <Text style={styles.topTitle}>{`Hello, ${firstName}`}</Text>
+        <Text style={styles.topSubtitle}>{subtitle}</Text>
+      </View>
+      <View style={styles.topHeaderMeta}>
+        <Text style={styles.phoneBadge}>{phone}</Text>
+        <PrimaryButton label="Logout" icon="log-out" onPress={onLogout} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
+function BrandMark() {
+  return (
+    <View style={styles.appMarkRow}>
+      <View style={styles.appMarkIcon}>
+        <AppIcon name="navigation" size={12} color={COLORS.actionText} />
+      </View>
+      <Text style={styles.appMark}>RAPID ASSIST</Text>
+    </View>
+  );
+}
+
+function HeroPanel({ title, subtitle, icon = "navigation", accent, bg, border }) {
+  return (
+    <View style={[styles.heroPanel, { backgroundColor: bg, borderColor: border }]}>
+      <View style={styles.heroVisualRow}>
+        <View style={[styles.heroIconBadge, { backgroundColor: accent }]}>
+          <AppIcon name={icon} size={20} color={COLORS.actionText} />
+        </View>
+        <View style={[styles.heroAccentRail, { backgroundColor: accent }]} />
+      </View>
+      <Text style={styles.heroTitle}>{title}</Text>
+      <Text style={styles.heroSubtitle}>{subtitle}</Text>
+    </View>
+  );
+}
+
+function ActiveOrderHero({ order, providerMode = false }) {
+  const tone = getStatusTone(order.status);
+  const visual = getServiceVisual(order.serviceCode);
+
+  return (
+    <View style={styles.heroPanel}>
+      <View style={styles.heroTopRow}>
+        <View style={styles.activeHeroTitleRow}>
+          <View style={[styles.heroIconBadge, { backgroundColor: visual.accent }]}>
+            <AppIcon name={visual.icon} size={20} color={COLORS.actionText} />
+          </View>
+          <View>
+            <Text style={styles.monoLabel}>{providerMode ? "ACTIVE JOB" : "ACTIVE REQUEST"}</Text>
+            <Text style={styles.heroTitle}>{order.serviceName}</Text>
+          </View>
+        </View>
+        <View style={[styles.statusChip, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+          <Text style={[styles.statusChipText, { color: tone.text }]}>{titleFromCode(order.status)}</Text>
+        </View>
+      </View>
+      <Text style={styles.heroSubtitle}>
+        {providerMode ? "Route, job status, and cash confirmation." : "Provider, status, and cash confirmation."}
+      </Text>
+      <View style={styles.metricBand}>
+        <MetricPill label="Order no" value={order.orderNo} />
+        <MetricPill label="Vehicle" value={order.customerVehicle.licensePlate} />
+        <MetricPill label="Total" value={formatMoney(order.pricing.total)} />
+      </View>
+    </View>
+  );
+}
+
+function ProviderStrip({ provider }) {
+  return (
+    <View style={styles.providerStrip}>
+      <View style={styles.providerBadge}>
+        <Text style={styles.providerBadgeText}>
+          {provider.name
+            .split(" ")
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toUpperCase()}
+        </Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.providerName}>{provider.name}</Text>
+        <Text style={styles.providerPhone}>{provider.phone}</Text>
+      </View>
+    </View>
+  );
+}
+
+function OrderTimeline({ order }) {
+  const steps = buildTimeline(order);
+
+  return (
+    <View style={styles.timelineWrap}>
+      {steps.map((step, index) => {
+        const complete = isTimelineStepComplete(order, step.key);
+
+        return (
+          <View style={styles.timelineItem} key={step.key}>
+            <View style={styles.timelineRail}>
+              <View style={[styles.timelineDot, complete && styles.timelineDotActive]} />
+              {index < steps.length - 1 ? (
+                <View style={[styles.timelineLine, complete && styles.timelineLineActive]} />
+              ) : null}
+            </View>
+            <Text style={[styles.timelineLabel, complete && styles.timelineLabelActive]}>{step.label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function ServiceCard({ title, subtitle, short, icon, active, accent, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.serviceCard,
+        active && [styles.serviceCardActive, { borderColor: accent }],
+        pressed && styles.pressedLite,
+      ]}
+    >
+      <View style={[styles.serviceGlyph, { backgroundColor: active ? accent : COLORS.surfaceSoft }]}>
+        {icon ? (
+          <AppIcon name={icon} size={22} color={active ? COLORS.actionText : accent} />
+        ) : (
+          <Text style={[styles.serviceGlyphText, active && styles.serviceGlyphTextActive]}>{short}</Text>
+        )}
+      </View>
+      <View style={styles.serviceCopy}>
+        <Text style={styles.serviceCardTitle}>{title}</Text>
+        <Text style={styles.serviceCardSubtitle} numberOfLines={2}>{subtitle}</Text>
+      </View>
+      <View style={styles.serviceActionWrap}>
+        <View style={[styles.serviceStateDot, active && styles.serviceStateDotActive]} />
+        <View style={styles.serviceArrow}>
+          <AppIcon name="chevron-right" size={17} color={COLORS.ink} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function ProviderQueueCard({ order, busy, onAccept }) {
+  const option = PROVIDER_SERVICE_OPTIONS.find((item) => item.code === order.serviceCode);
+  const visual = getServiceVisual(order.serviceCode);
+
+  return (
+    <View style={styles.queueCard}>
+      <View style={styles.queueCardHead}>
+        <View style={styles.queueBadge}>
+          <AppIcon name={visual.icon || option?.icon || "briefcase" } size={19} color={COLORS.actionText} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.queueTitle}>{order.serviceName}</Text>
+          <Text style={styles.queueMeta}>
+            {order.customer?.name} • {Number(order.providerDistanceKm || 0).toFixed(2)} km away
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.queueHint}>{order.pickupLocation.address || "Pinned location only"}</Text>
+      <Text style={styles.queueHint}>Vehicle: {order.customerVehicle.licensePlate}</Text>
+      <MetricRow label="Current total" value={formatMoney(order.pricing.total)} emphasized />
+      <PrimaryButton label={busy ? "Accepting..." : "Accept job"} icon="check-circle" onPress={onAccept} loading={busy} />
+    </View>
+  );
+}
+
+function SegmentedControl({ items, value, onChange }) {
+  return (
+    <View style={styles.segmented}>
+      {items.map((item) => (
+        <Pressable
+          key={item.key}
+          onPress={() => onChange(item.key)}
+          style={({ pressed }) => [
+            styles.segmentedItem,
+            value === item.key && styles.segmentedItemActive,
+            pressed && styles.pressedLite,
+          ]}
+        >
+          {item.icon ? (
+            <AppIcon
+              name={item.icon}
+              size={15}
+              color={value === item.key ? COLORS.actionText : COLORS.muted}
+            />
+          ) : null}
+          <Text style={[styles.segmentedLabel, value === item.key && styles.segmentedLabelActive]}>
+            {item.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function ChoiceGrid({ title, items }) {
+  return (
+    <View style={styles.choiceGridWrap}>
+      <Text style={styles.groupTitle}>{title}</Text>
+      <View style={styles.choiceGrid}>
+        {items.map((item) => (
+          <Pressable
+            key={item.key}
+            onPress={item.onPress}
+            style={({ pressed }) => [
+              styles.choiceCard,
+              item.active && styles.choiceCardActive,
+              pressed && styles.pressedLite,
+            ]}
+          >
+            {item.icon ? (
+              <AppIcon
+                name={item.icon}
+                size={15}
+                color={item.active ? COLORS.actionText : COLORS.primary}
+              />
+            ) : (
+              <Text style={[styles.choiceShort, item.active && styles.choiceShortActive]}>{item.short}</Text>
+            )}
+            <Text style={[styles.choiceLabel, item.active && styles.choiceLabelActive]}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ChoicePill({ label, active, onPress, tone = "default" }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.choicePill,
+        active && tone === "default" && styles.choicePillActive,
+        active && tone === "danger" && styles.choicePillDanger,
+        pressed && styles.pressedLite,
+      ]}
+    >
+      <Text
+        style={[
+          styles.choicePillText,
+          active && tone === "default" && styles.choicePillTextActive,
+          active && tone === "danger" && styles.choicePillDangerText,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Field({ label, multiline = false, style, ...props }) {
+  return (
+    <View style={styles.fieldWrap}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        placeholderTextColor={COLORS.muted}
+        style={[styles.fieldInput, multiline && styles.fieldTextarea, style]}
+        multiline={multiline}
+        {...props}
+      />
+    </View>
+  );
+}
+
+function LocationCard({ title, subtitle, loading, onPress }) {
+  return (
+    <View style={styles.locationCard}>
+      <View style={styles.locationCopyRow}>
+        <View style={styles.locationIconBadge}>
+          <AppIcon name="map-pin" size={17} color={COLORS.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.groupTitle}>{title}</Text>
+          <Text style={styles.locationText}>{subtitle}</Text>
+        </View>
+      </View>
+      <PrimaryButton
+        label={loading ? "Locating..." : "Refresh"}
+        icon="refresh-cw"
+        onPress={onPress}
+        loading={loading}
+        tone="secondary"
+        compact
+        disabled={loading}
+      />
+    </View>
+  );
+}
+
+function SectionEyebrow({ label }) {
+  const icon = SECTION_ICON_BY_LABEL[label] || "circle";
+
+  return (
+    <View style={styles.sectionEyebrowRow}>
+      <AppIcon name={icon} size={13} color={COLORS.primary} />
+      <Text style={styles.sectionEyebrow}>{label}</Text>
+    </View>
+  );
+}
+
+function MetricRow({ label, value, emphasized = false }) {
+  return (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={[styles.metricValue, emphasized && styles.metricValueStrong]}>{value}</Text>
+    </View>
+  );
+}
+
+function MetricPill({ label, value }) {
+  return (
+    <View style={styles.metricPill}>
+      <Text style={styles.metricPillLabel}>{label}</Text>
+      <Text style={styles.metricPillValue}>{value}</Text>
+    </View>
+  );
+}
+
+function InfoRow({ label, value, strong = false }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={[styles.infoValue, strong && styles.infoValueStrong]}>{value}</Text>
+    </View>
+  );
+}
+
+function FeedbackMessage({ message, type }) {
+  const icon = type === "error" ? "alert-circle" : type === "success" ? "check-circle" : "info";
+  const iconColor =
+    type === "error" ? COLORS.danger : type === "success" ? COLORS.primaryDark : COLORS.primary;
+
+  return (
+    <View
+      style={[
+        styles.feedback,
+        type === "error" && styles.feedbackError,
+        type === "success" && styles.feedbackSuccess,
+      ]}
+    >
+      <AppIcon name={icon} size={16} color={iconColor} />
+      <Text
+        style={[
+          styles.feedbackText,
+          type === "error" && styles.feedbackErrorText,
+          type === "success" && styles.feedbackSuccessText,
+        ]}
+      >
+        {message}
+      </Text>
+    </View>
+  );
+}
+
+function HistoryCard({ order }) {
+  const tone = getStatusTone(order.status);
+  const visual = getServiceVisual(order.serviceCode);
+
+  return (
+    <View style={styles.historyCard}>
+      <View style={styles.historyHead}>
+        <View style={styles.historyTitleWrap}>
+          <View style={[styles.historyIconBadge, { backgroundColor: visual.accent }]}>
+            <AppIcon name={visual.icon} size={16} color={COLORS.actionText} />
+          </View>
+          <View>
+            <Text style={styles.historyTitle}>{order.serviceName}</Text>
+            <Text style={styles.historyMeta}>{order.orderNo}</Text>
+          </View>
+        </View>
+        <View style={[styles.statusChip, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+          <Text style={[styles.statusChipText, { color: tone.text }]}>{titleFromCode(order.status)}</Text>
+        </View>
+      </View>
+      <InfoRow label="Pickup" value={order.pickupLocation.address || "Pinned location"} />
+      <InfoRow label="Vehicle" value={order.customerVehicle.licensePlate} />
+      <InfoRow label="Total" value={formatMoney(order.pricing.total)} strong />
+    </View>
+  );
+}
+
+function PrimaryButton({
+  label,
+  icon,
+  onPress,
+  loading = false,
+  disabled = false,
+  tone = "primary",
+  compact = false,
+}) {
+  const iconColor =
+    tone === "secondary" ? COLORS.ink : tone === "danger" ? COLORS.actionText : COLORS.actionText;
+  const orbIcon = tone === "danger" ? "alert-triangle" : "arrow-right";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.button,
+        compact && styles.buttonCompact,
+        tone === "secondary" && styles.buttonSecondary,
+        tone === "danger" && styles.buttonDanger,
+        (pressed || loading) && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
+      ]}
+    >
+      <View style={styles.buttonInner}>
+        <View style={styles.buttonCopy}>
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color={tone === "secondary" ? COLORS.ink : COLORS.actionText}
+            />
+          ) : null}
+          {!loading && icon ? <AppIcon name={icon} size={compact ? 14 : 16} color={iconColor} /> : null}
+          <Text
+            style={[
+              styles.buttonText,
+              compact && styles.buttonTextCompact,
+              tone === "secondary" && styles.buttonTextSecondary,
+              tone === "danger" && styles.buttonTextDanger,
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
+        {!compact && !loading ? (
+          <View
+            style={[
+              styles.buttonOrb,
+              tone === "secondary" && styles.buttonOrbSecondary,
+              tone === "danger" && styles.buttonOrbDanger,
+            ]}
+          >
+            <AppIcon
+              name={orbIcon}
+              size={15}
+              color={tone === "secondary" ? COLORS.ink : COLORS.actionText}
+            />
+          </View>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.canvas,
+  },
+  backdropGrid: {
+    ...StyleSheet.absoluteFillObject,
+    borderTopWidth: 1,
+    borderColor: "rgba(11, 95, 255, 0.04)",
+  },
+  loaderShell: {
+    flex: 1,
+    backgroundColor: COLORS.canvas,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  screen: {
+    paddingHorizontal: 18,
+    paddingTop: 30,
+    paddingBottom: 72,
+    gap: 18,
+  },
+  appMarkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  appMarkIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appMark: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 12,
+    letterSpacing: 0.6,
+  },
+  authTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 34,
+    lineHeight: 38,
+    maxWidth: 360,
+  },
+  authSubtitle: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 15,
+    lineHeight: 23,
+    marginTop: 10,
+    maxWidth: 340,
+  },
+  switchWrap: {
+    gap: 10,
+  },
+  segmented: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    gap: 6,
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  segmentedItem: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 10,
+  },
+  segmentedItemActive: {
+    backgroundColor: COLORS.primary,
+  },
+  segmentedLabel: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  segmentedLabelActive: {
+    color: COLORS.actionText,
+  },
+  formPanel: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    padding: 18,
+    gap: 14,
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.06,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
+  },
+  topHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  topHeaderCopy: {
+    flex: 1,
+    maxWidth: 280,
+  },
+  topHeaderMeta: {
+    alignItems: "flex-end",
+    gap: 10,
+  },
+  topTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 30,
+    lineHeight: 34,
+  },
+  topSubtitle: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 10,
+  },
+  phoneBadge: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 11,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tabWrap: {
+    marginTop: 2,
+  },
+  panel: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    padding: 18,
+    gap: 14,
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.06,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
+  },
+  heroPanel: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 20,
+    gap: 14,
+    overflow: "hidden",
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.07,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
+  },
+  heroVisualRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  heroIconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroAccentRail: {
+    width: 52,
+    height: 4,
+    borderRadius: 2,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  activeHeroTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    flex: 1,
+  },
+  heroTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 28,
+    lineHeight: 32,
+    maxWidth: 300,
+  },
+  heroSubtitle: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 22,
+    maxWidth: 330,
+  },
+  statusChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  statusChipText: {
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
+  monoLabel: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 11,
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  metricBand: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  metricPill: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minWidth: 96,
+    flexGrow: 1,
+  },
+  metricPillLabel: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 10,
+    marginBottom: 4,
+  },
+  metricPillValue: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  sectionEyebrow: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
+  sectionEyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sectionTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  serviceSyncCard: {
+    backgroundColor: COLORS.blueSoft,
+    borderWidth: 1,
+    borderColor: COLORS.lineStrong,
+    borderRadius: 8,
+    padding: 14,
+    gap: 12,
+  },
+  serviceGrid: {
+    gap: 12,
+  },
+  serviceCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 1,
+  },
+  serviceCardActive: {
+    backgroundColor: COLORS.blueSoft,
+  },
+  serviceGlyph: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  serviceGlyphText: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  serviceGlyphTextActive: {
+    color: COLORS.actionText,
+  },
+  serviceCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  serviceActionWrap: {
+    alignItems: "center",
+    gap: 8,
+  },
+  serviceStateDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: COLORS.lineStrong,
+  },
+  serviceStateDotActive: {
+    backgroundColor: COLORS.primary,
+  },
+  serviceArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: COLORS.surfaceSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  serviceCardTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 18,
+  },
+  serviceCardSubtitle: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  fieldWrap: {
+    gap: 7,
+  },
+  fieldLabel: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 13,
+  },
+  fieldInput: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 15,
+  },
+  fieldTextarea: {
+    minHeight: 96,
+    textAlignVertical: "top",
+  },
+  locationCard: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 12,
+  },
+  locationCopyRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  locationIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: COLORS.blueSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationText: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  groupTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  choiceGridWrap: {
+    gap: 10,
+  },
+  choiceGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  choiceCard: {
+    minWidth: 0,
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 999,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    gap: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  choiceCardActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  choiceShort: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 11,
+  },
+  choiceShortActive: {
+    color: COLORS.actionText,
+  },
+  choiceLabel: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  choiceLabelActive: {
+    color: COLORS.actionText,
+  },
+  metricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 16,
+    paddingVertical: 2,
+  },
+  metricLabel: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 12,
+    flex: 1,
+  },
+  metricValue: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  metricValueStrong: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+  },
+  providerStrip: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  providerBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  providerBadgeText: {
+    color: COLORS.actionText,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  providerName: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  providerPhone: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  timelineWrap: {
+    gap: 10,
+  },
+  timelineItem: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  timelineRail: {
+    width: 20,
+    alignItems: "center",
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.line,
+    borderWidth: 2,
+    borderColor: COLORS.lineStrong,
+  },
+  timelineDotActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    minHeight: 24,
+    backgroundColor: COLORS.line,
+    marginTop: 4,
+  },
+  timelineLineActive: {
+    backgroundColor: COLORS.primary,
+  },
+  timelineLabel: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 18,
+    paddingBottom: 16,
+  },
+  timelineLabelActive: {
+    color: COLORS.ink,
+  },
+  inlineHint: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  signalPanel: {
+    backgroundColor: COLORS.blueSoft,
+    borderWidth: 1,
+    borderColor: COLORS.lineStrong,
+    borderRadius: 8,
+    padding: 18,
+    gap: 12,
+  },
+  signalTitle: {
+    color: COLORS.primaryDark,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  signalBody: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  sosPanel: {
+    backgroundColor: "#FFF1F1",
+    borderWidth: 1,
+    borderColor: "#F1C4C4",
+    borderRadius: 8,
+    padding: 18,
+    gap: 12,
+  },
+  sosTitle: {
+    color: "#A93232",
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  waitingPanel: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 18,
+    gap: 10,
+  },
+  waitingTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  waitingBody: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  workItemCard: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 10,
+  },
+  workItemTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  workItemValue: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  choicePill: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  choicePillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  choicePillDanger: {
+    backgroundColor: COLORS.danger,
+    borderColor: COLORS.danger,
+  },
+  choicePillText: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  choicePillTextActive: {
+    color: COLORS.actionText,
+  },
+  choicePillDangerText: {
+    color: COLORS.actionText,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  infoLabel: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 11,
+    flex: 1,
+  },
+  infoValue: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+    flex: 1,
+    textAlign: "right",
+  },
+  infoValueStrong: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+  },
+  queueCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 12,
+  },
+  queueCardHead: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  queueBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  queueTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  queueMeta: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  queueHint: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  panelHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  historyCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 10,
+  },
+  historyHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  historyTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  historyIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  historyTitle: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  historyMeta: {
+    color: COLORS.muted,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "400",
+    fontSize: 11,
+    marginTop: 4,
+  },
+  workDraftCard: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+    gap: 10,
+  },
+  row: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  rowField: {
+    flex: 1,
+    minWidth: 84,
+  },
+  button: {
+    minHeight: 52,
+    borderRadius: 999,
+    backgroundColor: COLORS.action,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    shadowColor: COLORS.ink,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  buttonCompact: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonSecondary: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.lineStrong,
+  },
+  buttonDanger: {
+    backgroundColor: COLORS.danger,
+  },
+  buttonInner: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  buttonCopy: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 1,
+  },
+  buttonOrb: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonOrbSecondary: {
+    backgroundColor: COLORS.surfaceSoft,
+  },
+  buttonOrbDanger: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
+  buttonDisabled: {
+    opacity: 0.56,
+  },
+  buttonText: {
+    color: COLORS.actionText,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  buttonTextCompact: {
+    fontSize: 13,
+  },
+  buttonTextSecondary: {
+    color: COLORS.ink,
+  },
+  buttonTextDanger: {
+    color: COLORS.actionText,
+  },
+  feedback: {
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: COLORS.blueSoft,
+    borderWidth: 1,
+    borderColor: COLORS.lineStrong,
+  },
+  feedbackError: {
+    backgroundColor: "#FFF1F1",
+    borderWidth: 1,
+    borderColor: "#F2C3C3",
+  },
+  feedbackSuccess: {
+    backgroundColor: COLORS.blueSoft,
+    borderWidth: 1,
+    borderColor: COLORS.lineStrong,
+  },
+  feedbackText: {
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+  },
+  feedbackErrorText: {
+    color: "#B33838",
+  },
+  feedbackSuccessText: {
+    color: COLORS.primaryDark,
+  },
+  previewImage: {
+    width: "100%",
+    height: 176,
+    borderRadius: 8,
+    resizeMode: "cover",
+  },
+  searchCard: {
+    backgroundColor: COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: 8,
+    padding: 14,
+  },
+  searchCardPressed: {
+    opacity: 0.85,
+  },
+  searchCardText: {
+    color: COLORS.ink,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  alertText: {
+    color: COLORS.danger,
+    fontFamily: FONT_FAMILY,
+    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  pressedLite: {
+    opacity: 0.9,
+  },
+});
