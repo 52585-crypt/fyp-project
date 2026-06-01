@@ -138,3 +138,73 @@ async function extractBestCnicFromImage(buffer) {
     text,
     candidates,
     extractedCnic: candidates[0] || null,
+  };
+}
+
+async function loadFaceModels() {
+  if (!modelLoadPromise) {
+    modelLoadPromise = (async () => {
+      await tf.setBackend("cpu");
+      await tf.ready();
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromDisk(FACE_MODEL_DIR),
+        faceapi.nets.faceLandmark68TinyNet.loadFromDisk(FACE_MODEL_DIR),
+        faceapi.nets.faceRecognitionNet.loadFromDisk(FACE_MODEL_DIR),
+      ]);
+    })();
+  }
+
+  await modelLoadPromise;
+}
+
+function documentRegions(width, height) {
+  const toRegion = (left, top, regionWidth, regionHeight) => ({
+    left: Math.max(0, Math.round(left * width)),
+    top: Math.max(0, Math.round(top * height)),
+    width: Math.max(1, Math.round(regionWidth * width)),
+    height: Math.max(1, Math.round(regionHeight * height)),
+  });
+
+  return [
+    null,
+    toRegion(0, 0, 0.58, 1),
+    toRegion(0.42, 0, 0.58, 1),
+    toRegion(0.03, 0.12, 0.52, 0.78),
+    toRegion(0.45, 0.12, 0.52, 0.78),
+    toRegion(0.02, 0.24, 0.46, 0.68),
+    toRegion(0.52, 0.24, 0.46, 0.68),
+  ];
+}
+
+async function describeFaceFromImageBuffer(buffer, mode = "selfie") {
+  await loadFaceModels();
+
+  const normalizedBuffer = await ensurePngBuffer(buffer, mode === "document" ? 1600 : 1200);
+  const image = await loadImage(normalizedBuffer);
+  const detectorOptions = new faceapi.TinyFaceDetectorOptions({
+    inputSize: mode === "document" ? 512 : 416,
+    scoreThreshold: 0.3,
+  });
+
+  if (mode !== "document") {
+    const detection = await faceapi
+      .detectSingleFace(image, detectorOptions)
+      .withFaceLandmarks(true)
+      .withFaceDescriptor();
+
+    return detection || null;
+  }
+
+  const metadata = await sharp(normalizedBuffer).metadata();
+  const width = metadata.width || 0;
+  const height = metadata.height || 0;
+
+  if (!width || !height) {
+    return null;
+  }
+
+  let bestDetection = null;
+
+  for (const region of documentRegions(width, height)) {
+    const candidateBuffer = region
+      ? await sharp(normalizedBuffer)
