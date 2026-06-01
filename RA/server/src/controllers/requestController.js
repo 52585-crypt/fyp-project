@@ -306,3 +306,64 @@ export async function acceptOffer(req, res) {
 
   try {
     const offer = await Offer.findById(offerId).populate("request");
+
+    if (!offer) {
+      return res.status(404).json({ message: "Offer not found" });
+    }
+
+    const request = offer.request;
+
+    if (request.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (!["pending", "offered"].includes(request.status) || offer.status !== "pending") {
+      return res.status(409).json({ message: "Offer can no longer be accepted" });
+    }
+
+    await Offer.updateOne({ _id: offer._id }, { status: "accepted" });
+    await Offer.updateMany({ request: request._id, _id: { $ne: offer._id } }, { status: "rejected" });
+    await ServiceRequest.updateOne(
+      { _id: request._id },
+      { status: "accepted", acceptedOffer: offer._id }
+    );
+
+    return res.json({ message: "Offer accepted", offerId });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to accept offer", error: error.message });
+  }
+}
+
+export async function updateProviderLocation(req, res) {
+  const latitude = parseFiniteNumber(req.body.latitude);
+  const longitude = parseFiniteNumber(req.body.longitude);
+  const { isAvailable } = req.body;
+
+  if (latitude == null || longitude == null) {
+    return res.status(400).json({ message: "latitude and longitude are required" });
+  }
+
+  try {
+    const update = {
+      currentLatitude: latitude,
+      currentLongitude: longitude,
+    };
+
+    if (typeof isAvailable === "boolean") {
+      update.isAvailable = isAvailable;
+    }
+
+    const profile = await ProviderProfile.findOneAndUpdate({ user: req.user.id }, update, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Provider profile missing" });
+    }
+
+    return res.json({ message: "Provider location updated" });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to update location", error: error.message });
+  }
+}
