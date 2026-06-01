@@ -23,3 +23,27 @@ export function calculateFuelPricing(service, fuelType, quantityLiters) {
     total: toMoney(quantitySubtotal + deliveryFee),
   };
 }
+
+export function calculateTowingPricing(service, pickupLocation, destinationLocation) {
+  const visitFee = Number(service.pricing?.visitFee || 0);
+  const towingBaseFee = Number(service.pricing?.towingBaseFee || 0);
+  const perKmRate = Number(service.pricing?.perKmRate || 0);
+  const routeDistanceKm = getDistanceKm(
+    pickupLocation.latitude,
+    pickupLocation.longitude,
+    destinationLocation.latitude,
+    destinationLocation.longitude
+  );
+  const distanceCharge = toMoney(routeDistanceKm * perKmRate);
+
+  return {
+    currency: service.pricing?.currency || "PKR",
+    fuelPricePerLiter: 0,
+    quantitySubtotal: 0,
+    deliveryFee: 0,
+    visitFee,
+    towingBaseFee,
+    perKmRate,
+    routeDistanceKm,
+    distanceCharge,
+    extraWorkTotal: 0,
