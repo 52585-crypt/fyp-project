@@ -60,3 +60,64 @@ export async function createRequest(req, res) {
   if (!serviceId || !description || !vehicleNumber || currentLatitude == null || currentLongitude == null) {
     return res.status(400).json({
       message: "serviceId, description, vehicleNumber, latitude and longitude are required",
+    });
+  }
+
+  if (!isValidObjectId(serviceId)) {
+    return res.status(400).json({ message: "Invalid serviceId" });
+  }
+
+  try {
+    const service = await Service.findById(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    const request = await ServiceRequest.create({
+      user: req.user.id,
+      service: service._id,
+      description,
+      vehicleNumber,
+      currentLatitude,
+      currentLongitude,
+    });
+
+    await request.populate([
+      { path: "service", select: "name basePrice extraPerKm" },
+      { path: "user", select: "name" },
+    ]);
+
+    const nearbyProviders = await findNearbyProviders(currentLatitude, currentLongitude, 4);
+
+    return res.status(201).json({
+      request: mapRequest(request),
+      nearbyProviders,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to create request", error: error.message });
+  }
+}
+
+export async function getRequestDetails(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid request id" });
+  }
+
+  try {
+    const request = await ServiceRequest.findById(id)
+      .populate("service", "name basePrice extraPerKm")
+      .populate("user", "name")
+      .lean();
+
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    const isOwner = request.user?._id?.toString() === req.user.id;
+    const providerCanView = req.user.role === "provider" && (await canProviderViewRequest(req.user.id, request._id));
+
+    if (req.user.role === "user" && !isOwner) {
+      return res.status(403).json({ message: "Forbidden" });
