@@ -68,3 +68,73 @@ async function fetchImageBuffer(source) {
   return fs.readFile(normalized);
 }
 
+async function ensurePngBuffer(buffer, width = 1800) {
+  return sharp(buffer)
+    .rotate()
+    .resize({ width, withoutEnlargement: true })
+    .png()
+    .toBuffer();
+}
+
+async function buildOcrBuffer(buffer) {
+  return sharp(buffer)
+    .rotate()
+    .resize({ width: 2200, withoutEnlargement: true })
+    .grayscale()
+    .normalize()
+    .sharpen()
+    .png()
+    .toBuffer();
+}
+
+async function getOcrWorker() {
+  if (!ocrWorkerPromise) {
+    ocrWorkerPromise = createWorker("eng", 1, {
+      langPath: TESSDATA_DIR,
+      gzip: true,
+    });
+  }
+
+  return ocrWorkerPromise;
+}
+
+function normalizeCnicOcrText(text) {
+  return String(text || "")
+    .replace(/[OoQqD]/g, "0")
+    .replace(/[Il|!]/g, "1")
+    .replace(/[Zz]/g, "2")
+    .replace(/[Ss]/g, "5")
+    .replace(/[Bb]/g, "8");
+}
+
+function extractCnicCandidates(text) {
+  const normalized = normalizeCnicOcrText(text);
+  const compact = normalized.replace(/[^0-9]/g, "");
+  const candidates = new Set();
+
+  for (const match of normalized.matchAll(/\d{5}\D*\d{7}\D*\d/g)) {
+    const digits = match[0].replace(/\D/g, "");
+
+    if (digits.length === 13) {
+      candidates.add(digits);
+    }
+  }
+
+  for (let index = 0; index <= compact.length - 13; index += 1) {
+    candidates.add(compact.slice(index, index + 13));
+  }
+
+  return [...candidates].filter((value) => /^\d{13}$/.test(value));
+}
+
+async function extractBestCnicFromImage(buffer) {
+  const worker = await getOcrWorker();
+  const ocrBuffer = await buildOcrBuffer(buffer);
+  const result = await worker.recognize(ocrBuffer);
+  const text = result?.data?.text || "";
+  const candidates = extractCnicCandidates(text);
+
+  return {
+    text,
+    candidates,
+    extractedCnic: candidates[0] || null,
