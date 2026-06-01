@@ -772,3 +772,132 @@ export async function respondToExtraWorkRequest(req, res) {
 
     const decisionMap = new Map(
       items.map((item) => [String(item.itemId), item.decision])
+    );
+
+    extraWorkRequest.items.forEach((item) => {
+      const decision = decisionMap.get(item._id.toString());
+
+      if (decision === "approved" || decision === "rejected") {
+        item.customerDecision = decision;
+        item.decisionAt = new Date();
+      }
+    });
+
+    if (extraWorkRequest.items.some((item) => item.customerDecision === "pending")) {
+      return res.status(400).json({ message: "A decision is required for every extra work item" });
+    }
+
+    const approvedTotal = Number(
+      extraWorkRequest.items
+        .filter((item) => item.customerDecision === "approved")
+        .reduce((sum, item) => sum + Number(item.lineTotal || 0), 0)
+        .toFixed(2)
+    );
+    const approvedCount = extraWorkRequest.items.filter((item) => item.customerDecision === "approved").length;
+
+    extraWorkRequest.approvedTotal = approvedTotal;
+    extraWorkRequest.respondedAt = new Date();
+    extraWorkRequest.status =
+      approvedCount === 0
+        ? "rejected"
+        : approvedCount === extraWorkRequest.items.length
+          ? "approved"
+          : "partially_approved";
+
+    const service = await findServiceByCode(order.serviceCode);
+    order.pricing = calculateMechanicPricing(service, order.mechanicCategory, approvedTotal);
+    order.status = "in_progress";
+    await order.save();
+
+    return res.json({
+      message: "Extra work response submitted",
+      order: mapOrder(await order.populate(["service", "customer", "provider"])),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to respond to extra work request", error: error.message });
+  }
+}
+
+export async function markFuelDelivered(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode !== "fuel_delivery") {
+      return res.status(409).json({ message: "This action is only available for fuel delivery orders" });
+    }
+
+    if (!["assigned", "arrived", "in_progress"].includes(order.status)) {
+      return res.status(409).json({ message: "Fuel order is not ready for delivery confirmation" });
+    }
+
+    order.tracking.fuelDeliveredAt = new Date();
+    order.status = "awaiting_fuel_confirmation";
+    await order.save();
+
+    return res.json({ message: "Fuel marked as delivered", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to mark fuel delivered", error: error.message });
+  }
+}
+
+export async function confirmFuelDelivered(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode !== "fuel_delivery" || order.status !== "awaiting_fuel_confirmation") {
+      return res.status(409).json({ message: "Fuel order is not awaiting customer confirmation" });
+    }
+
+    order.tracking.fuelConfirmedAt = new Date();
+    order.tracking.completedAt = new Date();
+    order.status = "completed";
+    await order.save();
+
+    return res.json({ message: "Fuel delivery confirmed", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to confirm fuel delivery", error: error.message });
+  }
+}
+
+export async function completeOrder(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
