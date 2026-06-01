@@ -127,3 +127,132 @@ function mapOrder(order) {
     payment: {
       method: order.payment?.method || "cash_on_delivery",
       customerConfirmed: Boolean(order.payment?.customerConfirmed),
+      providerConfirmed: Boolean(order.payment?.providerConfirmed),
+      customerConfirmedAt: order.payment?.customerConfirmedAt || null,
+      providerConfirmedAt: order.payment?.providerConfirmedAt || null,
+      status: order.payment?.status || "pending",
+    },
+    customer: {
+      id: customer._id?.toString() || order.customer?.toString(),
+      name: customer.name,
+      phone: customer.phone,
+      profilePicture: customer.profilePicture,
+    },
+    provider: order.provider
+      ? {
+          id: provider._id?.toString() || order.provider?.toString(),
+          name: provider.name,
+          phone: provider.phone,
+          profilePicture: provider.profilePicture,
+        }
+      : null,
+    activeExtraWorkRequest: mapExtraWorkRequest(activeExtraWorkRequest),
+    latestExtraWorkRequest: mapExtraWorkRequest(latestExtraWorkRequest),
+    nearbyProviders: Array.isArray(order.nearbyProviders) ? order.nearbyProviders : [],
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
+}
+
+function mapNearbyProviders(providers) {
+  return providers.slice(0, 12).map((provider) => ({
+    id: provider.id,
+    name: provider.name,
+    distanceKm: Number(provider.distanceKm),
+    latitude: Number(provider.currentLatitude),
+    longitude: Number(provider.currentLongitude),
+  }));
+}
+
+async function attachNearbyProvidersToOrder(order) {
+  if (!order || order.provider || order.status !== "open") {
+    return {
+      ...mapOrder(order),
+      nearbyProviders: [],
+    };
+  }
+
+  const nearbyProviders = await findNearbyProviders(
+    order.pickupLocation.latitude,
+    order.pickupLocation.longitude,
+    order.serviceCode,
+    DEFAULT_PROVIDER_RADIUS_KM
+  );
+
+  return {
+    ...mapOrder(order),
+    nearbyProviders: mapNearbyProviders(nearbyProviders),
+  };
+}
+
+async function findServiceByCode(serviceCode) {
+  return Service.findOne({ code: serviceCode }).lean();
+}
+
+async function findActiveOrderForUser(userId, field) {
+  return Order.findOne({
+    [field]: userId,
+    $or: [
+      { status: { $in: ACTIVE_STATUSES } },
+      { status: "completed", "payment.status": { $ne: "confirmed" } },
+    ],
+  })
+    .sort({ updatedAt: -1 })
+    .populate("service", "name code")
+    .populate("customer", "name phone profilePicture")
+    .populate("provider", "name phone profilePicture")
+    .lean();
+}
+
+function updatePaymentStatus(order) {
+  if (order.payment.customerConfirmed && order.payment.providerConfirmed) {
+    order.payment.status = "confirmed";
+  } else if (order.payment.customerConfirmed || order.payment.providerConfirmed) {
+    order.payment.status = "partially_confirmed";
+  } else {
+    order.payment.status = "pending";
+  }
+}
+
+function ensureProviderOwnsOrder(order, providerId) {
+  return order.provider?.toString() === providerId;
+}
+
+export async function createOrder(req, res) {
+  const {
+    serviceCode,
+    notes,
+    pickupLatitude,
+    pickupLongitude,
+    pickupAddress,
+    destinationLatitude,
+    destinationLongitude,
+    destinationAddress,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleType,
+    fuelType,
+    fuelQuantityLiters,
+    towingProblemType,
+    mechanicCategory,
+  } = req.body;
+
+  if (!serviceCode || !licensePlate) {
+    return res.status(400).json({ message: "serviceCode and licensePlate are required" });
+  }
+
+  const existingActiveOrder = await findActiveOrderForUser(req.user.id, "customer");
+
+  if (existingActiveOrder) {
+    return res.status(409).json({ message: "Complete your active order before creating a new one" });
+  }
+
+  const service = await findServiceByCode(serviceCode);
+
+  if (!service) {
+    return res.status(404).json({ message: "Service not found" });
+  }
+
+  const pickupLocation = buildLocation(pickupLatitude, pickupLongitude, pickupAddress);
+
