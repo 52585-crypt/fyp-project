@@ -59,3 +59,64 @@ function buildAuthResponse(user, providerProfile = null) {
     },
   };
 }
+
+function optionalNumber(value) {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+export async function register(req, res) {
+  const {
+    role,
+    name,
+    phone,
+    password,
+    profilePicture,
+    workshopPicture,
+    mechanicCertificateImage,
+    cnicFrontImage,
+    cnicBackImage,
+    selfieImage,
+    cnic,
+    latitude,
+    longitude,
+    serviceCodes,
+    city,
+  } = req.body;
+
+  if (!role || !name || !phone || !password) {
+    return res.status(400).json({ message: "role, name, phone and password are required" });
+  }
+
+  if (!["user", "provider"].includes(role)) {
+    return res.status(400).json({ message: "role must be user or provider" });
+  }
+
+  if (role === "provider" && !cnic?.trim()) {
+    return res.status(400).json({ message: "CNIC number is required for providers" });
+  }
+
+  if (role === "provider" && !isValidCnicNumber(cnic)) {
+    return res.status(400).json({ message: "CNIC number must contain exactly 13 digits" });
+  }
+
+  if (role === "provider" && !cnicFrontImage?.trim()) {
+    return res.status(400).json({ message: "CNIC front image is required for providers" });
+  }
+
+  if (role === "provider" && !cnicBackImage?.trim()) {
+    return res.status(400).json({ message: "CNIC back image is required for providers" });
+  }
+
+  if (role === "provider" && !selfieImage?.trim()) {
+    return res.status(400).json({ message: "Live selfie image is required for providers" });
+  }
+
+  if (role === "provider" && !workshopPicture?.trim()) {
+    return res.status(400).json({ message: "Workshop picture is required for providers" });
+  }
+
