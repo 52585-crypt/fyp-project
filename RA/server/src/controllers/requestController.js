@@ -121,3 +121,65 @@ export async function getRequestDetails(req, res) {
 
     if (req.user.role === "user" && !isOwner) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (req.user.role === "provider" && !providerCanView) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const offers = await Offer.find({ request: request._id })
+      .sort({ createdAt: 1 })
+      .populate("provider", "name")
+      .lean();
+
+    let acceptedProviderLocation = null;
+
+    if (request.acceptedOffer) {
+      const acceptedOffer = await Offer.findById(request.acceptedOffer).lean();
+
+      if (acceptedOffer) {
+        const profile = await ProviderProfile.findOne({ user: acceptedOffer.provider }).lean();
+
+        if (profile?.currentLatitude != null && profile?.currentLongitude != null) {
+          acceptedProviderLocation = {
+            latitude: Number(profile.currentLatitude),
+            longitude: Number(profile.currentLongitude),
+          };
+        }
+      }
+    }
+
+    return res.json({
+      request: mapRequest(request),
+      offers: offers.map(mapOffer),
+      acceptedProviderLocation,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to fetch request", error: error.message });
+  }
+}
+
+export async function getNearbyRequests(req, res) {
+  const latitude = parseFiniteNumber(req.query.latitude);
+  const longitude = parseFiniteNumber(req.query.longitude);
+  const radiusKm = parseFiniteNumber(req.query.radiusKm || 4);
+
+  if (latitude == null || longitude == null) {
+    return res.status(400).json({ message: "latitude and longitude query params are required" });
+  }
+
+  if (radiusKm == null || radiusKm <= 0 || radiusKm > 50) {
+    return res.status(400).json({ message: "radiusKm must be a number between 0 and 50" });
+  }
+
+  try {
+    const requests = await ServiceRequest.find({ status: { $in: ["pending", "offered"] } })
+      .sort({ createdAt: -1 })
+      .populate("service", "name basePrice extraPerKm")
+      .populate("user", "name")
+      .lean();
+
+    const nearby = requests
+      .map((request) => {
+        const distanceKm = getDistanceKm(
+          latitude,
