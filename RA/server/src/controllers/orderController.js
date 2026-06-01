@@ -901,3 +901,131 @@ export async function completeOrder(req, res) {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode === "fuel_delivery") {
+      return res.status(409).json({ message: "Fuel orders must be completed through customer quantity confirmation" });
+    }
+
+    if (order.status === "awaiting_extra_work_approval") {
+      return res.status(409).json({ message: "Resolve the extra work request before completing the order" });
+    }
+
+    if (!["assigned", "arrived", "inspection_pending", "in_progress", "tow_in_transit"].includes(order.status)) {
+      return res.status(409).json({ message: "Order is not ready to complete" });
+    }
+
+    order.status = "completed";
+    order.tracking.completedAt = new Date();
+    await order.save();
+
+    return res.json({ message: "Order completed", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to complete order", error: error.message });
+  }
+}
+
+export async function customerConfirmPayment(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.status !== "completed") {
+      return res.status(409).json({ message: "Payment can be confirmed only after order completion" });
+    }
+
+    order.payment.customerConfirmed = true;
+    order.payment.customerConfirmedAt = new Date();
+    updatePaymentStatus(order);
+    await order.save();
+
+    return res.json({ message: "Customer payment confirmation saved", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to confirm customer payment", error: error.message });
+  }
+}
+
+export async function providerConfirmPayment(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.status !== "completed") {
+      return res.status(409).json({ message: "Payment can be confirmed only after order completion" });
+    }
+
+    order.payment.providerConfirmed = true;
+    order.payment.providerConfirmedAt = new Date();
+    updatePaymentStatus(order);
+    await order.save();
+
+    return res.json({ message: "Provider payment confirmation saved", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to confirm provider payment", error: error.message });
+  }
+}
+
+export async function raiseTowingSos(req, res) {
+  const { id } = req.params;
+  const { message } = req.body;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode !== "car_towing") {
+      return res.status(409).json({ message: "SOS is only available for towing orders" });
+    }
+
+    if (!["assigned", "arrived", "tow_in_transit", "in_progress"].includes(order.status)) {
+      return res.status(409).json({ message: "SOS is only available during an active towing job" });
+    }
+
+    order.tracking.sosRaisedAt = new Date();
+    order.tracking.sosMessage = message?.trim() || "Customer requested emergency assistance";
+    await order.save();
+
+    return res.json({ message: "SOS alert recorded", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to raise SOS alert", error: error.message });
+  }
+}
