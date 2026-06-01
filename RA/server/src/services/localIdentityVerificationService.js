@@ -208,3 +208,73 @@ async function describeFaceFromImageBuffer(buffer, mode = "selfie") {
   for (const region of documentRegions(width, height)) {
     const candidateBuffer = region
       ? await sharp(normalizedBuffer)
+          .extract(region)
+          .png()
+          .toBuffer()
+      : normalizedBuffer;
+    const candidateImage = region ? await loadImage(candidateBuffer) : image;
+    const detection = await faceapi
+      .detectSingleFace(candidateImage, detectorOptions)
+      .withFaceLandmarks(true)
+      .withFaceDescriptor();
+
+    if (!detection) {
+      continue;
+    }
+
+    if (!bestDetection || detection.detection.score > bestDetection.detection.score) {
+      bestDetection = detection;
+    }
+  }
+
+  return bestDetection;
+}
+
+function cosineSimilarity(firstDescriptor, secondDescriptor) {
+  let dot = 0;
+  let firstMagnitude = 0;
+  let secondMagnitude = 0;
+
+  for (let index = 0; index < firstDescriptor.length; index += 1) {
+    const left = firstDescriptor[index];
+    const right = secondDescriptor[index];
+    dot += left * right;
+    firstMagnitude += left * left;
+    secondMagnitude += right * right;
+  }
+
+  const denominator = Math.sqrt(firstMagnitude) * Math.sqrt(secondMagnitude);
+  return denominator > 0 ? dot / denominator : 0;
+}
+
+export async function verifyProviderIdentityLocally({ cnic, cnicFrontImage, cnicBackImage, selfieImage }) {
+  let cnicFrontBuffer;
+  let cnicBackBuffer;
+  let selfieBuffer;
+
+  try {
+    [cnicFrontBuffer, cnicBackBuffer, selfieBuffer] = await Promise.all([
+      fetchImageBuffer(cnicFrontImage),
+      fetchImageBuffer(cnicBackImage),
+      fetchImageBuffer(selfieImage),
+    ]);
+  } catch (error) {
+    return buildFailure("Unable to read uploaded identity images", {
+      provider: "local_phase_1",
+      details: error.message,
+    });
+  }
+
+  let frontOcr;
+  let backOcr;
+
+  try {
+    [frontOcr, backOcr] = await Promise.all([
+      extractBestCnicFromImage(cnicFrontBuffer),
+      extractBestCnicFromImage(cnicBackBuffer),
+    ]);
+  } catch (error) {
+    return buildFailure("Unable to read the CNIC text from the uploaded images", {
+      provider: "local_phase_1",
+      details: error.message,
+    });
