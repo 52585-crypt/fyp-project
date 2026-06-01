@@ -49,3 +49,54 @@ const providerProfileSchema = new mongoose.Schema(
       default: null,
       maxlength: 80,
     },
+    cnicVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    cnicExtractedNumber: {
+      type: String,
+      default: null,
+      maxlength: 30,
+    },
+    cnicFaceSimilarity: {
+      type: Number,
+      default: null,
+    },
+    isPremium: {
+      type: Boolean,
+      default: false,
+    },
+    serviceCodes: {
+      type: [
+        {
+          type: String,
+          enum: ["fuel_delivery", "car_towing", "mechanic"],
+        },
+      ],
+      default: [],
+    },
+    city: {
+      type: String,
+      default: "Lahore",
+      trim: true,
+      maxlength: 80,
+    },
+    currentLatitude: {
+      type: Number,
+      default: null,
+    },
+    currentLongitude: {
+      type: Number,
+      default: null,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const ProviderProfile = mongoose.model("ProviderProfile", providerProfileSchema);
