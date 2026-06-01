@@ -244,3 +244,65 @@ export async function createOffer(req, res) {
 
     if (!providerProfile) {
       return res.status(404).json({ message: "Provider profile missing" });
+    }
+
+    if (providerProfile.currentLatitude == null || providerProfile.currentLongitude == null) {
+      return res.status(400).json({ message: "Provider location must be set before sending offers" });
+    }
+
+    const distanceKm = getDistanceKm(
+      Number(request.currentLatitude),
+      Number(request.currentLongitude),
+      Number(providerProfile.currentLatitude),
+      Number(providerProfile.currentLongitude)
+    );
+
+    if (distanceKm > 4) {
+      return res.status(403).json({ message: "Request is outside the provider discovery radius" });
+    }
+
+    const extraDistanceCharge = getExtraDistanceCharge(distanceKm, Number(request.service.extraPerKm));
+
+    const offer = await Offer.create({
+      request: request._id,
+      provider: req.user.id,
+      price: offerPrice,
+      estimatedMinutes: Math.round(etaMinutes),
+      message: message || null,
+      distanceKm,
+      extraDistanceCharge,
+    });
+
+    if (request.status === "pending") {
+      request.status = "offered";
+      await request.save();
+    }
+
+    return res.status(201).json({
+      offer: {
+        ...offer.toObject(),
+        id: offer._id.toString(),
+        requestId: request._id.toString(),
+        providerId: req.user.id,
+        distanceKm,
+        extraDistanceCharge,
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Provider has already sent an offer for this request" });
+    }
+
+    return res.status(500).json({ message: "Unable to create offer", error: error.message });
+  }
+}
+
+export async function acceptOffer(req, res) {
+  const offerId = req.params.offerId;
+
+  if (!isValidObjectId(offerId)) {
+    return res.status(400).json({ message: "Invalid offer id" });
+  }
+
+  try {
+    const offer = await Offer.findById(offerId).populate("request");
