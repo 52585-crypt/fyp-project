@@ -31,3 +31,19 @@ router.post("/", requireAuth, requireRole("user"), createOrder);
 router.post("/:id/accept", requireAuth, requireRole("provider"), acceptOrder);
 router.post("/:id/arrive", requireAuth, requireRole("provider"), markArrived);
 router.post("/:id/start", requireAuth, requireRole("provider"), startOrderProgress);
+router.post("/:id/extra-work", requireAuth, requireRole("provider"), submitExtraWorkRequest);
+router.post(
+  "/:id/extra-work/:requestId/respond",
+  requireAuth,
+  requireRole("user"),
+  respondToExtraWorkRequest
+);
+router.post("/:id/fuel-delivered", requireAuth, requireRole("provider"), markFuelDelivered);
+router.post("/:id/fuel-confirm", requireAuth, requireRole("user"), confirmFuelDelivered);
+router.post("/:id/complete", requireAuth, requireRole("provider"), completeOrder);
+router.post("/:id/payment/customer-confirm", requireAuth, requireRole("user"), customerConfirmPayment);
+router.post("/:id/payment/provider-confirm", requireAuth, requireRole("provider"), providerConfirmPayment);
+router.post("/:id/sos", requireAuth, requireRole("user"), raiseTowingSos);
+router.patch("/provider/location", requireAuth, requireRole("provider"), updateProviderLocation);
+
+export default router;
