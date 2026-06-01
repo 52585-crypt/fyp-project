@@ -514,3 +514,132 @@ export async function updateProviderLocation(req, res) {
 
 export async function acceptOrder(req, res) {
   const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const providerActiveOrder = await findActiveOrderForUser(req.user.id, "provider");
+
+    if (providerActiveOrder) {
+      return res.status(409).json({ message: "Finish your active order before accepting another one" });
+    }
+
+    const providerProfile = await ProviderProfile.findOne({ user: req.user.id });
+
+    if (!providerProfile) {
+      return res.status(404).json({ message: "Provider profile missing" });
+    }
+
+    const order = await Order.findById(id).populate("service", "name code");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.status !== "open" || order.provider) {
+      return res.status(409).json({ message: "Order is no longer available" });
+    }
+
+    if (!(providerProfile.serviceCodes || []).includes(order.serviceCode)) {
+      return res.status(403).json({ message: "This order is outside your enabled services" });
+    }
+
+    if (providerProfile.currentLatitude == null || providerProfile.currentLongitude == null) {
+      return res.status(400).json({ message: "Update your location before accepting orders" });
+    }
+
+    const providerDistanceKm = getDistanceKm(
+      Number(providerProfile.currentLatitude),
+      Number(providerProfile.currentLongitude),
+      order.pickupLocation.latitude,
+      order.pickupLocation.longitude
+    );
+
+    if (providerDistanceKm > DEFAULT_PROVIDER_RADIUS_KM) {
+      return res.status(403).json({ message: "This order is outside your provider radius" });
+    }
+
+    order.provider = req.user.id;
+    order.status = "assigned";
+    order.tracking.providerLatitude = providerProfile.currentLatitude;
+    order.tracking.providerLongitude = providerProfile.currentLongitude;
+    order.tracking.providerUpdatedAt = new Date();
+    await order.save();
+    await order.populate([
+      { path: "customer", select: "name phone profilePicture" },
+      { path: "provider", select: "name phone profilePicture" },
+    ]);
+
+    return res.json({ message: "Order accepted", order: mapOrder(order) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to accept order", error: error.message });
+  }
+}
+
+export async function markArrived(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.status !== "assigned") {
+      return res.status(409).json({ message: "Order is not ready for arrival" });
+    }
+
+    order.tracking.arrivedAt = new Date();
+    order.status = order.serviceCode === "mechanic" ? "inspection_pending" : "arrived";
+    await order.save();
+
+    return res.json({ message: "Arrival marked", order: mapOrder(await order.populate(["service", "customer", "provider"])) });
+  } catch (error) {
+    return res.status(500).json({ message: "Unable to mark arrival", error: error.message });
+  }
+}
+
+export async function startOrderProgress(req, res) {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!ensureProviderOwnsOrder(order, req.user.id)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (order.serviceCode === "mechanic") {
+      if (!["inspection_pending", "arrived", "in_progress"].includes(order.status)) {
+        return res.status(409).json({ message: "Mechanic order is not ready to start" });
+      }
+
+      const pendingRequest = order.extraWorkRequests.find((entry) => entry.status === "pending");
+
+      if (pendingRequest) {
+        return res.status(409).json({ message: "Resolve the pending extra work request first" });
+      }
+
+      order.status = "in_progress";
+    } else if (order.serviceCode === "car_towing") {
+      if (!["assigned", "arrived", "tow_in_transit"].includes(order.status)) {
+        return res.status(409).json({ message: "Towing order is not ready to start" });
