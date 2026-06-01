@@ -261,3 +261,90 @@ const orderSchema = new mongoose.Schema(
         required: true,
         min: 0,
       },
+    },
+    tracking: {
+      providerLatitude: {
+        type: Number,
+        default: null,
+      },
+      providerLongitude: {
+        type: Number,
+        default: null,
+      },
+      providerUpdatedAt: {
+        type: Date,
+        default: null,
+      },
+      arrivedAt: {
+        type: Date,
+        default: null,
+      },
+      startedAt: {
+        type: Date,
+        default: null,
+      },
+      fuelDeliveredAt: {
+        type: Date,
+        default: null,
+      },
+      fuelConfirmedAt: {
+        type: Date,
+        default: null,
+      },
+      completedAt: {
+        type: Date,
+        default: null,
+      },
+      sosRaisedAt: {
+        type: Date,
+        default: null,
+      },
+      sosMessage: {
+        type: String,
+        default: null,
+        trim: true,
+        maxlength: 300,
+      },
+    },
+    payment: {
+      method: {
+        type: String,
+        enum: ["cash_on_delivery"],
+        default: "cash_on_delivery",
+      },
+      customerConfirmed: {
+        type: Boolean,
+        default: false,
+      },
+      providerConfirmed: {
+        type: Boolean,
+        default: false,
+      },
+      customerConfirmedAt: {
+        type: Date,
+        default: null,
+      },
+      providerConfirmedAt: {
+        type: Date,
+        default: null,
+      },
+      status: {
+        type: String,
+        enum: ["pending", "partially_confirmed", "confirmed"],
+        default: "pending",
+      },
+    },
+    extraWorkRequests: {
+      type: [extraWorkRequestSchema],
+      default: [],
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+orderSchema.index({ customer: 1, status: 1, updatedAt: -1 });
+orderSchema.index({ provider: 1, status: 1, updatedAt: -1 });
+
+export const Order = mongoose.model("Order", orderSchema);
