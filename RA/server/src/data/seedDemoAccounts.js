@@ -47,3 +47,51 @@ const demoAccounts = [
     phone: "03000000004",
     profilePicture: null,
     providerProfile: {
+      cnic: "3520212345673",
+      serviceCodes: ["mechanic", "car_towing"],
+      city: "Lahore",
+      currentLatitude: 24.8694,
+      currentLongitude: 67.0035,
+      isPremium: true,
+    },
+  },
+];
+
+function buildProviderProfile(userId, account) {
+  const profile = account.providerProfile;
+
+  return {
+    user: userId,
+    workshopPicture: null,
+    mechanicCertificateImage: null,
+    cnicFrontImage: null,
+    cnicBackImage: null,
+    selfieImage: null,
+    cnic: profile.cnic,
+    cnicVerificationStatus: "verified",
+    cnicVerificationReason: null,
+    cnicVerificationProvider: "demo-seed",
+    cnicVerifiedAt: new Date(),
+    cnicExtractedNumber: profile.cnic,
+    cnicFaceSimilarity: 0.99,
+    isPremium: profile.isPremium,
+    serviceCodes: profile.serviceCodes,
+    city: profile.city,
+    currentLatitude: profile.currentLatitude,
+    currentLongitude: profile.currentLongitude,
+    isAvailable: true,
+  };
+}
+
+async function upsertDemoAccount(account, passwordHash) {
+  const user = await User.findOneAndUpdate(
+    { phone: account.phone },
+    {
+      $set: {
+        role: account.role,
+        name: account.name,
+        phone: account.phone,
+        passwordHash,
+        profilePicture: account.profilePicture,
+      },
+    },
