@@ -38,3 +38,14 @@ export const api = axios.create({
   timeout: 60000
 });
 
+export function getNetworkErrorMessage(error: any) {
+  if (error?.response?.data?.message) return error.response.data.message;
+  if (error?.code === "ECONNABORTED") {
+    return `Request timeout. Backend URL is ${API_BASE_URL}. For mechanic signup, try smaller photos or check backend is reachable from phone.`;
+  }
+  if (error?.message === "Network Error") {
+    return `Network Error. Check this URL opens on your phone: ${API_BASE_URL}/health`;
+  }
+  return error?.message || `Request failed. Backend URL: ${API_BASE_URL}`;
+}
+
