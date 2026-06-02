@@ -41,7 +41,9 @@ const initialDocs: MechanicDocs = {
 };
 
 function imageAssetToDataUri(asset: ImagePicker.ImagePickerAsset) {
-  if (!asset.base64) return asset.uri;
+  if (!asset.base64) {
+    throw new Error("Image conversion failed. Please retake the photo.");
+  }
   return `data:${asset.mimeType || "image/jpeg"};base64,${asset.base64}`;
 }
 
