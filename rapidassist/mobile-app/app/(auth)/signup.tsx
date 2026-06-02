@@ -220,7 +220,7 @@ export default function Signup() {
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: field === "selfieUrl" ? [1, 1] : [4, 3],
-        quality: 0.35,
+        quality: 0.2,
         base64: true,
         mediaTypes: ["images"],
         cameraType: field === "selfieUrl" ? ImagePicker.CameraType.front : ImagePicker.CameraType.back
