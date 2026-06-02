@@ -2,6 +2,7 @@ const express = require("express");
 const { User, USER_ROLES } = require("../models/User");
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
+const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.post("/register", async (req, res, next) => {
     });
 
     const token = signAccessToken({ sub: user._id.toString(), role: user.role });
+    setAccessTokenCookie(res, token);
 
     res.status(201).json({
       ok: true,
@@ -74,6 +76,7 @@ router.post("/login", async (req, res, next) => {
 
     // reload without passwordHash selection
     const safeUser = await User.findById(user._id);
+    setAccessTokenCookie(res, token);
 
     res.json({
       ok: true,
@@ -87,6 +90,11 @@ router.post("/login", async (req, res, next) => {
 
 router.get("/me", requireAuth, async (req, res) => {
   res.json({ ok: true, user: req.user.toSafeJSON() });
+});
+
+router.post("/logout", (req, res) => {
+  clearAccessTokenCookie(res);
+  res.json({ ok: true });
 });
 
 module.exports = router;
