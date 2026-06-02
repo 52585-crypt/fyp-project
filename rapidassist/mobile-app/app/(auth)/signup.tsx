@@ -10,6 +10,7 @@ import { RAButton } from "../../src/components/RAButton";
 import { register } from "../../src/auth/auth.api";
 import { useAuth } from "../../src/auth/AuthProvider";
 import type { MechanicServiceCategory, UserRole } from "../../src/auth/auth.types";
+import { getNetworkErrorMessage } from "../../src/config/api";
 
 type MechanicPhotoField = "selfieUrl" | "idCardFrontUrl" | "idCardBackUrl" | "workshopPhotoUrl" | "certificateUrl";
 
@@ -317,11 +318,7 @@ export default function Signup() {
       await setSession(data.token, data.user);
       router.replace(data.user.role === "mechanic" ? "/(provider)/dashboard" : "/(user)/home");
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Signup failed (check API_BASE_URL and backend)";
-      setError(msg);
+      setError(getNetworkErrorMessage(e));
     } finally {
       setLoading(false);
     }
