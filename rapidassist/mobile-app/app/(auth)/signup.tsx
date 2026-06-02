@@ -244,7 +244,7 @@ export default function Signup() {
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.35,
+      quality: 0.2,
       base64: true,
       mediaTypes: ["images"]
     });
