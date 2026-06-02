@@ -31,6 +31,7 @@
         "ACCESS_COARSE_LOCATION",
         "READ_MEDIA_IMAGES"
       ],
+      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
