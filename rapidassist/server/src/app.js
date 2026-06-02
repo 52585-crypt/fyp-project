@@ -6,10 +6,29 @@ const authRoutes = require("./routes/auth.routes");
 const vehiclesRoutes = require("./routes/vehicles.routes");
 const requestsRoutes = require("./routes/requests.routes");
 
+function buildCorsOptions() {
+  const allowedOrigins = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return {
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    }
+  };
+}
+
 function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors(buildCorsOptions()));
   app.use(express.json({ limit: "1mb" }));
 
   if (process.env.NODE_ENV !== "test") {
