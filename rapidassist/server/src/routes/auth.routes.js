@@ -2,7 +2,7 @@ const express = require("express");
 const { User, USER_ROLES } = require("../models/User");
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
-const { setAccessTokenCookie } = require("../utils/authCookie");
+const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
 
 const router = express.Router();
 
@@ -90,6 +90,11 @@ router.post("/login", async (req, res, next) => {
 
 router.get("/me", requireAuth, async (req, res) => {
   res.json({ ok: true, user: req.user.toSafeJSON() });
+});
+
+router.post("/logout", (req, res) => {
+  clearAccessTokenCookie(res);
+  res.json({ ok: true });
 });
 
 module.exports = router;
