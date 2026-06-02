@@ -9,10 +9,7 @@ import { ui } from "../../src/ui/system";
 const services = [
   { title: "Car Towing", icon: "car", href: "/(user)/request", tone: "primary" },
   { title: "Fuel Delivery", icon: "water", href: "/(user)/request", tone: "warning" },
-  { title: "Mechanic", icon: "construct", href: "/(user)/request", tone: "success" },
-  { title: "Battery Jump", icon: "battery-charging", href: "/(user)/request", tone: "primary" },
-  { title: "Tyre Change", icon: "disc", href: "/(user)/request", tone: "danger" },
-  { title: "Lockout", icon: "lock-open", href: "/(user)/request", tone: "dark" }
+  { title: "Mechanic", icon: "construct", href: "/(user)/request", tone: "success" }
 ] as const;
 
 export default function UserHome() {
@@ -33,7 +30,7 @@ export default function UserHome() {
           <View style={{ flex: 1 }}>
             <StatusPill label="24/7 Roadside Support" />
             <Text style={styles.heroTitle}>Need help for your vehicle?</Text>
-            <Text style={styles.heroText}>Request towing, fuel, mechanic, battery, tyre, or lockout assistance from verified providers.</Text>
+            <Text style={styles.heroText}>Request car towing, fuel delivery, or mechanic assistance from verified providers.</Text>
             <PrimaryButton title="Create Request" icon="flash" onPress={() => router.push("/(user)/request")} style={{ marginTop: 14 }} />
           </View>
           <View style={styles.heroIcon}>
@@ -81,11 +78,10 @@ const styles = StyleSheet.create({
   heroIcon: { width: 88, height: 88, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   metrics: { marginTop: 12, flexDirection: "row", gap: 12 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  service: { width: "31.7%", minHeight: 118, borderRadius: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, padding: 10, alignItems: "center", justifyContent: "center", gap: 10 },
+  service: { flex: 1, minHeight: 118, borderRadius: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, padding: 10, alignItems: "center", justifyContent: "center", gap: 10 },
   serviceTitle: { color: ui.colors.text, fontSize: 12, lineHeight: 16, fontWeight: "900", textAlign: "center" },
   active: { gap: 14 },
   activeTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   activeTitle: { color: ui.colors.text, fontSize: 15, fontWeight: "900" },
   activeText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 }
 });
-

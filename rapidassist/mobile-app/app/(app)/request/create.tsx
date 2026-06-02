@@ -23,12 +23,9 @@ type ServiceOption = {
 };
 
 const serviceOptions: ServiceOption[] = [
-  { id: "car_repair", title: "Car Repair", subtitle: "Engine, tyre, inspection", icon: "car-sport", category: "car", issueType: "engine" },
-  { id: "bike_repair", title: "Bike Repair", subtitle: "Bike breakdown", icon: "bicycle", category: "bike", issueType: "engine" },
-  { id: "fuel", title: "Fuel Delivery", subtitle: "Petrol support", icon: "water", category: "car", issueType: "fuel_delivery" },
-  { id: "towing", title: "Towing", subtitle: "Move vehicle", icon: "car", category: "towing", issueType: "towing" },
-  { id: "battery", title: "Battery", subtitle: "Jump start", icon: "battery-charging", category: "car", issueType: "battery" },
-  { id: "unknown", title: "Unknown", subtitle: "Inspect first", icon: "help-circle", category: "car", issueType: null, unknownIssue: true }
+  { id: "towing", title: "Car Towing", subtitle: "Move vehicle", icon: "car", category: "car_towing", issueType: "breakdown" },
+  { id: "fuel", title: "Fuel Delivery", subtitle: "Petrol or diesel", icon: "water", category: "fuel_delivery", issueType: "fuel_delivery" },
+  { id: "mechanic", title: "Mechanic", subtitle: "Inspection and repair", icon: "construct", category: "mechanic", issueType: "battery" }
 ];
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
@@ -152,14 +149,34 @@ export default function CreateRequest() {
       await createRequest(token, {
         vehicleId,
         category: selectedService.category,
-        unknownIssue: Boolean(selectedService.unknownIssue),
         issueType: selectedService.unknownIssue ? null : selectedService.issueType,
         description: description.trim() ? description.trim() : null,
-        location: {
+        pickupLocation: {
           lat: Number(lat),
           lng: Number(lng),
           addressText: addressText.trim() ? addressText.trim() : null
-        }
+        },
+        destinationLocation:
+          selectedService.category === "car_towing"
+            ? {
+                lat: Number(lat) + 0.02,
+                lng: Number(lng) + 0.02,
+                addressText: "Destination workshop"
+              }
+            : null,
+        fuelDetails:
+          selectedService.category === "fuel_delivery"
+            ? {
+                fuelType: "petrol",
+                liters: 5
+              }
+            : undefined,
+        mechanicDetails:
+          selectedService.category === "mechanic"
+            ? {
+                issueCategory: "battery"
+              }
+            : undefined
       });
       router.replace("/(app)/home");
     } catch (e: any) {

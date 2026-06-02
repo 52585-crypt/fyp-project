@@ -3,6 +3,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const authRoutes = require("./routes/auth.routes");
+const adminRoutes = require("./routes/admin.routes");
 const vehiclesRoutes = require("./routes/vehicles.routes");
 const requestsRoutes = require("./routes/requests.routes");
 
@@ -40,6 +41,7 @@ function createApp() {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/vehicles", vehiclesRoutes);
   app.use("/api/requests", requestsRoutes);
 

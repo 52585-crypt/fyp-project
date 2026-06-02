@@ -1,22 +1,86 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { acceptRequest, getProviderActiveRequest, listOpenRequests, updateProviderAvailability } from "../../src/requests/requests.api";
+import type { ServiceRequest } from "../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
 
+function serviceTitle(category?: ServiceRequest["category"]) {
+  if (category === "car_towing") return "Car towing request";
+  if (category === "fuel_delivery") return "Fuel delivery request";
+  if (category === "mechanic") return "Mechanic request";
+  return "No matching request";
+}
+
 export default function ProviderDashboard() {
-  const { user } = useAuth();
+  const { token, user } = useAuth();
   const [online, setOnline] = useState(true);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const incoming = requests[0] || null;
+  const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
+  const serviceLabel = useMemo(() => user?.mechanicProfile?.serviceCategory?.replace("_", " ") || "Roadside provider", [user]);
+
+  async function loadRequests() {
+    if (!token || !online) return;
+    try {
+      setError(null);
+      const [open, active] = await Promise.all([listOpenRequests(token), getProviderActiveRequest(token)]);
+      setRequests(open);
+      setActiveRequest(active);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to load requests");
+    }
+  }
+
+  async function onAccept() {
+    if (!token || !incoming) return;
+    try {
+      setLoading(true);
+      const accepted = await acceptRequest(token, incoming.id);
+      router.push({
+        pathname: "/(provider)/jobs",
+        params: { requestId: accepted.id, category: accepted.category }
+      });
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to accept request");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleOnline() {
+    const next = !online;
+    setOnline(next);
+    if (!token) return;
+    try {
+      await updateProviderAvailability(token, next, {
+        lat: 31.5204,
+        lng: 74.3587,
+        addressText: "Lahore"
+      });
+      if (next) loadRequests();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to update availability");
+    }
+  }
+
+  useEffect(() => {
+    loadRequests();
+  }, [token, online]);
 
   return (
     <View style={{ flex: 1 }}>
       <AppShell
         title={`Hello, ${user?.name || "Provider"}`}
-        subtitle={user?.mechanicProfile?.serviceCategory?.replace("_", " ") || "Roadside provider"}
+        subtitle={serviceLabel}
         right={
-          <Pressable onPress={() => setOnline((value) => !value)} style={[styles.toggle, online ? styles.toggleOn : null]}>
+          <Pressable onPress={toggleOnline} style={[styles.toggle, online ? styles.toggleOn : null]}>
             <View style={[styles.toggleDot, online ? styles.toggleDotOn : null]} />
           </Pressable>
         }
@@ -25,29 +89,63 @@ export default function ProviderDashboard() {
           <View style={{ flex: 1 }}>
             <StatusPill label={online ? "Online" : "Offline"} tone={online ? "success" : "danger"} />
             <Text style={styles.heroTitle}>{online ? "You are receiving jobs" : "Go online to receive jobs"}</Text>
-            <Text style={styles.heroText}>Accept requests, update job status, and manage earnings from one provider dashboard.</Text>
+            <Text style={styles.heroText}>Only {serviceLabel} requests are shown for your provider account.</Text>
           </View>
           <View style={styles.heroIcon}><Ionicons name="construct" size={42} color="white" /></View>
         </Card>
 
         <View style={styles.metrics}>
-          <Metric label="Today jobs" value="6" icon="briefcase" />
-          <Metric label="Today earning" value="PKR 8.4k" icon="wallet" />
+          <Metric label="Open jobs" value={String(requests.length)} icon="briefcase" />
+          <Metric label="Today earning" value="PKR 0" icon="wallet" />
         </View>
 
-        <SectionTitle title="Incoming request" action="2 min ago" />
+        {activeRequest ? (
+          <>
+            <SectionTitle title="Active job" action={activeRequest.status.replaceAll("_", " ")} />
+            <Card style={styles.job}>
+              <View style={styles.jobTop}>
+                <IconBox icon={activeRequest.category === "fuel_delivery" ? "water" : activeRequest.category === "mechanic" ? "construct" : "car"} tone="success" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.jobTitle}>{serviceTitle(activeRequest.category)}</Text>
+                  <Text style={styles.jobMeta}>{activeRequest.pickupLocation?.addressText || "Pickup location"}</Text>
+                </View>
+                <StatusPill label={`PKR ${activeRequest.estimate?.total?.toLocaleString() || 0}`} tone="success" />
+              </View>
+              <PrimaryButton
+                title="Continue Job"
+                icon="navigate"
+                variant="success"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(provider)/jobs",
+                    params: { requestId: activeRequest.id, category: activeRequest.category }
+                  })
+                }
+              />
+            </Card>
+          </>
+        ) : null}
+
+        <SectionTitle title="Incoming request" action={incoming ? "New" : "None"} />
         <Card style={styles.job}>
           <View style={styles.jobTop}>
-            <IconBox icon="car" />
+            <IconBox icon={incoming?.category === "fuel_delivery" ? "water" : incoming?.category === "mechanic" ? "construct" : "car"} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.jobTitle}>Car towing request</Text>
-              <Text style={styles.jobMeta}>Gulberg 3 - Johar Town - 3.2 km</Text>
+              <Text style={styles.jobTitle}>{serviceTitle(incoming?.category)}</Text>
+              <Text style={styles.jobMeta}>
+                {incoming
+                  ? `${incoming.pickupLocation?.addressText || "Pickup location"} - PKR ${incoming.estimate?.total?.toLocaleString() || 0}`
+                  : online
+                    ? "No open request for your service right now."
+                    : "You are offline."}
+              </Text>
             </View>
-            <StatusPill label="PKR 2,788" tone="warning" />
+            {incoming ? <StatusPill label={incoming.status.replaceAll("_", " ")} tone="warning" /> : null}
           </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <PrimaryButton title="Reject" variant="outline" style={{ flex: 1 }} />
-            <PrimaryButton title="Accept" icon="checkmark" variant="success" style={{ flex: 1 }} onPress={() => router.push("/(provider)/jobs")} />
+            <PrimaryButton title="Refresh" variant="outline" style={{ flex: 1 }} onPress={loadRequests} />
+            <PrimaryButton title={loading ? "Accepting..." : "Accept"} icon="checkmark" variant="success" disabled={!incoming || loading} style={{ flex: 1 }} onPress={onAccept} />
           </View>
         </Card>
 
@@ -56,7 +154,7 @@ export default function ProviderDashboard() {
           <IconBox icon="shield-checkmark" tone={user?.verificationStatus === "verified" ? "success" : "warning"} />
           <View style={{ flex: 1 }}>
             <Text style={styles.verifyTitle}>{user?.verificationStatus === "verified" ? "Verified provider" : "Verification pending"}</Text>
-            <Text style={styles.verifyText}>ID, selfie, workshop, and certificate documents are stored in your mechanic profile.</Text>
+            <Text style={styles.verifyText}>Only verified service-category providers should receive production jobs.</Text>
           </View>
         </Card>
       </AppShell>
@@ -78,10 +176,10 @@ const styles = StyleSheet.create({
   job: { gap: 14 },
   jobTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   jobTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  jobMeta: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700" },
+  jobMeta: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
   actions: { flexDirection: "row", gap: 10 },
   verify: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 12 },
   verifyTitle: { color: ui.colors.text, fontSize: 15, fontWeight: "900" },
-  verifyText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 }
+  verifyText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
+  error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
 });
-

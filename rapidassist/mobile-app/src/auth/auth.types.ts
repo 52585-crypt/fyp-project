@@ -31,6 +31,17 @@ export type SafeUser = {
   certificateUrl: string | null;
   verificationStatus: "unverified" | "pending" | "verified" | "rejected";
   mechanicProfile?: MechanicProfile | null;
+  providerState?: {
+    isOnline: boolean;
+    currentLocation?: {
+      lat: number | null;
+      lng: number | null;
+      addressText: string | null;
+      updatedAt?: string | null;
+    } | null;
+    activeRequestId?: string | null;
+    lastSeenAt?: string | null;
+  } | null;
 };
 
 export type AuthResponse = {

@@ -56,6 +56,18 @@ const userSchema = new mongoose.Schema(
     ratingCount: { type: Number, default: 0 },
     completedJobs: { type: Number, default: 0 },
     complaintsCount: { type: Number, default: 0 }
+    ,
+    providerState: {
+      isOnline: { type: Boolean, default: false },
+      currentLocation: {
+        lat: { type: Number, default: null },
+        lng: { type: Number, default: null },
+        addressText: { type: String, default: null, trim: true },
+        updatedAt: { type: Date, default: null }
+      },
+      activeRequestId: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceRequest", default: null },
+      lastSeenAt: { type: Date, default: null }
+    }
   },
   { timestamps: true }
 );
@@ -94,6 +106,14 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
     ratingCount: this.ratingCount,
     completedJobs: this.completedJobs,
     complaintsCount: this.complaintsCount,
+    providerState: this.providerState
+      ? {
+          isOnline: Boolean(this.providerState.isOnline),
+          currentLocation: this.providerState.currentLocation,
+          activeRequestId: this.providerState.activeRequestId ? this.providerState.activeRequestId.toString() : null,
+          lastSeenAt: this.providerState.lastSeenAt
+        }
+      : null,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };

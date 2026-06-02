@@ -22,7 +22,7 @@ const serviceTiles: Array<{
 
 function statusLabel(status?: ServiceRequest["status"]) {
   if (!status) return "No active request";
-  if (status === "open") return "Request in progress";
+  if (status !== "completed" && status !== "cancelled") return "Request in progress";
   if (status === "completed") return "Last request completed";
   return "Last request cancelled";
 }
@@ -88,7 +88,7 @@ export default function Home() {
   }, [loadRequests]);
 
   const activeRequest = useMemo(
-    () => requests.find((request) => request.status === "open") || requests[0] || null,
+    () => requests.find((request) => request.status !== "completed" && request.status !== "cancelled") || requests[0] || null,
     [requests]
   );
 
