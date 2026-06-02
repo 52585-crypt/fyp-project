@@ -3,6 +3,7 @@ import { Link, router } from "expo-router";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { login } from "../../src/auth/auth.api";
 import { useAuth } from "../../src/auth/AuthProvider";
+import { getNetworkErrorMessage } from "../../src/config/api";
 import { Field, PrimaryButton, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
 
@@ -23,7 +24,7 @@ export default function Login() {
       await setSession(data.token, data.user);
       router.replace(data.user.role === "mechanic" ? "/(provider)/dashboard" : "/(user)/home");
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Login failed. Check backend and API URL.");
+      setError(getNetworkErrorMessage(e));
     } finally {
       setLoading(false);
     }
