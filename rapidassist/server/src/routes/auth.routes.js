@@ -76,6 +76,7 @@ router.post("/login", async (req, res, next) => {
 
     // reload without passwordHash selection
     const safeUser = await User.findById(user._id);
+    setAccessTokenCookie(res, token);
 
     res.json({
       ok: true,
