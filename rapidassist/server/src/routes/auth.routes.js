@@ -2,6 +2,7 @@ const express = require("express");
 const { User, USER_ROLES } = require("../models/User");
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
+const { setAccessTokenCookie } = require("../utils/authCookie");
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.post("/register", async (req, res, next) => {
     });
 
     const token = signAccessToken({ sub: user._id.toString(), role: user.role });
+    setAccessTokenCookie(res, token);
 
     res.status(201).json({
       ok: true,
