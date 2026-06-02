@@ -1,0 +1,16 @@
+Starting project at D:\fyp-project\rapidassist\mobile-app
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8085
+Logs for your project will appear below.
+Android .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android .\index.ts ▓▓▓▓░░░░░░░░░░░░ 29.8% (23/54)
+Android .\index.ts ▓▓▓▓░░░░░░░░░░░░ 29.8% (138/321)
+Android .\index.ts ▓▓▓▓▓▓░░░░░░░░░░ 40.1% (337/547)
+Android .\index.ts ▓▓▓▓▓▓▓▓░░░░░░░░ 53.1% (515/707)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 71.7% (718/848)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.6% (819/997)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.6% ( 978/1188)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 86.4% (1177/1266)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1404/1404)
+Android Bundled 32702ms index.ts (1404 modules)

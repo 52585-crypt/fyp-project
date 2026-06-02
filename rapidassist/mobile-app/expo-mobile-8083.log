@@ -1,0 +1,25 @@
+Starting project at D:\fyp-project\rapidassist\mobile-app
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+Android .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android .\index.ts ▓░░░░░░░░░░░░░░░  9.0% ( 35/149)
+Android .\index.ts ▓▓▓░░░░░░░░░░░░░ 22.5% (130/274)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.2% (388/477)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 85.5% (520/568)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.4% (688/690)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (700/700)
+Android Bundled 21954ms index.ts (700 modules)
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 35.1% (147/337)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 44.5% (411/619)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.9% (608/836)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 87.9% (907/987)
+Web Bundled 16228ms node_modules\expo-router\entry.js (1100 modules)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 90ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Android .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 63ms index.ts (1 module)

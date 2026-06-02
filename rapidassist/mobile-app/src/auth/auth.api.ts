@@ -1,5 +1,5 @@
 import { api } from "../config/api";
-import type { AuthResponse, UserRole } from "./auth.types";
+import type { AuthResponse, MechanicProfile, UserRole } from "./auth.types";
 
 export async function register(params: {
   role: UserRole;
@@ -8,6 +8,7 @@ export async function register(params: {
   password: string;
   isCertified?: boolean;
   certificateUrl?: string;
+  mechanicProfile?: Omit<MechanicProfile, "identityMatch">;
 }) {
   const res = await api.post<AuthResponse>("/api/auth/register", params);
   return res.data;

@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 
 const USER_ROLES = ["user", "mechanic"];
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
+const MECHANIC_SERVICE_CATEGORIES = ["mechanic", "fuel_delivery", "towing"];
+const IDENTITY_MATCH_STATUSES = ["pending", "matched", "mismatch", "manual_review"];
 
 const userSchema = new mongoose.Schema(
   {
@@ -19,6 +21,34 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: VERIFICATION_STATUSES,
       default: "unverified"
+    },
+    mechanicProfile: {
+      serviceCategory: {
+        type: String,
+        enum: MECHANIC_SERVICE_CATEGORIES,
+        default: null
+      },
+      selfieUrl: { type: String, default: null },
+      idCardFrontUrl: { type: String, default: null },
+      idCardBackUrl: { type: String, default: null },
+      workshopPhotoUrl: { type: String, default: null },
+      certificateUrl: { type: String, default: null },
+      liveLocation: {
+        lat: { type: Number, default: null },
+        lng: { type: Number, default: null },
+        addressText: { type: String, default: null, trim: true },
+        capturedAt: { type: Date, default: null }
+      },
+      identityMatch: {
+        status: {
+          type: String,
+          enum: IDENTITY_MATCH_STATUSES,
+          default: "pending"
+        },
+        score: { type: Number, default: null },
+        provider: { type: String, default: null },
+        checkedAt: { type: Date, default: null }
+      }
     },
 
     // Trust signals (kept simple for v1)
@@ -48,6 +78,18 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
     isCertified: this.isCertified,
     certificateUrl: this.certificateUrl,
     verificationStatus: this.verificationStatus,
+    mechanicProfile: this.mechanicProfile
+      ? {
+          serviceCategory: this.mechanicProfile.serviceCategory,
+          selfieUrl: this.mechanicProfile.selfieUrl,
+          idCardFrontUrl: this.mechanicProfile.idCardFrontUrl,
+          idCardBackUrl: this.mechanicProfile.idCardBackUrl,
+          workshopPhotoUrl: this.mechanicProfile.workshopPhotoUrl,
+          certificateUrl: this.mechanicProfile.certificateUrl,
+          liveLocation: this.mechanicProfile.liveLocation,
+          identityMatch: this.mechanicProfile.identityMatch
+        }
+      : null,
     ratingAvg: this.ratingAvg,
     ratingCount: this.ratingCount,
     completedJobs: this.completedJobs,
@@ -59,5 +101,5 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
 
 const User = mongoose.model("User", userSchema);
 
-module.exports = { User, USER_ROLES, VERIFICATION_STATUSES };
+module.exports = { User, USER_ROLES, VERIFICATION_STATUSES, MECHANIC_SERVICE_CATEGORIES };
 
