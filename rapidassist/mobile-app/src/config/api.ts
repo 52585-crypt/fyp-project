@@ -22,16 +22,15 @@ function computeBaseUrl() {
     return `http://${host}:4000`;
   }
 
-  // Android emulator default
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:4000";
+  const expoHost = getExpoHost();
+  if (expoHost) {
+    return `http://${expoHost}:4000`;
   }
 
-  // iOS simulator + fallback (change to your PC LAN IP for real device)
+  if (Platform.OS === "android") return "http://10.0.2.2:4000";
   return "http://localhost:4000";
 }
 
-// For real device, set to your PC LAN IP if needed (e.g. http://192.168.1.5:4000)
 export const API_BASE_URL = computeBaseUrl();
 
 export const api = axios.create({
