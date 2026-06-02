@@ -1,5 +1,16 @@
 import axios from "axios";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
+
+function getExpoHost() {
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest2?.extra?.expoClient?.hostUri ||
+    Constants.manifest?.debuggerHost;
+
+  if (!hostUri || typeof hostUri !== "string") return null;
+  return hostUri.split(":")[0] || null;
+}
 
 function computeBaseUrl() {
   // Web (expo start --web): call backend on same host by default
