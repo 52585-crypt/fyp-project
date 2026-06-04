@@ -3,36 +3,36 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
-import { acceptRequest, getProviderActiveRequest, listOpenRequests, updateProviderAvailability } from "../../src/requests/requests.api";
-import type { ServiceRequest } from "../../src/requests/requests.types";
+import { acceptRequest, getProviderActiveRequest, getProviderEarnings, listOpenRequests, updateProviderAvailability } from "../../src/requests/requests.api";
+import { getProviderServiceTitle, getRequestTitle, getServiceIcon } from "../../src/requests/serviceCatalog";
+import type { ProviderEarnings, ServiceRequest } from "../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
-
-function serviceTitle(category?: ServiceRequest["category"]) {
-  if (category === "car_towing") return "Car towing request";
-  if (category === "fuel_delivery") return "Fuel delivery request";
-  if (category === "mechanic") return "Mechanic request";
-  return "No matching request";
-}
 
 export default function ProviderDashboard() {
   const { token, user } = useAuth();
   const [online, setOnline] = useState(true);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [earnings, setEarnings] = useState<ProviderEarnings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const incoming = requests[0] || null;
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
-  const serviceLabel = useMemo(() => user?.mechanicProfile?.serviceCategory?.replace("_", " ") || "Roadside provider", [user]);
+  const serviceLabel = useMemo(() => getProviderServiceTitle(user?.mechanicProfile?.serviceCategory), [user]);
 
-  async function loadRequests() {
-    if (!token || !online) return;
+  async function loadRequests(includeOpen = online) {
+    if (!token) return;
     try {
       setError(null);
-      const [open, active] = await Promise.all([listOpenRequests(token), getProviderActiveRequest(token)]);
+      const [open, active, providerEarnings] = await Promise.all([
+        includeOpen ? listOpenRequests(token) : Promise.resolve([]),
+        getProviderActiveRequest(token),
+        getProviderEarnings(token)
+      ]);
       setRequests(open);
       setActiveRequest(active);
+      setEarnings(providerEarnings);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to load requests");
     }
@@ -64,7 +64,8 @@ export default function ProviderDashboard() {
         lng: 74.3587,
         addressText: "Lahore"
       });
-      if (next) loadRequests();
+      if (next) loadRequests(true);
+      else setRequests([]);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to update availability");
     }
@@ -96,7 +97,7 @@ export default function ProviderDashboard() {
 
         <View style={styles.metrics}>
           <Metric label="Open jobs" value={String(requests.length)} icon="briefcase" />
-          <Metric label="Today earning" value="PKR 0" icon="wallet" />
+          <Metric label="Today earning" value={`PKR ${earnings?.today?.toLocaleString() || 0}`} icon="wallet" />
         </View>
 
         {activeRequest ? (
@@ -104,9 +105,9 @@ export default function ProviderDashboard() {
             <SectionTitle title="Active job" action={activeRequest.status.replaceAll("_", " ")} />
             <Card style={styles.job}>
               <View style={styles.jobTop}>
-                <IconBox icon={activeRequest.category === "fuel_delivery" ? "water" : activeRequest.category === "mechanic" ? "construct" : "car"} tone="success" />
+                <IconBox icon={getServiceIcon(activeRequest.category)} tone="success" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.jobTitle}>{serviceTitle(activeRequest.category)}</Text>
+                  <Text style={styles.jobTitle}>{getRequestTitle(activeRequest.category)}</Text>
                   <Text style={styles.jobMeta}>{activeRequest.pickupLocation?.addressText || "Pickup location"}</Text>
                 </View>
                 <StatusPill label={`PKR ${activeRequest.estimate?.total?.toLocaleString() || 0}`} tone="success" />
@@ -129,9 +130,9 @@ export default function ProviderDashboard() {
         <SectionTitle title="Incoming request" action={incoming ? "New" : "None"} />
         <Card style={styles.job}>
           <View style={styles.jobTop}>
-            <IconBox icon={incoming?.category === "fuel_delivery" ? "water" : incoming?.category === "mechanic" ? "construct" : "car"} />
+            <IconBox icon={getServiceIcon(incoming?.category)} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.jobTitle}>{serviceTitle(incoming?.category)}</Text>
+              <Text style={styles.jobTitle}>{getRequestTitle(incoming?.category)}</Text>
               <Text style={styles.jobMeta}>
                 {incoming
                   ? `${incoming.pickupLocation?.addressText || "Pickup location"} - PKR ${incoming.estimate?.total?.toLocaleString() || 0}`

@@ -6,6 +6,7 @@ export type RequestLocation = {
   lat: number;
   lng: number;
   addressText?: string | null;
+  updatedAt?: string | null;
 };
 
 export type RequestStatus =
@@ -44,6 +45,7 @@ export type ServiceRequest = {
   };
   pickupLocation: RequestLocation;
   destinationLocation: RequestLocation | null;
+  providerLocation?: RequestLocation | null;
   issueType: string | null;
   description: string | null;
   photos: string[];
@@ -83,6 +85,7 @@ export type CreateRequestInput = {
   };
   pickupLocation: RequestLocation;
   destinationLocation?: RequestLocation | null;
+  distanceKm?: number | null;
   issueType?: string | null;
   description?: string | null;
   fuelDetails?: {

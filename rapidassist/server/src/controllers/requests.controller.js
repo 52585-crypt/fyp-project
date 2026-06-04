@@ -79,6 +79,45 @@ function optionalLocation(input) {
   };
 }
 
+function providerLocationFromUser(provider) {
+  const location = provider?.providerState?.currentLocation;
+  const lat = parseNum(location?.lat);
+  const lng = parseNum(location?.lng);
+  if (lat == null || lng == null) return null;
+
+  return {
+    lat,
+    lng,
+    addressText: normalizeStr(location?.addressText) || null,
+    updatedAt: location?.updatedAt || null
+  };
+}
+
+async function attachProviderLocations(requests) {
+  const providerIds = [
+    ...new Set(
+      requests
+        .map((request) => request.providerId?.toString())
+        .filter(Boolean)
+    )
+  ];
+
+  if (!providerIds.length) {
+    return requests.map((request) => ({
+      ...request.toJSONSafe(),
+      providerLocation: null
+    }));
+  }
+
+  const providers = await User.find({ _id: { $in: providerIds } }).select("providerState");
+  const providerMap = new Map(providers.map((provider) => [provider._id.toString(), providerLocationFromUser(provider)]));
+
+  return requests.map((request) => ({
+    ...request.toJSONSafe(),
+    providerLocation: providerMap.get(request.providerId?.toString()) || null
+  }));
+}
+
 function activeStatuses() {
   return [
     "provider_assigned",
@@ -233,7 +272,7 @@ async function createRequest(req, res, next) {
 async function listMyRequests(req, res, next) {
   try {
     const requests = await ServiceRequest.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.json({ ok: true, requests: requests.map((r) => r.toJSONSafe()) });
+    res.json({ ok: true, requests: await attachProviderLocations(requests) });
   } catch (err) {
     next(err);
   }

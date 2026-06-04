@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { AppShell, BottomNav, Card, IconBox, Metric, StatusPill } from "../../../src/ui/components";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { getProviderEarnings } from "../../../src/requests/requests.api";
+import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
 import type { ProviderEarnings } from "../../../src/requests/requests.types";
 import { ui } from "../../../src/ui/system";
 
@@ -33,9 +34,9 @@ export default function ProviderEarnings() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {(earnings?.recent || []).map((request) => (
           <Card key={request.id} style={styles.row}>
-            <IconBox icon="receipt" />
+            <IconBox icon={getServiceIcon(request.category)} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{request.category.replace("_", " ").toUpperCase()}</Text>
+              <Text style={styles.title}>{getServiceTitle(request.category)}</Text>
               <Text style={styles.meta}>{request.pickupLocation?.addressText || "Completed job"}</Text>
             </View>
             <StatusPill label={`PKR ${request.estimate?.total?.toLocaleString() || 0}`} tone="success" />

@@ -3,19 +3,53 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { approveExtraWork, listMyRequests } from "../../../src/requests/requests.api";
-import type { ServiceRequest } from "../../../src/requests/requests.types";
+import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
-const baseSteps = ["Searching", "Assigned", "On way", "Arrived", "In progress", "Completed"];
+const TRACKING_REFRESH_MS = 5000;
 
-function activeStep(status?: ServiceRequest["status"]) {
-  if (!status || status === "searching_provider") return 0;
-  if (status === "provider_assigned") return 1;
-  if (status === "provider_on_way") return 2;
-  if (status === "provider_arrived") return 3;
-  if (status === "completed") return 5;
-  return 4;
+const serviceSteps: Record<ServiceRequest["category"], Array<{ label: string; statuses: RequestStatus[] }>> = {
+  car_towing: [
+    { label: "Searching", statuses: ["searching_provider"] },
+    { label: "Assigned", statuses: ["provider_assigned"] },
+    { label: "On way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Vehicle loaded", statuses: ["vehicle_loaded"] },
+    { label: "Reached destination", statuses: ["reached_destination"] },
+    { label: "Completed", statuses: ["completed"] }
+  ],
+  fuel_delivery: [
+    { label: "Searching", statuses: ["searching_provider"] },
+    { label: "Assigned", statuses: ["provider_assigned"] },
+    { label: "On way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Fuel delivered", statuses: ["fuel_delivered"] },
+    { label: "Completed", statuses: ["completed"] }
+  ],
+  mechanic: [
+    { label: "Searching", statuses: ["searching_provider"] },
+    { label: "Assigned", statuses: ["provider_assigned"] },
+    { label: "On way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Inspection", statuses: ["inspection_started"] },
+    { label: "Approval", statuses: ["extra_work_requested", "waiting_user_approval"] },
+    { label: "Work started", statuses: ["work_started"] },
+    { label: "Completed", statuses: ["completed"] }
+  ]
+};
+
+function stepsFor(category?: ServiceRequest["category"]) {
+  return serviceSteps[category || "car_towing"];
+}
+
+function activeStep(status?: ServiceRequest["status"], category?: ServiceRequest["category"]) {
+  const steps = stepsFor(category);
+  if (!status) return 0;
+  const index = steps.findIndex((item) => item.statuses.includes(status));
+  if (index >= 0) return index;
+  if (status === "cancelled") return 0;
+  return Math.max(0, steps.length - 2);
 }
 
 function titleFor(category?: ServiceRequest["category"]) {
@@ -24,11 +58,23 @@ function titleFor(category?: ServiceRequest["category"]) {
   return "Car Towing";
 }
 
+function providerLocationText(request?: ServiceRequest | null) {
+  const location = request?.providerLocation;
+  if (!location) return "Waiting for provider location.";
+
+  const base = location.addressText || `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
+  if (!location.updatedAt) return base;
+
+  return `${base} - updated ${new Date(location.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function UserTracking() {
   const { token } = useAuth();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const step = useMemo(() => activeStep(request?.status), [request?.status]);
+  const steps = useMemo(() => stepsFor(request?.category), [request?.category]);
+  const step = useMemo(() => activeStep(request?.status, request?.category), [request?.category, request?.status]);
+  const providerLocation = useMemo(() => providerLocationText(request), [request?.providerLocation]);
   const extraWork = request?.mechanicDetails?.extraWork;
 
   async function load() {
@@ -56,6 +102,8 @@ export default function UserTracking() {
 
   useEffect(() => {
     load();
+    const timer = setInterval(load, TRACKING_REFRESH_MS);
+    return () => clearInterval(timer);
   }, [token]);
 
   return (
@@ -65,7 +113,7 @@ export default function UserTracking() {
           <View style={styles.road} />
           <View style={styles.pinUser}><Ionicons name="person" size={18} color="white" /></View>
           <View style={styles.pinProvider}><Ionicons name={request?.category === "mechanic" ? "construct" : request?.category === "fuel_delivery" ? "water" : "car"} size={18} color="white" /></View>
-          <Text style={styles.mapText}>{request?.pickupLocation?.addressText || "Map preview"}</Text>
+          <Text style={styles.mapText}>{providerLocation}</Text>
         </View>
 
         <Card style={styles.provider}>
@@ -76,6 +124,7 @@ export default function UserTracking() {
               <Text style={styles.providerMeta}>
                 {request ? `PKR ${request.estimate?.total?.toLocaleString() || 0} - ${request.pickupLocation?.addressText || "Pickup"}` : "Create a request to start tracking."}
               </Text>
+              {request ? <Text style={styles.locationMeta}>{providerLocation}</Text> : null}
             </View>
             {request ? <StatusPill label={request.status.replaceAll("_", " ")} tone="warning" /> : null}
           </View>
@@ -99,10 +148,10 @@ export default function UserTracking() {
         ) : null}
 
         <Card style={styles.stepsCard}>
-          {baseSteps.map((stepLabel, index) => (
-            <View key={stepLabel} style={styles.stepRow}>
+          {steps.map((item, index) => (
+            <View key={item.label} style={styles.stepRow}>
               <View style={[styles.stepDot, index <= step ? styles.stepDotActive : null]} />
-              <Text style={[styles.stepText, index <= step ? styles.stepTextActive : null]}>{stepLabel}</Text>
+              <Text style={[styles.stepText, index <= step ? styles.stepTextActive : null]}>{item.label}</Text>
             </View>
           ))}
         </Card>
@@ -122,6 +171,7 @@ const styles = StyleSheet.create({
   providerTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   providerName: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
   providerMeta: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
+  locationMeta: { marginTop: 3, color: ui.colors.primary, fontSize: 12, fontWeight: "800", lineHeight: 17 },
   actions: { flexDirection: "row", gap: 10 },
   extra: { marginTop: 12, gap: 10 },
   extraTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
@@ -135,4 +185,3 @@ const styles = StyleSheet.create({
   stepTextActive: { color: ui.colors.text },
   error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
 });
-

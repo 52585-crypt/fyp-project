@@ -30,7 +30,7 @@ const serviceCategories: Array<{ label: string; value: MechanicServiceCategory; 
   { label: "Towing", value: "towing", icon: "car" }
 ];
 
-const mechanicSteps = ["Service", "Account", "Identity", "Workshop"];
+const mechanicSteps = ["Service", "Account", "Identity", "Base"];
 
 const initialDocs: MechanicDocs = {
   selfieUrl: "",
@@ -332,14 +332,14 @@ export default function Signup() {
         <View style={styles.header}>
           <Ionicons name="person-add" size={24} color={colors.primary} />
           <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>Mechanics complete identity and service verification before receiving jobs.</Text>
+          <Text style={styles.subtitle}>Providers complete identity and service verification before receiving jobs.</Text>
         </View>
 
         <View style={styles.form}>
           <Text style={styles.label}>Role</Text>
           <View style={styles.pills}>
             <RolePill label="User" selected={role === "user"} onPress={() => selectRole("user")} />
-            <RolePill label="Mechanic" selected={role === "mechanic"} onPress={() => selectRole("mechanic")} />
+            <RolePill label="Provider" selected={role === "mechanic"} onPress={() => selectRole("mechanic")} />
           </View>
 
           {role === "user" ? (
@@ -431,7 +431,7 @@ export default function Signup() {
 
               {mechanicStep === 3 ? (
                 <>
-                  <Text style={styles.sectionTitle}>Workshop and certificate</Text>
+                  <Text style={styles.sectionTitle}>Service base and certificate</Text>
                   <UploadRow
                     title="Workshop photo"
                     value={docs.workshopPhotoUrl}

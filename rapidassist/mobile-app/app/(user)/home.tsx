@@ -3,14 +3,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
+import type { RequestCategory } from "../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
 
 const services = [
-  { title: "Car Towing", icon: "car", href: "/(user)/request", tone: "primary" },
-  { title: "Fuel Delivery", icon: "water", href: "/(user)/request", tone: "warning" },
-  { title: "Mechanic", icon: "construct", href: "/(user)/request", tone: "success" }
+  { title: "Car Towing", icon: "car", category: "car_towing", tone: "primary" },
+  { title: "Fuel Delivery", icon: "water", category: "fuel_delivery", tone: "warning" },
+  { title: "Mechanic", icon: "construct", category: "mechanic", tone: "success" }
 ] as const;
+
+function openRequest(category?: RequestCategory) {
+  router.push({
+    pathname: "/(user)/request",
+    params: category ? { category } : undefined
+  });
+}
 
 export default function UserHome() {
   const { user } = useAuth();
@@ -31,7 +39,7 @@ export default function UserHome() {
             <StatusPill label="24/7 Roadside Support" />
             <Text style={styles.heroTitle}>Need help for your vehicle?</Text>
             <Text style={styles.heroText}>Request car towing, fuel delivery, or mechanic assistance from verified providers.</Text>
-            <PrimaryButton title="Create Request" icon="flash" onPress={() => router.push("/(user)/request")} style={{ marginTop: 14 }} />
+            <PrimaryButton title="Create Request" icon="flash" onPress={() => openRequest()} style={{ marginTop: 14 }} />
           </View>
           <View style={styles.heroIcon}>
             <Ionicons name="car-sport" size={46} color="white" />
@@ -46,7 +54,7 @@ export default function UserHome() {
         <SectionTitle title="Services" action="View all" />
         <View style={styles.grid}>
           {services.map((service) => (
-            <Pressable key={service.title} onPress={() => router.push(service.href)} style={styles.service}>
+            <Pressable key={service.title} onPress={() => openRequest(service.category)} style={styles.service}>
               <IconBox icon={service.icon} tone={service.tone} />
               <Text style={styles.serviceTitle}>{service.title}</Text>
             </Pressable>
@@ -62,7 +70,7 @@ export default function UserHome() {
               <Text style={styles.activeText}>Start a request and track provider arrival here.</Text>
             </View>
           </View>
-          <PrimaryButton title="Emergency SOS" icon="alert" variant="danger" onPress={() => router.push("/(user)/request")} />
+          <PrimaryButton title="Emergency SOS" icon="alert" variant="danger" onPress={() => openRequest()} />
         </Card>
       </AppShell>
       <BottomNav role="user" active="Home" />
