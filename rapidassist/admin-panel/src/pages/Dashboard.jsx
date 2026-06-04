@@ -90,6 +90,7 @@ export function Dashboard() {
           <div style={styles.subtitle}>
             RapidAssist operations overview{lastUpdated ? ` - updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
           </div>
+          <div style={styles.apiMeta}>API: {API_BASE_URL}</div>
         </div>
         <div style={styles.nav}>
           <button type="button" onClick={loadDashboard} style={styles.refreshButton}>
@@ -302,6 +303,7 @@ const styles = {
   },
   title: { fontSize: 22, fontWeight: 900, color: "var(--text)" },
   subtitle: { marginTop: 4, color: "var(--muted)", fontSize: 13 },
+  apiMeta: { marginTop: 4, color: "var(--muted)", fontSize: 11, fontWeight: 800 },
   nav: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" },
   link: { color: "var(--primary)", fontWeight: 900 },
   smallLink: { color: "var(--primary)", fontSize: 12, fontWeight: 900 },
