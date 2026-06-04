@@ -69,6 +69,7 @@ export function Dashboard() {
     [stats.activeRequests, stats.cancelledRequests, stats.completedRequests]
   );
   const completionRate = totalRequests ? Math.round(((stats.completedRequests || 0) / totalRequests) * 100) : 0;
+  const averageJobValue = stats.completedRequests ? Math.round((stats.revenue || 0) / stats.completedRequests) : 0;
 
   return (
     <div style={styles.page}>
@@ -122,7 +123,7 @@ export function Dashboard() {
         <ActionCard
           title="Revenue"
           value={formatCurrency(stats.revenue)}
-          text="Completed request estimate total."
+          text={`${formatCurrency(averageJobValue)} average completed job value.`}
           tone="primary"
         />
       </div>
