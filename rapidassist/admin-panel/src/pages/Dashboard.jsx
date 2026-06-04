@@ -90,6 +90,17 @@ export function Dashboard() {
       </div>
 
       {error ? <div style={styles.error}>{error}</div> : null}
+      {!error && (stats.pendingProviders > 0 || stats.activeRequests > 0) ? (
+        <div style={styles.alert}>
+          <div>
+            <div style={styles.alertTitle}>Action needed</div>
+            <div style={styles.alertText}>
+              {stats.pendingProviders || 0} provider reviews pending and {stats.activeRequests || 0} requests active.
+            </div>
+          </div>
+          <Link to="/providers" style={styles.alertLink}>Open provider queue</Link>
+        </div>
+      ) : null}
 
       <div style={styles.heroGrid}>
         <div style={styles.heroPanel}>
@@ -300,6 +311,20 @@ const styles = {
     padding: 12,
     fontWeight: 800
   },
+  alert: {
+    marginTop: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    border: "1px solid #fde68a",
+    borderRadius: 16,
+    background: "#fffbeb",
+    padding: 14
+  },
+  alertTitle: { color: "#92400e", fontSize: 14, fontWeight: 900 },
+  alertText: { marginTop: 3, color: "#92400e", fontSize: 12, fontWeight: 700 },
+  alertLink: { color: "#92400e", fontSize: 12, fontWeight: 900 },
   heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(3, 1fr)", gap: 12 },
   heroPanel: { border: "1px solid var(--border)", borderRadius: 18, padding: 18, background: "#111827", color: "white" },
   eyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 900 },
