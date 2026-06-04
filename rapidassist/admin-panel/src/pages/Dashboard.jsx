@@ -23,6 +23,10 @@ function statusTone(status) {
   return { background: "#dbeafe", color: "#1d4ed8" };
 }
 
+function formatCurrency(value) {
+  return `PKR ${Number(value || 0).toLocaleString()}`;
+}
+
 export function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -116,7 +120,7 @@ export function Dashboard() {
         />
         <ActionCard
           title="Revenue"
-          value={`PKR ${(stats.revenue || 0).toLocaleString()}`}
+          value={formatCurrency(stats.revenue)}
           text="Completed request estimate total."
           tone="primary"
         />
@@ -189,7 +193,7 @@ export function Dashboard() {
                     </div>
                   </div>
                   <span style={{ ...styles.badge, ...statusTone(request.status) }}>{statusLabel(request.status)}</span>
-                  <div style={styles.amount}>PKR {(request.estimate?.total || 0).toLocaleString()}</div>
+                  <div style={styles.amount}>{formatCurrency(request.estimate?.total)}</div>
                 </div>
               ))}
             </div>
