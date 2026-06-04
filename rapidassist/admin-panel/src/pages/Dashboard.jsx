@@ -192,6 +192,7 @@ export function Dashboard() {
                   <div>
                     <div style={styles.rowTitle}>{provider.name}</div>
                     <div style={styles.rowMeta}>{serviceTitle(provider.mechanicProfile?.serviceCategory)} - {provider.phone}</div>
+                    <div style={styles.rowMeta}>Joined: {formatDateTime(provider.createdAt)}</div>
                   </div>
                   <span style={{ ...styles.badge, ...statusTone(provider.verificationStatus) }}>{provider.verificationStatus}</span>
                 </Link>
