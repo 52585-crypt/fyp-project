@@ -266,7 +266,7 @@ function BreakdownRow({ label, value, total }) {
     <div style={styles.breakdownRow}>
       <div style={styles.breakdownTop}>
         <span style={styles.breakdownLabel}>{label}</span>
-        <span style={styles.breakdownValue}>{value.toLocaleString()}</span>
+        <span style={styles.breakdownValue}>{value.toLocaleString()} - {Math.round(pct)}%</span>
       </div>
       <div style={styles.breakdownTrack}>
         <div style={{ ...styles.breakdownFill, width: `${pct}%` }} />
