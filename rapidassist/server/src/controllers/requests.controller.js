@@ -55,6 +55,20 @@ function providerCategoryForRequest(category) {
   return category;
 }
 
+function canAccessRequestDetails(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  if (request.providerId && request.providerId.toString() === userId) return true;
+  if (user.role !== "mechanic") return false;
+
+  return (
+    request.status === "searching_provider" &&
+    !request.providerId &&
+    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
+  );
+}
+
 function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
@@ -273,6 +287,20 @@ async function listMyRequests(req, res, next) {
   try {
     const requests = await ServiceRequest.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.json({ ok: true, requests: await attachProviderLocations(requests) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getRequest(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestDetails(request, req.user)) throw forbidden("Forbidden");
+
+    res.json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
     next(err);
   }
@@ -540,6 +568,7 @@ async function approveExtraWork(req, res, next) {
 
 module.exports = {
   createRequest,
+  getRequest,
   listMyRequests,
   listOpenRequests: listProviderRequests,
   listProviderRequests,
