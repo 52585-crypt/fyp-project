@@ -13,6 +13,7 @@ const {
   listOpenRequests,
   requestExtraWork,
   sendRequestMessage,
+  submitRequestReview,
   updateProviderAvailability,
   updateProviderLocation,
   updateRequestStatus
@@ -34,6 +35,7 @@ router.get("/:id", getRequest);
 router.patch("/:id/accept", acceptRequest);
 router.get("/:id/messages", getRequestMessages);
 router.post("/:id/messages", sendRequestMessage);
+router.patch("/:id/review", submitRequestReview);
 router.patch("/:id/status", updateRequestStatus);
 router.patch("/:id/extra-work", requestExtraWork);
 router.patch("/:id/extra-work/approve", approveExtraWork);
