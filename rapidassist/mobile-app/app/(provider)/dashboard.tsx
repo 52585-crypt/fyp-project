@@ -98,6 +98,7 @@ export default function ProviderDashboard() {
         <View style={styles.metrics}>
           <Metric label="Open jobs" value={String(requests.length)} icon="briefcase" />
           <Metric label="Today earning" value={`PKR ${earnings?.today?.toLocaleString() || 0}`} icon="wallet" />
+          <Metric label="Rating" value={user?.ratingCount ? `${Number(user.ratingAvg || 0).toFixed(1)} (${user.ratingCount})` : "New"} icon="star" />
         </View>
 
         {activeRequest ? (
@@ -146,6 +147,17 @@ export default function ProviderDashboard() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
             <PrimaryButton title="Refresh" variant="outline" style={{ flex: 1 }} onPress={loadRequests} />
+            <PrimaryButton
+              title="Details"
+              icon="reader"
+              variant="outline"
+              disabled={!incoming}
+              style={{ flex: 1 }}
+              onPress={() => {
+                if (!incoming) return;
+                router.push({ pathname: "/(provider)/requests/[requestId]", params: { requestId: incoming.id } });
+              }}
+            />
             <PrimaryButton title={loading ? "Accepting..." : "Accept"} icon="checkmark" variant="success" disabled={!incoming || loading} style={{ flex: 1 }} onPress={onAccept} />
           </View>
         </Card>
