@@ -1,5 +1,5 @@
 import { api } from "../config/api";
-import type { CreateRequestInput, ExtraWorkInput, ProviderEarnings, RequestLocation, ServiceRequest } from "./requests.types";
+import type { ChatMessage, CreateRequestInput, ExtraWorkInput, ProviderEarnings, RequestLocation, ServiceRequest } from "./requests.types";
 
 export async function createRequest(token: string, input: CreateRequestInput) {
   const res = await api.post<{ ok: boolean; request: ServiceRequest }>("/api/requests", input, {
@@ -22,6 +22,13 @@ export async function listOpenRequests(token: string) {
   return res.data.requests;
 }
 
+export async function getRequest(token: string, id: string) {
+  const res = await api.get<{ ok: boolean; request: ServiceRequest }>(`/api/requests/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data.request;
+}
+
 export async function acceptRequest(token: string, id: string) {
   const res = await api.patch<{ ok: boolean; request: ServiceRequest }>(
     `/api/requests/${id}/accept`,
@@ -35,6 +42,15 @@ export async function updateRequestStatus(token: string, id: string, status: Ser
   const res = await api.patch<{ ok: boolean; request: ServiceRequest }>(
     `/api/requests/${id}/status`,
     { status, note },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data.request;
+}
+
+export async function submitRequestReview(token: string, id: string, rating: number, comment?: string) {
+  const res = await api.patch<{ ok: boolean; request: ServiceRequest }>(
+    `/api/requests/${id}/review`,
+    { rating, comment },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data.request;
@@ -95,5 +111,22 @@ export async function approveExtraWork(token: string, id: string, approved = tru
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data.request;
+}
+
+export async function getRequestMessages(token: string, id: string) {
+  const res = await api.get<{ ok: boolean; messages: ChatMessage[] }>(
+    `/api/requests/${id}/messages`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data.messages;
+}
+
+export async function sendRequestMessage(token: string, id: string, body: string) {
+  const res = await api.post<{ ok: boolean; message: ChatMessage }>(
+    `/api/requests/${id}/messages`,
+    { body },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data.message;
 }
 
