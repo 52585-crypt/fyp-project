@@ -118,6 +118,17 @@ router.get("/dashboard", async (req, res, next) => {
       { $match: { status: "completed" } },
       { $group: { _id: null, total: { $sum: "$estimate.total" } } }
     ]);
+    const ratingSummaryResult = await ServiceRequest.aggregate([
+      { $match: { "review.rating": { $gte: 1, $lte: 5 } } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$review.rating" },
+          reviewedRequests: { $sum: 1 }
+        }
+      }
+    ]);
+    const ratingSummary = ratingSummaryResult[0] || {};
 
     res.json({
       ok: true,
@@ -132,7 +143,9 @@ router.get("/dashboard", async (req, res, next) => {
         todayRequests,
         complaints: 0,
         onlineProviders,
-        revenue: totalRevenueResult[0]?.total || 0
+        revenue: totalRevenueResult[0]?.total || 0,
+        reviewedRequests: ratingSummary.reviewedRequests || 0,
+        averageRating: ratingSummary.averageRating ? Math.round(ratingSummary.averageRating * 10) / 10 : 0
       },
       breakdowns: {
         byCategory: formatCountBreakdown(categoryBreakdownRows, emptyRequestCategoryBreakdown()),
