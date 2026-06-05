@@ -1,6 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Card, IconBox, PrimaryButton, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
@@ -8,45 +8,47 @@ import { ui } from "../../src/ui/system";
 export default function Welcome() {
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.brandRow}>
-          <View style={styles.logo}>
-            <Ionicons name="car-sport" size={30} color="white" />
-          </View>
-          <View>
-            <Text style={styles.brand}>RapidAssist</Text>
-            <Text style={styles.tagline}>Roadside help in seconds</Text>
-          </View>
-        </View>
-
-        <View style={styles.hero}>
-          <StatusPill label="User + Provider App" />
-          <Text style={styles.title}>Fast roadside support, built for real emergencies.</Text>
-          <Text style={styles.subtitle}>
-            Request help as a user or receive verified jobs as a provider from one mobile app.
-          </Text>
-          <View style={styles.heroArt}>
-            <View style={styles.road} />
-            <View style={styles.car}><Ionicons name="car" size={30} color="white" /></View>
-            <View style={styles.pin}><Ionicons name="location" size={20} color="white" /></View>
-          </View>
-        </View>
-
-        <View style={styles.cards}>
-          <Card style={styles.roleCard}>
-            <IconBox icon="person" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.roleTitle}>For users</Text>
-              <Text style={styles.roleText}>Towing, fuel, mechanic, battery, tyre, and lockout assistance.</Text>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View>
+          <View style={styles.brandRow}>
+            <View style={styles.logo}>
+              <Ionicons name="car-sport" size={30} color="white" />
             </View>
-          </Card>
-          <Card style={styles.roleCard}>
-            <IconBox icon="construct" tone="dark" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.roleTitle}>For providers</Text>
-              <Text style={styles.roleText}>Go online, accept jobs, track work, and manage earnings.</Text>
+            <View>
+              <Text style={styles.brand}>RapidAssist</Text>
+              <Text style={styles.tagline}>Roadside help in seconds</Text>
             </View>
-          </Card>
+          </View>
+
+          <View style={styles.hero}>
+            <StatusPill label="User + Provider App" />
+            <Text style={styles.title}>Fast roadside support, built for real emergencies.</Text>
+            <Text style={styles.subtitle}>
+              Request help as a user or receive verified jobs as a provider from one mobile app.
+            </Text>
+            <View style={styles.heroArt}>
+              <View style={styles.road} />
+              <View style={styles.car}><Ionicons name="car" size={30} color="white" /></View>
+              <View style={styles.pin}><Ionicons name="location" size={20} color="white" /></View>
+            </View>
+          </View>
+
+          <View style={styles.cards}>
+            <Card style={styles.roleCard}>
+              <IconBox icon="person" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.roleTitle}>For users</Text>
+                <Text style={styles.roleText}>Towing, fuel, mechanic, battery, tyre, and lockout assistance.</Text>
+              </View>
+            </Card>
+            <Card style={styles.roleCard}>
+              <IconBox icon="construct" tone="dark" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.roleTitle}>For providers</Text>
+                <Text style={styles.roleText}>Go online, accept jobs, track work, and manage earnings.</Text>
+              </View>
+            </Card>
+          </View>
         </View>
 
         <View style={styles.actions}>
@@ -56,14 +58,14 @@ export default function Welcome() {
             <Text style={styles.providerText}>Register as provider</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ui.colors.bg },
-  container: { flex: 1, padding: 18 },
+  container: { flexGrow: 1, padding: 18, paddingBottom: 56, justifyContent: "space-between", gap: 18 },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10 },
   logo: { width: 54, height: 54, borderRadius: 18, backgroundColor: ui.colors.primary, alignItems: "center", justifyContent: "center" },
   brand: { color: ui.colors.text, fontSize: 23, fontWeight: "900" },
@@ -79,8 +81,7 @@ const styles = StyleSheet.create({
   roleCard: { flexDirection: "row", alignItems: "center", gap: 12 },
   roleTitle: { color: ui.colors.text, fontSize: 15, fontWeight: "900" },
   roleText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  actions: { marginTop: "auto", gap: 10 },
+  actions: { gap: 10 },
   providerLink: { height: 44, alignItems: "center", justifyContent: "center" },
   providerText: { color: ui.colors.primary, fontSize: 13, fontWeight: "900" }
 });
-
