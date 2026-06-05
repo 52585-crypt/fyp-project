@@ -91,6 +91,36 @@ function canCancelRequest(request, user) {
   );
 }
 
+async function refreshProviderRating(providerId) {
+  if (!providerId) return;
+
+  const [summary] = await ServiceRequest.aggregate([
+    {
+      $match: {
+        providerId: new mongoose.Types.ObjectId(providerId.toString()),
+        "review.rating": { $gte: 1, $lte: 5 }
+      }
+    },
+    {
+      $group: {
+        _id: "$providerId",
+        ratingAvg: { $avg: "$review.rating" },
+        ratingCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  await User.updateOne(
+    { _id: providerId },
+    {
+      $set: {
+        ratingAvg: summary ? Math.round(summary.ratingAvg * 10) / 10 : 0,
+        ratingCount: summary?.ratingCount || 0
+      }
+    }
+  );
+}
+
 function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
