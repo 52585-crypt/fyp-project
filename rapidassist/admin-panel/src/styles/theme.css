@@ -106,3 +106,5 @@ a {
 .admin-empty-state { border: 1px dashed var(--border); border-radius: 16px; padding: 18px; color: var(--muted); font-weight: 800; text-align: center; }
 
 .admin-metric-value { color: var(--text); font-size: 28px; line-height: 1.1; font-weight: 900; }
+
+.admin-metric-label { color: var(--muted); font-size: 12px; font-weight: 900; }
