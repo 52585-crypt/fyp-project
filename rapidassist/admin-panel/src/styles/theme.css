@@ -50,3 +50,5 @@ a {
 .admin-strong-text { color: var(--text); font-weight: 900; }
 
 .admin-eyebrow { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+
+.admin-title-text { color: var(--text); font-size: 24px; line-height: 1.15; font-weight: 900; }
