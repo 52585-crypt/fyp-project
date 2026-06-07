@@ -6,8 +6,9 @@ export type MechanicProfile = {
   selfieUrl: string;
   idCardFrontUrl: string;
   idCardBackUrl: string;
-  workshopPhotoUrl: string;
+  workshopPhotoUrl: string | null;
   certificateUrl: string | null;
+  drivingLicenseUrl: string | null;
   liveLocation?: {
     lat: number;
     lng: number;
