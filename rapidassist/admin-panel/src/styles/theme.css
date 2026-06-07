@@ -32,3 +32,5 @@ a {
 .admin-layout-shell { min-height: 100vh; background: var(--bg); }
 
 .admin-content-wide { width: min(1180px, 100%); margin: 0 auto; }
+
+.admin-page-rhythm { display: grid; gap: 16px; }
