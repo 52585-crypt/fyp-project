@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
-import { API_BASE_URL } from "../config/api";
+import { adminApi, API_BASE_URL } from "../config/api";
 
 const refreshMs = 15000;
 
@@ -47,7 +46,7 @@ export function Dashboard() {
     try {
       setLoading(true);
       setError("");
-      const res = await axios.get(`${API_BASE_URL}/api/admin/dashboard`);
+      const res = await adminApi.get("/api/admin/dashboard");
       setData(res.data);
       setLastUpdated(new Date());
     } catch (err) {
