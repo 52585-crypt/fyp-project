@@ -122,3 +122,5 @@ a {
 .admin-table-shell { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
 
 @media (max-width: 900px) { .admin-two-column, .admin-split-grid { grid-template-columns: 1fr; } .admin-toolbar { align-items: stretch; } }
+
+@media (max-width: 640px) { .admin-panel-spacious { padding: 14px; } .admin-title-text { font-size: 21px; } .admin-stat-grid { grid-template-columns: 1fr; } }
