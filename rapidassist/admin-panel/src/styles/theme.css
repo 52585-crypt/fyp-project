@@ -38,3 +38,5 @@ a {
 .admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 .admin-toolbar-wrap { flex-wrap: wrap; }
+
+.admin-panel-surface { background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); }
