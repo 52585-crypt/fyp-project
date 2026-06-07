@@ -114,3 +114,5 @@ a {
 .admin-focus-ring:focus-visible { outline: 3px solid rgba(22,163,74,.25); outline-offset: 2px; }
 
 .admin-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.admin-capitalize { text-transform: capitalize; }
