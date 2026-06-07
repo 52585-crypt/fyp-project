@@ -71,19 +71,19 @@ export const providerJobFlows: Record<ProviderServiceKey, Array<{ label: string;
     { label: "Arrived", status: "provider_arrived" },
     { label: "Vehicle loaded", status: "vehicle_loaded" },
     { label: "Reached destination", status: "reached_destination" },
-    { label: "Completed", status: "completed" }
+    { label: "Service finished", status: "service_finished" }
   ],
   fuel_delivery: [
     { label: "On the way", status: "provider_on_way" },
     { label: "Arrived", status: "provider_arrived" },
     { label: "Fuel delivered", status: "fuel_delivered" },
-    { label: "Completed", status: "completed" }
+    { label: "Service finished", status: "service_finished" }
   ],
   mechanic: [
     { label: "On the way", status: "provider_on_way" },
     { label: "Arrived", status: "provider_arrived" },
     { label: "Inspection started", status: "inspection_started" },
     { label: "Work started", status: "work_started" },
-    { label: "Completed", status: "completed" }
+    { label: "Service finished", status: "service_finished" }
   ]
 };
