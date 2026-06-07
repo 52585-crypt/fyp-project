@@ -124,3 +124,5 @@ a {
 @media (max-width: 900px) { .admin-two-column, .admin-split-grid { grid-template-columns: 1fr; } .admin-toolbar { align-items: stretch; } }
 
 @media (max-width: 640px) { .admin-panel-spacious { padding: 14px; } .admin-title-text { font-size: 21px; } .admin-stat-grid { grid-template-columns: 1fr; } }
+
+@media print { .admin-button-primary, .admin-button-ghost, .admin-button-danger { display: none; } .admin-panel-surface { box-shadow: none; } }
