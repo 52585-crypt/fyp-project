@@ -62,3 +62,5 @@ a {
 .admin-split-grid { display: grid; grid-template-columns: .9fr 1.4fr; gap: 16px; align-items: start; }
 
 .admin-stack { display: grid; gap: 10px; }
+
+.admin-stack-dense { display: grid; gap: 6px; }
