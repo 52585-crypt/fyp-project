@@ -419,6 +419,68 @@ async function listProviderRequests(req, res, next) {
   }
 }
 
+async function listNearbyProviders(req, res, next) {
+  try {
+    const category = normalizeCategory(req.query?.category);
+    if (!category || !REQUEST_CATEGORIES.includes(category)) {
+      throw badRequest(`category must be one of: ${REQUEST_CATEGORIES.join(", ")}`);
+    }
+
+    const origin = {
+      lat: parseNum(req.query?.lat),
+      lng: parseNum(req.query?.lng)
+    };
+    if (origin.lat == null || origin.lng == null) throw badRequest("lat and lng are required");
+
+    const requestedRadius = parseNum(req.query?.radiusKm);
+    const radiusKm = Math.min(50, Math.max(1, requestedRadius || defaultSearchRadiusKm(category)));
+    const staleAfter = new Date(Date.now() - 30 * 60 * 1000);
+
+    const candidates = await User.find({
+      role: "mechanic",
+      verificationStatus: "verified",
+      "mechanicProfile.serviceCategory": providerCategoryForRequest(category),
+      "providerState.isOnline": true,
+      "providerState.activeRequestId": null,
+      "providerState.currentLocation.lat": { $type: "number" },
+      "providerState.currentLocation.lng": { $type: "number" },
+      "providerState.lastSeenAt": { $gte: staleAfter }
+    })
+      .select("name mechanicProfile.serviceCategory providerState ratingAvg ratingCount completedJobs")
+      .limit(100);
+
+    const providers = candidates
+      .map((provider) => {
+        const location = provider.providerState?.currentLocation;
+        const distance = distanceKm(origin, { lat: location.lat, lng: location.lng });
+        return {
+          id: provider._id.toString(),
+          name: provider.name,
+          serviceCategory: provider.mechanicProfile?.serviceCategory || null,
+          ratingAvg: provider.ratingAvg || 0,
+          ratingCount: provider.ratingCount || 0,
+          completedJobs: provider.completedJobs || 0,
+          distanceKm: Math.round(distance * 10) / 10,
+          etaMinutes: estimateArrivalMinutes(distance),
+          score: nearbyProviderScore(provider, distance),
+          location: {
+            lat: location.lat,
+            lng: location.lng,
+            addressText: location.addressText || null,
+            updatedAt: location.updatedAt || provider.providerState?.lastSeenAt || null
+          }
+        };
+      })
+      .filter((provider) => provider.distanceKm <= radiusKm)
+      .sort((a, b) => b.score - a.score || a.distanceKm - b.distanceKm)
+      .slice(0, 20);
+
+    res.json({ ok: true, radiusKm, providers });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function acceptRequest(req, res, next) {
   try {
     requireProvider(req);
@@ -738,6 +800,7 @@ module.exports = {
   createRequest,
   getRequest,
   listMyRequests,
+  listNearbyProviders,
   listOpenRequests: listProviderRequests,
   listProviderRequests,
   acceptRequest,
