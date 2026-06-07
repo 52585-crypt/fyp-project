@@ -28,3 +28,5 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.admin-layout-shell { min-height: 100vh; background: var(--bg); }
