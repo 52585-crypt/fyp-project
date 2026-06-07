@@ -46,3 +46,5 @@ a {
 .admin-panel-spacious { padding: 18px; border-radius: 18px; }
 
 .admin-muted-text { color: var(--muted); font-size: 13px; font-weight: 700; }
+
+.admin-strong-text { color: var(--text); font-weight: 900; }
