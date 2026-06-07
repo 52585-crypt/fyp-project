@@ -94,3 +94,5 @@ a {
 .admin-document-tile { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 10px; }
 
 .admin-timeline { display: grid; gap: 8px; border-left: 2px solid var(--border); padding-left: 12px; }
+
+.admin-progress-track { height: 9px; border-radius: 999px; background: var(--surface); overflow: hidden; }
