@@ -96,3 +96,5 @@ a {
 .admin-timeline { display: grid; gap: 8px; border-left: 2px solid var(--border); padding-left: 12px; }
 
 .admin-progress-track { height: 9px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+
+.admin-progress-fill { height: 100%; border-radius: 999px; background: var(--primary); }
