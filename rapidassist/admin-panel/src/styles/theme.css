@@ -116,3 +116,5 @@ a {
 .admin-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .admin-capitalize { text-transform: capitalize; }
+
+.admin-value-right { text-align: right; font-weight: 900; color: var(--text); }
