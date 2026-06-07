@@ -120,3 +120,5 @@ a {
 .admin-value-right { text-align: right; font-weight: 900; color: var(--text); }
 
 .admin-table-shell { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
+
+@media (max-width: 900px) { .admin-two-column, .admin-split-grid { grid-template-columns: 1fr; } .admin-toolbar { align-items: stretch; } }
