@@ -181,6 +181,20 @@ function optionalLocation(input) {
   };
 }
 
+function locationFromMechanicProfile(provider) {
+  const saved = provider?.mechanicProfile?.liveLocation;
+  const lat = parseNum(saved?.lat);
+  const lng = parseNum(saved?.lng);
+  if (lat == null || lng == null) return null;
+
+  return {
+    lat,
+    lng,
+    addressText: normalizeStr(saved?.addressText) || "Saved provider location",
+    updatedAt: new Date()
+  };
+}
+
 function providerLocationFromUser(provider) {
   const location = provider?.providerState?.currentLocation;
   const lat = parseNum(location?.lat);
@@ -590,7 +604,7 @@ async function updateProviderAvailability(req, res, next) {
   try {
     requireProvider(req);
     const isOnline = Boolean(req.body?.isOnline);
-    const location = optionalLocation(req.body?.location);
+    const location = optionalLocation(req.body?.location) || (isOnline ? locationFromMechanicProfile(req.user) : null);
 
     const $set = {
       "providerState.isOnline": isOnline,
