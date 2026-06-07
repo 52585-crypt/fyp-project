@@ -66,3 +66,5 @@ a {
 .admin-stack-dense { display: grid; gap: 6px; }
 
 .admin-row { display: flex; align-items: center; gap: 10px; }
+
+.admin-row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
