@@ -88,3 +88,5 @@ a {
 .admin-input { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 0 12px; color: var(--text); }
 
 .admin-search-input { min-height: 40px; border-radius: 12px; border: 1px solid var(--border); padding: 0 12px; background: #fff; }
+
+.admin-image-thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
