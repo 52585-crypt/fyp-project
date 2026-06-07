@@ -73,6 +73,25 @@ function providerCategoryForRequest(category) {
   return category;
 }
 
+function defaultSearchRadiusKm(category) {
+  if (category === "car_towing") return 15;
+  if (category === "fuel_delivery") return 8;
+  return 5;
+}
+
+function estimateArrivalMinutes(distance) {
+  return Math.max(3, Math.round((distance / 25) * 60));
+}
+
+function nearbyProviderScore(provider, distance) {
+  const rating = Number(provider.ratingAvg || 0);
+  const completedJobs = Number(provider.completedJobs || 0);
+  const distanceScore = Math.max(0, 50 - distance * 3);
+  const ratingScore = rating * 8;
+  const experienceScore = Math.min(15, completedJobs / 4);
+  return Math.round((distanceScore + ratingScore + experienceScore) * 10) / 10;
+}
+
 function canAccessRequestChat(request, user) {
   const userId = user?._id?.toString();
   if (!userId) return false;
