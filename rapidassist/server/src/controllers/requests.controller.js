@@ -246,7 +246,8 @@ function activeStatuses() {
     "fuel_delivered",
     "inspection_started",
     "extra_work_requested",
-    "work_started"
+    "work_started",
+    "service_finished"
   ];
 }
 
@@ -539,9 +540,15 @@ async function updateRequestStatus(req, res, next) {
     const isOwner = request.userId.toString() === req.user._id.toString();
     const isProvider = request.providerId && request.providerId.toString() === req.user._id.toString();
     const isOpenMatchingProviderCancel = status === "cancelled" && canCancelRequest(request, req.user);
-    if (!isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
+    const isOwnerCompletion = status === "completed" && isOwner;
+    if (!isOwnerCompletion && !isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
 
-    if (["completed", "provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started"].includes(status) && !isProvider) {
+    if (status === "completed") {
+      if (!isOwner) throw forbidden("Only the customer can complete the job after provider finishes");
+      if (request.status !== "service_finished") throw badRequest("Provider must mark service finished before customer completion");
+    }
+
+    if (["provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started", "service_finished"].includes(status) && !isProvider) {
       throw forbidden("Only assigned provider can set this status");
     }
 
