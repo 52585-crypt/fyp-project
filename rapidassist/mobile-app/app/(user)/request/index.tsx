@@ -1,9 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { createRequest } from "../../../src/requests/requests.api";
-import type { FuelType, MechanicIssueCategory, RequestCategory } from "../../../src/requests/requests.types";
+import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
+import { createRequest, listNearbyProviders } from "../../../src/requests/requests.api";
+import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory } from "../../../src/requests/requests.types";
+import {
+  deleteFavoriteLocation,
+  getFavoriteLocations,
+  saveFavoriteLocation,
+  type FavoriteLocation
+} from "../../../src/services/favoriteLocations.storage";
+import { searchPlaces, type GeocodingResult } from "../../../src/services/geocoding";
+import { getDrivingDistanceKm } from "../../../src/services/routing";
+import { distanceKm, type Coordinate } from "../../../src/utils/distance";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, SectionTitle, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
