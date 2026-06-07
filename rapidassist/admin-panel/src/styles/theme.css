@@ -64,3 +64,5 @@ a {
 .admin-stack { display: grid; gap: 10px; }
 
 .admin-stack-dense { display: grid; gap: 6px; }
+
+.admin-row { display: flex; align-items: center; gap: 10px; }
