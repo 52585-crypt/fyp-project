@@ -54,3 +54,5 @@ a {
 .admin-title-text { color: var(--text); font-size: 24px; line-height: 1.15; font-weight: 900; }
 
 .admin-subtitle-text { color: var(--muted); font-size: 13px; line-height: 1.5; font-weight: 700; }
+
+.admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
