@@ -104,3 +104,5 @@ a {
 .admin-error { border-radius: 14px; border: 1px solid #fecaca; background: #fee2e2; color: #b91c1c; padding: 12px; font-weight: 800; }
 
 .admin-empty-state { border: 1px dashed var(--border); border-radius: 16px; padding: 18px; color: var(--muted); font-weight: 800; text-align: center; }
+
+.admin-metric-value { color: var(--text); font-size: 28px; line-height: 1.1; font-weight: 900; }
