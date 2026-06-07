@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
@@ -9,12 +10,15 @@ import type { ProviderEarnings, ServiceRequest } from "../../src/requests/reques
 import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
 
+const AVAILABILITY_LOCATION_SYNC_MS = 2 * 60 * 1000;
+
 export default function ProviderDashboard() {
   const { token, user } = useAuth();
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(Boolean(user?.providerState?.isOnline));
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [earnings, setEarnings] = useState<ProviderEarnings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const incoming = requests[0] || null;
@@ -54,22 +58,103 @@ export default function ProviderDashboard() {
     }
   }
 
+  async function getAvailabilityLocation() {
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.granted) {
+        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        let addressText = "Provider live location";
+
+        try {
+          const [address] = await Location.reverseGeocodeAsync({
+            latitude: current.coords.latitude,
+            longitude: current.coords.longitude
+          });
+          const readable = address
+            ? [address.name, address.street, address.city, address.region].filter(Boolean).join(", ")
+            : "";
+          if (readable) addressText = readable;
+        } catch {
+          addressText = "Provider live location";
+        }
+
+        return {
+          lat: current.coords.latitude,
+          lng: current.coords.longitude,
+          addressText
+        };
+      }
+    } catch {
+      // Fall back to the signup location below.
+    }
+
+    const saved = user?.mechanicProfile?.liveLocation;
+    if (Number.isFinite(saved?.lat) && Number.isFinite(saved?.lng)) {
+      return {
+        lat: Number(saved?.lat),
+        lng: Number(saved?.lng),
+        addressText: saved?.addressText || "Saved provider location"
+      };
+    }
+
+    throw new Error("Location permission is required to go online.");
+  }
+
   async function toggleOnline() {
     const next = !online;
+    const previous = online;
     setOnline(next);
     if (!token) return;
     try {
-      await updateProviderAvailability(token, next, {
-        lat: 31.5204,
-        lng: 74.3587,
-        addressText: "Lahore"
-      });
-      if (next) loadRequests(true);
-      else setRequests([]);
+      setAvailabilityStatus(next ? "Updating your live location..." : "Going offline...");
+      const location = next ? await getAvailabilityLocation() : null;
+      await updateProviderAvailability(token, next, location);
+      setAvailabilityStatus(next ? "Online with live location." : "Offline.");
+      if (next) {
+        loadRequests(true);
+      } else {
+        setRequests([]);
+      }
     } catch (e: any) {
+      setOnline(previous);
       setError(e?.response?.data?.message || e?.message || "Failed to update availability");
+      setAvailabilityStatus(null);
     }
   }
+
+  useEffect(() => {
+    setOnline(Boolean(user?.providerState?.isOnline));
+  }, [user?.providerState?.isOnline]);
+
+  useEffect(() => {
+    if (!token || !online) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    async function syncOnlineLocation() {
+      try {
+        setAvailabilityStatus("Refreshing your live location...");
+        const location = await getAvailabilityLocation();
+        if (cancelled) return;
+        await updateProviderAvailability(token!, true, location);
+        if (!cancelled) setAvailabilityStatus("Online with live location.");
+      } catch (e: any) {
+        if (!cancelled) {
+          setAvailabilityStatus(null);
+          setError(e?.response?.data?.message || e?.message || "Failed to sync provider location");
+        }
+      }
+    }
+
+    syncOnlineLocation();
+    timer = setInterval(syncOnlineLocation, AVAILABILITY_LOCATION_SYNC_MS);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [online, token, user?.id]);
 
   useEffect(() => {
     loadRequests();
@@ -91,6 +176,7 @@ export default function ProviderDashboard() {
             <StatusPill label={online ? "Online" : "Offline"} tone={online ? "success" : "danger"} />
             <Text style={styles.heroTitle}>{online ? "You are receiving jobs" : "Go online to receive jobs"}</Text>
             <Text style={styles.heroText}>Only {serviceLabel} requests are shown for your provider account.</Text>
+            {availabilityStatus ? <Text style={styles.availabilityText}>{availabilityStatus}</Text> : null}
           </View>
           <View style={styles.heroIcon}><Ionicons name="construct" size={42} color="white" /></View>
         </Card>
@@ -184,6 +270,7 @@ const styles = StyleSheet.create({
   hero: { backgroundColor: ui.colors.dark, borderColor: ui.colors.dark, flexDirection: "row", alignItems: "center", gap: 12 },
   heroTitle: { marginTop: 12, color: "white", fontSize: 22, lineHeight: 28, fontWeight: "900" },
   heroText: { marginTop: 8, color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 19, fontWeight: "700" },
+  availabilityText: { marginTop: 8, color: "rgba(255,255,255,0.86)", fontSize: 12, lineHeight: 17, fontWeight: "800" },
   heroIcon: { width: 82, height: 82, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.14)", alignItems: "center", justifyContent: "center" },
   metrics: { marginTop: 12, flexDirection: "row", gap: 12 },
   job: { gap: 14 },
