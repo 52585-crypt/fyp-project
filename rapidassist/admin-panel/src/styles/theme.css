@@ -40,3 +40,5 @@ a {
 .admin-toolbar-wrap { flex-wrap: wrap; }
 
 .admin-panel-surface { background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); }
+
+.admin-panel-compact { padding: 14px; border-radius: 14px; }
