@@ -78,3 +78,5 @@ a {
 .admin-badge-danger { background: #fee2e2; color: #991b1b; }
 
 .admin-badge-info { background: #dbeafe; color: #1d4ed8; }
+
+.admin-button-primary { border: 0; border-radius: 14px; background: var(--primary); color: #fff; font-weight: 900; cursor: pointer; }
