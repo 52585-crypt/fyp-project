@@ -33,8 +33,28 @@ Endpoints used:
 
 - Welcome screen
 - Signup screen (role pills visible)
+- Mechanic signup details (service category, selfie, ID card, location, workshop photo)
 - Login screen
 - Home screen after login (shows name + role)
+
+## Mechanic signup verification
+
+Mechanic registration collects:
+
+- service category (`mechanic`, `fuel_delivery`, `towing`)
+- real-time selfie
+- ID card front and back photos
+- optional live location
+- workshop photo
+- optional certificate
+
+The mobile app converts selected/captured mechanic photos into base64 image data
+URIs before registration, so the backend stores the image data in the mechanic
+profile document instead of storing local phone paths.
+
+ID/selfie match is submitted as pending backend verification. Production matching
+needs a face-match/OCR provider or local model before the backend can mark it as
+matched or mismatched.
 
 ## Manual test cases
 

@@ -1,12 +1,20 @@
 const { verifyAccessToken } = require("../utils/jwt");
 const { User } = require("../models/User");
+const { getAccessTokenFromCookies } = require("../utils/authCookie");
+
+function getBearerToken(req) {
+  const header = req.headers.authorization || "";
+  const [type, token] = header.split(" ");
+
+  if (type !== "Bearer" || !token) return null;
+  return token;
+}
 
 async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization || "";
-    const [type, token] = header.split(" ");
+    const token = getBearerToken(req) || getAccessTokenFromCookies(req);
 
-    if (type !== "Bearer" || !token) {
+    if (!token) {
       const err = new Error("Unauthorized");
       err.statusCode = 401;
       throw err;

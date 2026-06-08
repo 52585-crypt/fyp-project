@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:4000";
+import { API_BASE_URL } from "../config/api";
 
 export function AdminLogin() {
   const [email, setEmail] = useState("");

@@ -1,0 +1,8 @@
+Starting project at D:\fyp-project\rapidassist\mobile-app
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native-maps@1.27.2 - expected version: 1.20.1
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8082
+Logs for your project will appear below.

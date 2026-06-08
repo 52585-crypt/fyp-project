@@ -5,8 +5,9 @@
 ### List open requests (mechanic only)
 - `GET /api/requests/open`
 
-Auth header:
+Auth:
 - `Authorization: Bearer <token>`
+- or cookie `rapidassist_access_token=<token>`
 
 Rules:
 - Only `role=mechanic` can access (others get 403)
