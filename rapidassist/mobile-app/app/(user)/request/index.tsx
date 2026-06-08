@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { createRequest } from "../../../src/requests/requests.api";
 import type { FuelType, MechanicIssueCategory, RequestCategory } from "../../../src/requests/requests.types";
@@ -12,12 +12,6 @@ const services: Array<{ label: string; value: RequestCategory; icon: "car" | "wa
   { label: "Fuel Delivery", value: "fuel_delivery", icon: "water" },
   { label: "Mechanic", value: "mechanic", icon: "construct" }
 ];
-
-function normalizeCategoryParam(value: unknown): RequestCategory {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === "fuel_delivery" || raw === "mechanic" || raw === "car_towing") return raw;
-  return "car_towing";
-}
 
 const mechanicIssues: Array<{ label: string; value: MechanicIssueCategory }> = [
   { label: "Battery", value: "battery" },
@@ -36,8 +30,7 @@ function estimate(category: RequestCategory, liters: number) {
 
 export default function UserRequest() {
   const { token } = useAuth();
-  const params = useLocalSearchParams<{ category?: string }>();
-  const [category, setCategory] = useState<RequestCategory>(() => normalizeCategoryParam(params.category));
+  const [category, setCategory] = useState<RequestCategory>("car_towing");
   const [pickup, setPickup] = useState("Gulberg 3, Lahore");
   const [destination, setDestination] = useState("Johar Town, Lahore");
   const [vehicle, setVehicle] = useState("Honda Civic");
@@ -51,10 +44,6 @@ export default function UserRequest() {
 
   const litersNumber = Math.max(1, Number(liters) || 1);
   const currentEstimate = useMemo(() => estimate(category, litersNumber), [category, litersNumber]);
-
-  useEffect(() => {
-    setCategory(normalizeCategoryParam(params.category));
-  }, [params.category]);
 
   async function onSubmit() {
     if (!token) return;
@@ -216,3 +205,4 @@ const styles = StyleSheet.create({
   estimateText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
   error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
 });
+

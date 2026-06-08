@@ -3,14 +3,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { getProviderServiceTitle, requestCategoryFromProviderService, getServiceIcon } from "../../../src/requests/serviceCatalog";
 import { AppShell, BottomNav, Card, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
 export default function ProviderProfile() {
   const { user, logout } = useAuth();
-  const providerCategory = requestCategoryFromProviderService(user?.mechanicProfile?.serviceCategory);
-  const serviceTitle = getProviderServiceTitle(user?.mechanicProfile?.serviceCategory);
 
   async function onLogout() {
     await logout();
@@ -19,23 +16,18 @@ export default function ProviderProfile() {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppShell title="Provider Profile" subtitle={serviceTitle}>
+      <AppShell title="Provider Profile" subtitle="Service category, verification, and documents.">
         <Card style={styles.profile}>
-          <View style={styles.avatar}><Ionicons name={getServiceIcon(providerCategory)} size={32} color="white" /></View>
+          <View style={styles.avatar}><Ionicons name="construct" size={32} color="white" /></View>
           <Text style={styles.name}>{user?.name || "Provider"}</Text>
           <Text style={styles.phone}>{user?.phone || "0300 0000000"}</Text>
           <StatusPill label={user?.verificationStatus || "pending"} tone={user?.verificationStatus === "verified" ? "success" : "warning"} />
         </Card>
 
-        {[
-          { label: serviceTitle, icon: getServiceIcon(providerCategory) },
-          { label: "Verification documents", icon: "shield-checkmark" as const },
-          { label: "Service location", icon: "location" as const },
-          { label: "Support", icon: "headset" as const }
-        ].map((item) => (
-          <Card key={item.label} style={styles.row}>
-            <IconBox icon={item.icon} />
-            <Text style={styles.rowText}>{item.label}</Text>
+        {["Service category", "Verification documents", "Workshop information", "Support"].map((item) => (
+          <Card key={item} style={styles.row}>
+            <IconBox icon={item === "Service category" ? "construct" : item === "Verification documents" ? "shield-checkmark" : item === "Workshop information" ? "business" : "headset"} />
+            <Text style={styles.rowText}>{item}</Text>
             <Ionicons name="chevron-forward" size={18} color={ui.colors.muted} />
           </Card>
         ))}
@@ -55,3 +47,4 @@ const styles = StyleSheet.create({
   row: { marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 12 },
   rowText: { flex: 1, color: ui.colors.text, fontSize: 14, fontWeight: "900" }
 });
+
