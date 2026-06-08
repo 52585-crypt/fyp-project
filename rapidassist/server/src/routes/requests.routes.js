@@ -9,6 +9,7 @@ const {
   getProviderEarnings,
   getProviderHistory,
   getRequestMessages,
+  listNearbyProviders,
   listMyRequests,
   listOpenRequests,
   requestExtraWork,
@@ -26,6 +27,7 @@ router.use(requireAuth);
 router.post("/", createRequest);
 router.get("/", listMyRequests);
 router.get("/open", listOpenRequests);
+router.get("/nearby-providers", listNearbyProviders);
 router.get("/provider/active", getProviderActiveRequest);
 router.get("/provider/history", getProviderHistory);
 router.get("/provider/earnings", getProviderEarnings);

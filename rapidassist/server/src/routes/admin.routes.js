@@ -59,6 +59,7 @@ function emptyRequestStatusBreakdown() {
     provider_arrived: 0,
     inspection_started: 0,
     work_started: 0,
+    service_finished: 0,
     completed: 0,
     cancelled: 0
   };

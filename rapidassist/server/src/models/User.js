@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema(
       idCardBackUrl: { type: String, default: null },
       workshopPhotoUrl: { type: String, default: null },
       certificateUrl: { type: String, default: null },
+      drivingLicenseUrl: { type: String, default: null },
       liveLocation: {
         lat: { type: Number, default: null },
         lng: { type: Number, default: null },
@@ -98,6 +99,7 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
           idCardBackUrl: this.mechanicProfile.idCardBackUrl,
           workshopPhotoUrl: this.mechanicProfile.workshopPhotoUrl,
           certificateUrl: this.mechanicProfile.certificateUrl,
+          drivingLicenseUrl: this.mechanicProfile.drivingLicenseUrl,
           liveLocation: this.mechanicProfile.liveLocation,
           identityMatch: this.mechanicProfile.identityMatch
         }

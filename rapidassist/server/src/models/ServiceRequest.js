@@ -16,6 +16,7 @@ const REQUEST_STATUSES = [
   "inspection_started",
   "extra_work_requested",
   "work_started",
+  "service_finished",
   "completed",
   "cancelled"
 ];
