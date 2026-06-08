@@ -12,7 +12,13 @@ import { useAuth } from "../../src/auth/AuthProvider";
 import type { MechanicServiceCategory, UserRole } from "../../src/auth/auth.types";
 import { getNetworkErrorMessage } from "../../src/config/api";
 
-type MechanicPhotoField = "selfieUrl" | "idCardFrontUrl" | "idCardBackUrl" | "workshopPhotoUrl" | "certificateUrl";
+type MechanicPhotoField =
+  | "selfieUrl"
+  | "idCardFrontUrl"
+  | "idCardBackUrl"
+  | "workshopPhotoUrl"
+  | "certificateUrl"
+  | "drivingLicenseUrl";
 
 type MechanicDocs = Record<MechanicPhotoField, string>;
 
@@ -30,14 +36,41 @@ const serviceCategories: Array<{ label: string; value: MechanicServiceCategory; 
   { label: "Towing", value: "towing", icon: "car" }
 ];
 
-const mechanicSteps = ["Service", "Account", "Identity", "Base"];
+const providerBaseSteps = ["Service", "Account", "Identity"];
+
+function documentStepLabel(category: MechanicServiceCategory) {
+  return category === "mechanic" ? "Workshop" : "Licence";
+}
+
+function serviceCategoryLabel(category: MechanicServiceCategory) {
+  if (category === "fuel_delivery") return "Fuel delivery rider";
+  if (category === "towing") return "Towing driver";
+  return "Mechanic";
+}
+
+function documentRequirement(category: MechanicServiceCategory) {
+  if (category === "mechanic") {
+    return {
+      icon: "construct" as keyof typeof Ionicons.glyphMap,
+      title: "Mechanic documents required",
+      text: "Upload a workshop photo and mechanic certificate before creating the account."
+    };
+  }
+
+  return {
+    icon: "card" as keyof typeof Ionicons.glyphMap,
+    title: `${serviceCategoryLabel(category)} document required`,
+    text: "Upload a clear driving licence photo before creating the account."
+  };
+}
 
 const initialDocs: MechanicDocs = {
   selfieUrl: "",
   idCardFrontUrl: "",
   idCardBackUrl: "",
   workshopPhotoUrl: "",
-  certificateUrl: ""
+  certificateUrl: "",
+  drivingLicenseUrl: ""
 };
 
 function imageAssetToDataUri(asset: ImagePicker.ImagePickerAsset) {
@@ -81,10 +114,10 @@ function ServiceCategoryPicker({
   );
 }
 
-function StepProgress({ currentStep }: { currentStep: MechanicStep }) {
+function StepProgress({ currentStep, labels }: { currentStep: MechanicStep; labels: string[] }) {
   return (
     <View style={styles.stepWrap}>
-      {mechanicSteps.map((label, index) => {
+      {labels.map((label, index) => {
         const active = index === currentStep;
         const completed = index < currentStep;
         return (
@@ -131,7 +164,7 @@ function UploadRow({
           {title}
           {optional ? <Text style={styles.optional}> optional</Text> : null}
         </Text>
-        <Text style={styles.uploadStatus}>{value ? "Attached" : "Required"}</Text>
+        <Text style={styles.uploadStatus}>{value ? "Attached" : optional ? "Optional" : "Required"}</Text>
       </View>
       <View style={styles.uploadActions}>
         {onCamera ? (
@@ -162,6 +195,11 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const providerStepLabels = useMemo(
+    () => [...providerBaseSteps, documentStepLabel(serviceCategory)],
+    [serviceCategory]
+  );
+  const currentRequirement = useMemo(() => documentRequirement(serviceCategory), [serviceCategory]);
 
   const accountReady = useMemo(() => {
     return name.trim().length >= 2 && phone.trim().length >= 10 && password.length >= 6;
@@ -179,8 +217,9 @@ export default function Signup() {
 
   const workshopReady = useMemo(() => {
     if (role !== "mechanic") return true;
-    return Boolean(docs.workshopPhotoUrl);
-  }, [docs.workshopPhotoUrl, role]);
+    if (serviceCategory === "mechanic") return Boolean(docs.workshopPhotoUrl && docs.certificateUrl);
+    return Boolean(docs.drivingLicenseUrl);
+  }, [docs.certificateUrl, docs.drivingLicenseUrl, docs.workshopPhotoUrl, role, serviceCategory]);
 
   const canSubmit = useMemo(() => {
     return accountReady && identityReady && workshopReady;
@@ -197,6 +236,17 @@ export default function Signup() {
     setRole(nextRole);
     setError(null);
     if (nextRole === "mechanic") setMechanicStep(0);
+  }
+
+  function selectServiceCategory(nextCategory: MechanicServiceCategory) {
+    setServiceCategory(nextCategory);
+    setError(null);
+    setDocs((current) => ({
+      ...current,
+      workshopPhotoUrl: nextCategory === "mechanic" ? current.workshopPhotoUrl : "",
+      certificateUrl: nextCategory === "mechanic" ? current.certificateUrl : "",
+      drivingLicenseUrl: nextCategory === "mechanic" ? "" : current.drivingLicenseUrl
+    }));
   }
 
   function goNext() {
@@ -301,8 +351,8 @@ export default function Signup() {
         name: name.trim(),
         phone: phone.trim(),
         password,
-        isCertified: Boolean(docs.certificateUrl),
-        certificateUrl: docs.certificateUrl || undefined,
+        isCertified: serviceCategory === "mechanic" && Boolean(docs.certificateUrl),
+        certificateUrl: serviceCategory === "mechanic" ? docs.certificateUrl || undefined : undefined,
         mechanicProfile:
           role === "mechanic"
             ? {
@@ -310,8 +360,9 @@ export default function Signup() {
                 selfieUrl: docs.selfieUrl,
                 idCardFrontUrl: docs.idCardFrontUrl,
                 idCardBackUrl: docs.idCardBackUrl,
-                workshopPhotoUrl: docs.workshopPhotoUrl,
-                certificateUrl: docs.certificateUrl || null,
+                workshopPhotoUrl: serviceCategory === "mechanic" ? docs.workshopPhotoUrl : null,
+                certificateUrl: serviceCategory === "mechanic" ? docs.certificateUrl || null : null,
+                drivingLicenseUrl: serviceCategory === "mechanic" ? null : docs.drivingLicenseUrl,
                 liveLocation: liveLocation || undefined
               }
             : undefined
@@ -365,12 +416,21 @@ export default function Signup() {
             </>
           ) : (
             <View style={styles.mechanicBlock}>
-              <StepProgress currentStep={mechanicStep} />
+              <StepProgress currentStep={mechanicStep} labels={providerStepLabels} />
 
               {mechanicStep === 0 ? (
                 <>
                   <Text style={styles.sectionTitle}>Select service category</Text>
-                  <ServiceCategoryPicker value={serviceCategory} onChange={setServiceCategory} />
+                  <ServiceCategoryPicker value={serviceCategory} onChange={selectServiceCategory} />
+                  <View style={styles.requirementCard}>
+                    <View style={styles.requirementIcon}>
+                      <Ionicons name={currentRequirement.icon} size={18} color={colors.primaryDark} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.requirementTitle}>{currentRequirement.title}</Text>
+                      <Text style={styles.requirementText}>{currentRequirement.text}</Text>
+                    </View>
+                  </View>
                 </>
               ) : null}
 
@@ -431,21 +491,54 @@ export default function Signup() {
 
               {mechanicStep === 3 ? (
                 <>
-                  <Text style={styles.sectionTitle}>Service base and certificate</Text>
-                  <UploadRow
-                    title="Workshop photo"
-                    value={docs.workshopPhotoUrl}
-                    icon="business"
-                    onCamera={() => captureImage("workshopPhotoUrl")}
-                    onGallery={() => pickImage("workshopPhotoUrl")}
-                  />
-                  <UploadRow
-                    title="Certificate"
-                    value={docs.certificateUrl}
-                    icon="document-text"
-                    onGallery={() => pickImage("certificateUrl")}
-                    optional
-                  />
+                  {serviceCategory === "mechanic" ? (
+                    <>
+                      <Text style={styles.sectionTitle}>Workshop and certificate</Text>
+                      <View style={styles.requirementCard}>
+                        <View style={styles.requirementIcon}>
+                          <Ionicons name="construct" size={18} color={colors.primaryDark} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.requirementTitle}>Both documents are required</Text>
+                          <Text style={styles.requirementText}>Use clear photos so admin can verify the mechanic account quickly.</Text>
+                        </View>
+                      </View>
+                      <UploadRow
+                        title="Workshop photo"
+                        value={docs.workshopPhotoUrl}
+                        icon="business"
+                        onCamera={() => captureImage("workshopPhotoUrl")}
+                        onGallery={() => pickImage("workshopPhotoUrl")}
+                      />
+                      <UploadRow
+                        title="Certificate"
+                        value={docs.certificateUrl}
+                        icon="document-text"
+                        onCamera={() => captureImage("certificateUrl")}
+                        onGallery={() => pickImage("certificateUrl")}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.sectionTitle}>Driving licence</Text>
+                      <View style={styles.requirementCard}>
+                        <View style={styles.requirementIcon}>
+                          <Ionicons name="card" size={18} color={colors.primaryDark} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.requirementTitle}>Driving licence is required</Text>
+                          <Text style={styles.requirementText}>Upload the licence for this {serviceCategoryLabel(serviceCategory).toLowerCase()} account.</Text>
+                        </View>
+                      </View>
+                      <UploadRow
+                        title="Driving licence"
+                        value={docs.drivingLicenseUrl}
+                        icon="card"
+                        onCamera={() => captureImage("drivingLicenseUrl")}
+                        onGallery={() => pickImage("drivingLicenseUrl")}
+                      />
+                    </>
+                  )}
 
                   <Text style={styles.sectionTitle}>Live location <Text style={styles.optional}>optional</Text></Text>
                   <Pressable onPress={fetchLocation} style={styles.locationButton} disabled={locationLoading}>
@@ -592,6 +685,27 @@ const styles = StyleSheet.create({
   categoryButtonSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder },
   categoryText: { color: colors.text, fontSize: 13, fontWeight: "700" },
   categoryTextSelected: { color: colors.primaryDark },
+  requirementCard: {
+    marginTop: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySoft,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
+  },
+  requirementIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  requirementTitle: { color: colors.primaryDark, fontSize: 13, fontWeight: "900" },
+  requirementText: { marginTop: 3, color: colors.primaryDark, fontSize: 12, fontWeight: "700", lineHeight: 17 },
   uploadRow: {
     minHeight: 72,
     borderRadius: 14,

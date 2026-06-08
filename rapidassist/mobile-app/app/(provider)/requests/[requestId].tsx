@@ -4,10 +4,12 @@ import { StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { acceptRequest, getRequest, updateRequestStatus } from "../../../src/requests/requests.api";
+import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
 import { getRequestTitle, getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, SectionTitle, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
+import { canNavigateTo, openExternalNavigation } from "../../../src/utils/navigation";
 
 function formatValue(value?: string | number | null) {
   if (value == null || value === "") return "N/A";
@@ -21,6 +23,11 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
       <Text style={styles.detailValue}>{formatValue(value)}</Text>
     </View>
   );
+}
+
+function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
+  return { latitude: location.lat, longitude: location.lng };
 }
 
 export default function ProviderRequestDetails() {
@@ -85,6 +92,15 @@ export default function ProviderRequestDetails() {
     }
   }
 
+  async function openNavigation(location: ServiceRequest["pickupLocation"], label: string) {
+    try {
+      setError(null);
+      await openExternalNavigation(location, label);
+    } catch (e: any) {
+      setError(e?.message || "Failed to open navigation");
+    }
+  }
+
   useEffect(() => {
     loadRequest();
   }, [params.requestId, token]);
@@ -138,10 +154,36 @@ export default function ProviderRequestDetails() {
 
             <SectionTitle title="Locations" />
             <Card style={styles.block}>
+              {requestCoordinate(request.pickupLocation) ? (
+                <LocationMapPreview
+                  pickup={requestCoordinate(request.pickupLocation)!}
+                  destination={requestCoordinate(request.destinationLocation)}
+                />
+              ) : null}
               <DetailRow label="Pickup" value={request.pickupLocation?.addressText || `${request.pickupLocation?.lat}, ${request.pickupLocation?.lng}`} />
               {request.destinationLocation ? (
                 <DetailRow label="Destination" value={request.destinationLocation.addressText || `${request.destinationLocation.lat}, ${request.destinationLocation.lng}`} />
               ) : null}
+              <View style={styles.navigationActions}>
+                <PrimaryButton
+                  title="Navigate to Pickup"
+                  icon="navigate"
+                  variant="outline"
+                  disabled={!canNavigateTo(request.pickupLocation)}
+                  style={{ flex: 1 }}
+                  onPress={() => openNavigation(request.pickupLocation, "Customer pickup")}
+                />
+                {request.category === "car_towing" && request.destinationLocation ? (
+                  <PrimaryButton
+                    title="Navigate to Drop-off"
+                    icon="flag"
+                    variant="outline"
+                    disabled={!canNavigateTo(request.destinationLocation)}
+                    style={{ flex: 1 }}
+                    onPress={() => openNavigation(request.destinationLocation!, "Drop-off destination")}
+                  />
+                ) : null}
+              </View>
             </Card>
 
             <SectionTitle title="Estimate" />
@@ -228,6 +270,7 @@ const styles = StyleSheet.create({
   totalLabel: { color: ui.colors.text, fontSize: 15, fontWeight: "900" },
   totalValue: { color: ui.colors.success, fontSize: 15, fontWeight: "900" },
   actions: { marginTop: 16, flexDirection: "row", gap: 10 },
+  navigationActions: { flexDirection: "row", gap: 10 },
   cancelBox: { marginTop: 12, gap: 12, borderColor: ui.colors.dangerSoft },
   cancelTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
   cancelText: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },

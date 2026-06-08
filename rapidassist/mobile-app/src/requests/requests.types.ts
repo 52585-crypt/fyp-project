@@ -23,6 +23,7 @@ export type RequestStatus =
   | "inspection_started"
   | "extra_work_requested"
   | "work_started"
+  | "service_finished"
   | "completed"
   | "cancelled";
 
@@ -96,6 +97,19 @@ export type ServiceRequest = {
   review: RequestReview | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type NearbyProvider = {
+  id: string;
+  name: string;
+  serviceCategory: "mechanic" | "fuel_delivery" | "towing" | null;
+  ratingAvg: number;
+  ratingCount: number;
+  completedJobs: number;
+  distanceKm: number;
+  etaMinutes: number;
+  score: number;
+  location: RequestLocation;
 };
 
 export type CreateRequestInput = {
