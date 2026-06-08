@@ -4,8 +4,13 @@
 - `http://localhost:4000`
 
 ## Auth
-All vehicle endpoints require JWT:
+All vehicle endpoints require JWT auth. Use one of these:
+
 - Header: `Authorization: Bearer <token>`
+- Cookie: `rapidassist_access_token=<token>`
+
+Login or register through `/api/auth` first. Insomnia can store the `Set-Cookie`
+response automatically and reuse it on these requests.
 
 ## Endpoints
 
