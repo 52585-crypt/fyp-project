@@ -6,6 +6,7 @@ export type RequestLocation = {
   lat: number;
   lng: number;
   addressText?: string | null;
+  updatedAt?: string | null;
 };
 
 export type RequestStatus =
@@ -30,6 +31,29 @@ export type PriceLine = {
   amount: number;
 };
 
+export type ChatMessage = {
+  id: string;
+  requestId: string;
+  senderId: string;
+  senderRole: "user" | "mechanic";
+  sender: {
+    id: string;
+    name: string;
+    phone: string;
+    role: "user" | "mechanic";
+  } | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RequestReview = {
+  rating: number;
+  comment: string | null;
+  byUserId: string | null;
+  reviewedAt: string | null;
+};
+
 export type ServiceRequest = {
   id: string;
   userId: string;
@@ -44,6 +68,7 @@ export type ServiceRequest = {
   };
   pickupLocation: RequestLocation;
   destinationLocation: RequestLocation | null;
+  providerLocation?: RequestLocation | null;
   issueType: string | null;
   description: string | null;
   photos: string[];
@@ -68,6 +93,7 @@ export type ServiceRequest = {
     total: number;
   };
   status: RequestStatus;
+  review: RequestReview | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -83,6 +109,7 @@ export type CreateRequestInput = {
   };
   pickupLocation: RequestLocation;
   destinationLocation?: RequestLocation | null;
+  distanceKm?: number | null;
   issueType?: string | null;
   description?: string | null;
   fuelDetails?: {

@@ -2,14 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { colors } from "../../../src/theme/colors";
 import { RAButton } from "../../../src/components/RAButton";
 import { RATextInput } from "../../../src/components/RATextInput";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import type { Vehicle } from "../../../src/vehicles/vehicles.types";
 import { listMyVehicles } from "../../../src/vehicles/vehicles.api";
-import type { RequestCategory } from "../../../src/requests/requests.types";
+import type { FuelType, MechanicIssueCategory, PriceLine, RequestCategory } from "../../../src/requests/requests.types";
 import { createRequest } from "../../../src/requests/requests.api";
 
 type ServiceOption = {
@@ -27,6 +27,61 @@ const serviceOptions: ServiceOption[] = [
   { id: "fuel", title: "Fuel Delivery", subtitle: "Petrol or diesel", icon: "water", category: "fuel_delivery", issueType: "fuel_delivery" },
   { id: "mechanic", title: "Mechanic", subtitle: "Inspection and repair", icon: "construct", category: "mechanic", issueType: "battery" }
 ];
+
+function serviceIdForCategory(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === "fuel_delivery") return "fuel";
+  if (raw === "mechanic") return "mechanic";
+  return "towing";
+}
+
+const fuelOptions: Array<{ label: string; value: FuelType }> = [
+  { label: "Petrol", value: "petrol" },
+  { label: "Diesel", value: "diesel" }
+];
+
+const mechanicIssues: Array<{ label: string; value: MechanicIssueCategory }> = [
+  { label: "Battery", value: "battery" },
+  { label: "Engine", value: "engine" },
+  { label: "Tyre", value: "tyre" },
+  { label: "Brake", value: "brake" },
+  { label: "Overheating", value: "overheating" },
+  { label: "Inspection", value: "general_inspection" }
+];
+
+function parsePositiveNumber(value: string, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function buildEstimate(category: RequestCategory, distanceKm: number, fuelType: FuelType, liters: number) {
+  let lines: PriceLine[];
+
+  if (category === "car_towing") {
+    lines = [
+      { label: "Base towing fee", amount: 1200 },
+      { label: `Distance charge (${distanceKm} km)`, amount: Math.round(distanceKm * 180) },
+      { label: "Service fee", amount: 250 }
+    ];
+  } else if (category === "fuel_delivery") {
+    const perLiter = fuelType === "diesel" ? 290 : 275;
+    lines = [
+      { label: `${fuelType === "diesel" ? "Diesel" : "Petrol"} (${liters}L)`, amount: Math.round(perLiter * liters) },
+      { label: "Delivery fee", amount: 450 },
+      { label: "Service fee", amount: 150 }
+    ];
+  } else {
+    lines = [
+      { label: "Inspection fee", amount: 900 },
+      { label: "Visit fee", amount: 350 }
+    ];
+  }
+
+  return {
+    lines,
+    total: lines.reduce((sum, line) => sum + line.amount, 0)
+  };
+}
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -66,13 +121,21 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
 
 export default function CreateRequest() {
   const { token } = useAuth();
+  const params = useLocalSearchParams<{ category?: string }>();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState(serviceOptions[0].id);
+  const [selectedServiceId, setSelectedServiceId] = useState(() => serviceIdForCategory(params.category));
   const [description, setDescription] = useState("");
   const [lat, setLat] = useState("31.5204");
   const [lng, setLng] = useState("74.3587");
   const [addressText, setAddressText] = useState("Gulberg, Lahore");
+  const [destinationLat, setDestinationLat] = useState("31.4697");
+  const [destinationLng, setDestinationLng] = useState("74.2728");
+  const [destinationAddress, setDestinationAddress] = useState("Johar Town, Lahore");
+  const [distanceKm, setDistanceKm] = useState("8");
+  const [fuelType, setFuelType] = useState<FuelType>("petrol");
+  const [liters, setLiters] = useState("5");
+  const [mechanicIssue, setMechanicIssue] = useState<MechanicIssueCategory>("battery");
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +161,10 @@ export default function CreateRequest() {
     loadVehicles();
   }, [loadVehicles]);
 
+  useEffect(() => {
+    setSelectedServiceId(serviceIdForCategory(params.category));
+  }, [params.category]);
+
   const selectedVehicle = useMemo(() => vehicles.find((vehicle) => vehicle.id === vehicleId) || null, [vehicleId, vehicles]);
 
   const locationReady = useMemo(() => {
@@ -106,7 +173,26 @@ export default function CreateRequest() {
     return Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
   }, [lat, lng]);
 
-  const canSubmit = Boolean(vehicleId && locationReady && !loading);
+  const destinationReady = useMemo(() => {
+    const parsedLat = Number(destinationLat);
+    const parsedLng = Number(destinationLng);
+    return Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
+  }, [destinationLat, destinationLng]);
+
+  const litersNumber = useMemo(() => Math.min(50, Math.max(1, Math.round(parsePositiveNumber(liters, 5)))), [liters]);
+  const distanceNumber = useMemo(() => Math.max(1, parsePositiveNumber(distanceKm, 8)), [distanceKm]);
+  const estimate = useMemo(
+    () => buildEstimate(selectedService.category, distanceNumber, fuelType, litersNumber),
+    [distanceNumber, fuelType, litersNumber, selectedService.category]
+  );
+
+  const canSubmit = Boolean(
+    vehicleId &&
+      locationReady &&
+      (selectedService.category !== "car_towing" || destinationReady) &&
+      (selectedService.category !== "fuel_delivery" || (litersNumber >= 1 && litersNumber <= 50)) &&
+      !loading
+  );
 
   async function useCurrentLocation() {
     try {
@@ -149,7 +235,12 @@ export default function CreateRequest() {
       await createRequest(token, {
         vehicleId,
         category: selectedService.category,
-        issueType: selectedService.unknownIssue ? null : selectedService.issueType,
+        issueType:
+          selectedService.category === "mechanic"
+            ? mechanicIssue
+            : selectedService.unknownIssue
+              ? null
+              : selectedService.issueType,
         description: description.trim() ? description.trim() : null,
         pickupLocation: {
           lat: Number(lat),
@@ -159,22 +250,23 @@ export default function CreateRequest() {
         destinationLocation:
           selectedService.category === "car_towing"
             ? {
-                lat: Number(lat) + 0.02,
-                lng: Number(lng) + 0.02,
-                addressText: "Destination workshop"
+                lat: Number(destinationLat),
+                lng: Number(destinationLng),
+                addressText: destinationAddress.trim() ? destinationAddress.trim() : null
               }
             : null,
+        distanceKm: selectedService.category === "car_towing" ? distanceNumber : null,
         fuelDetails:
           selectedService.category === "fuel_delivery"
             ? {
-                fuelType: "petrol",
-                liters: 5
+                fuelType,
+                liters: litersNumber
               }
             : undefined,
         mechanicDetails:
           selectedService.category === "mechanic"
             ? {
-                issueCategory: "battery"
+                issueCategory: mechanicIssue
               }
             : undefined
       });
@@ -274,6 +366,54 @@ export default function CreateRequest() {
             </View>
           </Section>
 
+          {selectedService.category === "car_towing" ? (
+            <Section title="Towing Details">
+              <RATextInput icon="flag" placeholder="Destination address" value={destinationAddress} onChangeText={setDestinationAddress} />
+              <View style={styles.coordinateRow}>
+                <View style={{ flex: 1 }}>
+                  <RATextInput icon="navigate" placeholder="Destination lat" keyboardType="numeric" value={destinationLat} onChangeText={setDestinationLat} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <RATextInput icon="navigate" placeholder="Destination lng" keyboardType="numeric" value={destinationLng} onChangeText={setDestinationLng} />
+                </View>
+              </View>
+              <View style={{ height: 10 }} />
+              <RATextInput icon="speedometer" placeholder="Estimated distance in km" keyboardType="numeric" value={distanceKm} onChangeText={setDistanceKm} />
+            </Section>
+          ) : null}
+
+          {selectedService.category === "fuel_delivery" ? (
+            <Section title="Fuel Details">
+              <View style={styles.segment}>
+                {fuelOptions.map((item) => {
+                  const selected = fuelType === item.value;
+                  return (
+                    <Pressable key={item.value} onPress={() => setFuelType(item.value)} style={[styles.segmentItem, selected ? styles.segmentItemSelected : null]}>
+                      <Text style={[styles.segmentText, selected ? styles.segmentTextSelected : null]}>{item.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={{ height: 10 }} />
+              <RATextInput icon="water" placeholder="Liters needed (1-50)" keyboardType="numeric" value={liters} onChangeText={setLiters} />
+            </Section>
+          ) : null}
+
+          {selectedService.category === "mechanic" ? (
+            <Section title="Mechanic Issue">
+              <View style={styles.issueGrid}>
+                {mechanicIssues.map((item) => {
+                  const selected = mechanicIssue === item.value;
+                  return (
+                    <Pressable key={item.value} onPress={() => setMechanicIssue(item.value)} style={[styles.issuePill, selected ? styles.issuePillSelected : null]}>
+                      <Text style={[styles.issueText, selected ? styles.issueTextSelected : null]}>{item.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Section>
+          ) : null}
+
           <Section title="Problem Details">
             <RATextInput icon="chatbox-ellipses" placeholder="Short description (optional)" value={description} onChangeText={setDescription} />
           </Section>
@@ -283,9 +423,15 @@ export default function CreateRequest() {
             <SummaryLine label="Service Type" value={selectedService.title} />
             <SummaryLine label="Vehicle" value={selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : "Not selected"} />
             <SummaryLine label="Location" value={addressText || `${lat}, ${lng}`} />
+            {selectedService.category === "car_towing" ? <SummaryLine label="Destination" value={destinationAddress || `${destinationLat}, ${destinationLng}`} /> : null}
+            {selectedService.category === "fuel_delivery" ? <SummaryLine label="Fuel" value={`${fuelType.toUpperCase()} - ${litersNumber}L`} /> : null}
+            {selectedService.category === "mechanic" ? <SummaryLine label="Issue" value={mechanicIssues.find((item) => item.value === mechanicIssue)?.label || mechanicIssue} /> : null}
+            {estimate.lines.map((line) => (
+              <SummaryLine key={line.label} label={line.label} value={`Rs. ${line.amount.toLocaleString()}`} />
+            ))}
             <View style={styles.estimateRow}>
               <Text style={styles.estimateLabel}>Estimated Total</Text>
-              <Text style={styles.estimateValue}>Rs. 390</Text>
+              <Text style={styles.estimateValue}>Rs. {estimate.total.toLocaleString()}</Text>
             </View>
           </View>
         </ScrollView>
@@ -399,6 +545,35 @@ const styles = StyleSheet.create({
   locationTitle: { color: colors.primaryDark, fontSize: 13, fontWeight: "900" },
   locationText: { marginTop: 3, color: colors.mutedText, fontSize: 12, lineHeight: 16 },
   coordinateRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  segment: {
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    flexDirection: "row",
+    padding: 4
+  },
+  segmentItem: { flex: 1, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  segmentItemSelected: { backgroundColor: colors.primary },
+  segmentText: { color: colors.mutedText, fontSize: 13, fontWeight: "900" },
+  segmentTextSelected: { color: "white" },
+  issueGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  issuePill: {
+    minHeight: 42,
+    minWidth: "31%",
+    flexGrow: 1,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  issuePillSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  issueText: { color: colors.text, fontSize: 12, fontWeight: "900" },
+  issueTextSelected: { color: "white" },
   reviewBox: {
     marginTop: 12,
     borderRadius: 14,

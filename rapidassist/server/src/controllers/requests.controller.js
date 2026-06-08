@@ -8,6 +8,7 @@ const {
 } = require("../models/ServiceRequest");
 const { Vehicle } = require("../models/Vehicle");
 const { User } = require("../models/User");
+const { ChatMessage } = require("../models/ChatMessage");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -55,6 +56,71 @@ function providerCategoryForRequest(category) {
   return category;
 }
 
+function canAccessRequestChat(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  return Boolean(request.providerId && request.providerId.toString() === userId);
+}
+
+function canAccessRequestDetails(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  if (request.providerId && request.providerId.toString() === userId) return true;
+  if (user.role !== "mechanic") return false;
+
+  return (
+    request.status === "searching_provider" &&
+    !request.providerId &&
+    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
+  );
+}
+
+function canCancelRequest(request, user) {
+  const userId = user?._id?.toString();
+  if (!userId) return false;
+  if (request.userId?.toString() === userId) return true;
+  if (request.providerId && request.providerId.toString() === userId) return true;
+  if (user.role !== "mechanic") return false;
+
+  return (
+    request.status === "searching_provider" &&
+    !request.providerId &&
+    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
+  );
+}
+
+async function refreshProviderRating(providerId) {
+  if (!providerId) return;
+
+  const [summary] = await ServiceRequest.aggregate([
+    {
+      $match: {
+        providerId: new mongoose.Types.ObjectId(providerId.toString()),
+        "review.rating": { $gte: 1, $lte: 5 }
+      }
+    },
+    {
+      $group: {
+        _id: "$providerId",
+        ratingAvg: { $avg: "$review.rating" },
+        ratingCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  await User.updateOne(
+    { _id: providerId },
+    {
+      $set: {
+        ratingAvg: summary ? Math.round(summary.ratingAvg * 10) / 10 : 0,
+        ratingCount: summary?.ratingCount || 0
+      }
+    }
+  );
+}
+
 function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
@@ -77,6 +143,45 @@ function optionalLocation(input) {
     addressText: normalizeStr(input.addressText) || null,
     updatedAt: new Date()
   };
+}
+
+function providerLocationFromUser(provider) {
+  const location = provider?.providerState?.currentLocation;
+  const lat = parseNum(location?.lat);
+  const lng = parseNum(location?.lng);
+  if (lat == null || lng == null) return null;
+
+  return {
+    lat,
+    lng,
+    addressText: normalizeStr(location?.addressText) || null,
+    updatedAt: location?.updatedAt || null
+  };
+}
+
+async function attachProviderLocations(requests) {
+  const providerIds = [
+    ...new Set(
+      requests
+        .map((request) => request.providerId?.toString())
+        .filter(Boolean)
+    )
+  ];
+
+  if (!providerIds.length) {
+    return requests.map((request) => ({
+      ...request.toJSONSafe(),
+      providerLocation: null
+    }));
+  }
+
+  const providers = await User.find({ _id: { $in: providerIds } }).select("providerState");
+  const providerMap = new Map(providers.map((provider) => [provider._id.toString(), providerLocationFromUser(provider)]));
+
+  return requests.map((request) => ({
+    ...request.toJSONSafe(),
+    providerLocation: providerMap.get(request.providerId?.toString()) || null
+  }));
 }
 
 function activeStatuses() {
@@ -233,7 +338,21 @@ async function createRequest(req, res, next) {
 async function listMyRequests(req, res, next) {
   try {
     const requests = await ServiceRequest.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.json({ ok: true, requests: requests.map((r) => r.toJSONSafe()) });
+    res.json({ ok: true, requests: await attachProviderLocations(requests) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getRequest(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestDetails(request, req.user)) throw forbidden("Forbidden");
+
+    res.json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
     next(err);
   }
@@ -307,7 +426,8 @@ async function updateRequestStatus(req, res, next) {
 
     const isOwner = request.userId.toString() === req.user._id.toString();
     const isProvider = request.providerId && request.providerId.toString() === req.user._id.toString();
-    if (!isOwner && !isProvider) throw forbidden("Forbidden");
+    const isOpenMatchingProviderCancel = status === "cancelled" && canCancelRequest(request, req.user);
+    if (!isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
 
     if (["completed", "provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started"].includes(status) && !isProvider) {
       throw forbidden("Only assigned provider can set this status");
@@ -328,6 +448,39 @@ async function updateRequestStatus(req, res, next) {
         }
       );
     }
+
+    res.json({ ok: true, request: request.toJSONSafe() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function submitRequestReview(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (request.userId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
+    if (request.status !== "completed") throw badRequest("Only completed requests can be reviewed");
+    if (!request.providerId) throw badRequest("Cannot review a request without an assigned provider");
+
+    const rating = Number(req.body?.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw badRequest("rating must be an integer between 1 and 5");
+    }
+
+    const comment = normalizeStr(req.body?.comment);
+    if (comment.length > 400) throw badRequest("comment must be 400 characters or less");
+
+    request.review = {
+      rating,
+      comment: comment || null,
+      byUserId: req.user._id,
+      reviewedAt: new Date()
+    };
+    await request.save();
+    await refreshProviderRating(request.providerId);
 
     res.json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
@@ -499,8 +652,55 @@ async function approveExtraWork(req, res, next) {
   }
 }
 
+async function getRequestMessages(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestChat(request, req.user)) throw forbidden("Forbidden");
+
+    const messages = await ChatMessage.find({ requestId: request._id })
+      .sort({ createdAt: 1 })
+      .limit(100)
+      .populate({ path: "senderId", select: "name phone role" });
+
+    res.json({ ok: true, messages: messages.map((message) => message.toJSONSafe()) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function sendRequestMessage(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+
+    const body = normalizeStr(req.body?.body);
+    if (!body) throw badRequest("Message is required");
+    if (body.length > 1000) throw badRequest("Message must be 1000 characters or less");
+
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) throw notFound("Request not found");
+    if (!canAccessRequestChat(request, req.user)) throw forbidden("Forbidden");
+    if (!request.providerId) throw badRequest("Chat is available after provider assignment");
+
+    const message = await ChatMessage.create({
+      requestId: request._id,
+      senderId: req.user._id,
+      senderRole: req.user.role,
+      body
+    });
+
+    await message.populate({ path: "senderId", select: "name phone role" });
+    res.status(201).json({ ok: true, message: message.toJSONSafe() });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createRequest,
+  getRequest,
   listMyRequests,
   listOpenRequests: listProviderRequests,
   listProviderRequests,
@@ -511,6 +711,9 @@ module.exports = {
   getProviderActiveRequest,
   getProviderHistory,
   getProviderEarnings,
+  getRequestMessages,
   requestExtraWork,
-  approveExtraWork
+  approveExtraWork,
+  submitRequestReview,
+  sendRequestMessage
 };

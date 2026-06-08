@@ -5,20 +5,28 @@ import { router } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { listMyRequests } from "../../src/requests/requests.api";
-import type { ServiceRequest } from "../../src/requests/requests.types";
+import type { RequestCategory, ServiceRequest } from "../../src/requests/requests.types";
 
 const serviceTiles: Array<{
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
+  category?: RequestCategory;
 }> = [
-  { title: "Car Towing", subtitle: "Vehicle towing", icon: "car" },
-  { title: "Fuel Delivery", subtitle: "At your location", icon: "water" },
-  { title: "Mechanic", subtitle: "On-demand", icon: "construct" },
-  { title: "Battery Jump", subtitle: "Start your vehicle", icon: "battery-charging" },
-  { title: "Tyre Change", subtitle: "Flat tyre help", icon: "radio-button-on" },
+  { title: "Car Towing", subtitle: "Vehicle towing", icon: "car", category: "car_towing" },
+  { title: "Fuel Delivery", subtitle: "At your location", icon: "water", category: "fuel_delivery" },
+  { title: "Mechanic", subtitle: "On-demand", icon: "construct", category: "mechanic" },
+  { title: "Battery Jump", subtitle: "Start your vehicle", icon: "battery-charging", category: "mechanic" },
+  { title: "Tyre Change", subtitle: "Flat tyre help", icon: "radio-button-on", category: "mechanic" },
   { title: "More", subtitle: "View all", icon: "ellipsis-horizontal" }
 ];
+
+function openRequest(category?: RequestCategory) {
+  router.push({
+    pathname: "/request/create",
+    params: category ? { category } : undefined
+  });
+}
 
 function statusLabel(status?: ServiceRequest["status"]) {
   if (!status) return "No active request";
@@ -116,7 +124,7 @@ export default function Home() {
             </View>
           </View>
 
-          <Pressable onPress={() => router.push("/request/create")} style={styles.hero}>
+          <Pressable onPress={() => openRequest()} style={styles.hero}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>Need Help for Your Vehicle?</Text>
               <Text style={styles.heroText}>24/7 support - fast and reliable</Text>
@@ -138,7 +146,7 @@ export default function Home() {
                 title={item.title}
                 subtitle={item.subtitle}
                 icon={item.icon}
-                onPress={() => router.push("/request/create")}
+                onPress={() => openRequest(item.category)}
               />
             ))}
           </View>
@@ -161,7 +169,7 @@ export default function Home() {
 
         <View style={styles.bottomNav}>
           <BottomTab icon="home" label="Home" active onPress={() => undefined} />
-          <BottomTab icon="reader-outline" label="Requests" onPress={() => router.push("/request/create")} />
+          <BottomTab icon="reader-outline" label="Requests" onPress={() => openRequest()} />
           <BottomTab icon="headset-outline" label="Support" onPress={() => undefined} />
           <BottomTab icon="person-outline" label="Profile" onPress={logout} />
         </View>
