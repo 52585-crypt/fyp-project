@@ -1,0 +1,17 @@
+
+> rapidassist-server@1.0.0 dev
+> nodemon src/index.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/index.js`[39m
+RapidAssist API running on port 4000
+[0mGET /health [32m200[0m 4.199 ms - 39[0m
+[0mGET /api/admin/dashboard [32m200[0m 1437.102 ms - 207[0m
+[0mGET /health [36m304[0m 0.665 ms - -[0m
+[0mGET /api/admin/dashboard [32m200[0m 1441.546 ms - 207[0m
+[0mGET /api/admin/dashboard [36m304[0m 1584.002 ms - -[0m
+[0mGET /api/admin/dashboard [36m304[0m 494.948 ms - -[0m
+[0mGET /api/admin/dashboard [36m304[0m 358.500 ms - -[0m

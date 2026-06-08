@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     opacity: 0.9
   },
   disabled: {
-    backgroundColor: "#9ADBB2"
+    backgroundColor: "#93C5FD"
   },
   text: {
     color: "white",

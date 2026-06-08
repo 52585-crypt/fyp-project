@@ -71,9 +71,43 @@ Register mechanic:
   "phone": "03007654321",
   "password": "secret123",
   "isCertified": true,
-  "certificateUrl": "https://example.com/cert.jpg"
+  "certificateUrl": "https://example.com/cert.jpg",
+  "mechanicProfile": {
+    "serviceCategory": "mechanic",
+    "selfieUrl": "data:image/jpeg;base64,/9j/...",
+    "idCardFrontUrl": "data:image/jpeg;base64,/9j/...",
+    "idCardBackUrl": "data:image/jpeg;base64,/9j/...",
+    "workshopPhotoUrl": "data:image/jpeg;base64,/9j/...",
+    "certificateUrl": "data:image/jpeg;base64,/9j/...",
+    "liveLocation": {
+      "lat": 31.5204,
+      "lng": 74.3587,
+      "addressText": "Lahore, Pakistan"
+    }
+  }
 }
 ```
+
+Mechanic `serviceCategory` values:
+
+- `mechanic`
+- `fuel_delivery`
+- `towing`
+
+`liveLocation` is optional for mechanic registration. If it is not provided,
+the backend stores an empty location block for later update.
+
+Mechanic photos are stored directly in the embedded `mechanicProfile` document
+as base64 image data URIs. The backend rejects local phone paths such as
+`file://...` because those paths cannot be read by the server later. Optional env:
+
+```bash
+JSON_BODY_LIMIT=12mb
+MECHANIC_IMAGE_MAX_CHARS=2500000
+```
+
+The backend stores identity-match status as `pending`. Connect a face-match/OCR
+provider before marking `identityMatch.status` as `matched` or `mismatch`.
 
 Logout:
 
