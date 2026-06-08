@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { adminApi, API_BASE_URL } from "../config/api";
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:4000";
 
 export function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -16,12 +18,11 @@ export function AdminLogin() {
       setError("");
 
       // Placeholder: will be wired to real admin auth endpoint in backend V1.5 / V5
-      await adminApi.get("/health");
+      await axios.get(`${API_BASE_URL}/health`);
 
       window.location.href = "/dashboard";
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || "Login failed";
-      setError(`${message}. API: ${API_BASE_URL}`);
+      setError(err?.response?.data?.message || err?.message || "Login failed");
     } finally {
       setLoading(false);
     }

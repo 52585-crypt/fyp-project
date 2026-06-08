@@ -1,47 +1,45 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { StyleSheet, Text, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { getProviderActiveRequest, requestExtraWork, updateProviderLocation, updateRequestStatus } from "../../../src/requests/requests.api";
-import { getServiceIcon, getServiceTitle, providerJobFlows, providerServiceFromRequestCategory } from "../../../src/requests/serviceCatalog";
-import type { ServiceRequest } from "../../../src/requests/requests.types";
+import { getProviderActiveRequest, requestExtraWork, updateRequestStatus } from "../../../src/requests/requests.api";
+import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
-const LOCATION_SYNC_MS = 10000;
+const flows: Record<string, Array<{ label: string; status: RequestStatus }>> = {
+  towing: [
+    { label: "On the way", status: "provider_on_way" },
+    { label: "Arrived", status: "provider_arrived" },
+    { label: "Vehicle loaded", status: "vehicle_loaded" },
+    { label: "Reached destination", status: "reached_destination" },
+    { label: "Completed", status: "completed" }
+  ],
+  fuel_delivery: [
+    { label: "On the way", status: "provider_on_way" },
+    { label: "Arrived", status: "provider_arrived" },
+    { label: "Fuel delivered", status: "fuel_delivered" },
+    { label: "Completed", status: "completed" }
+  ],
+  mechanic: [
+    { label: "On the way", status: "provider_on_way" },
+    { label: "Arrived", status: "provider_arrived" },
+    { label: "Inspection started", status: "inspection_started" },
+    { label: "Work started", status: "work_started" },
+    { label: "Completed", status: "completed" }
+  ]
+};
 
 export default function ProviderJobs() {
   const { token, user } = useAuth();
   const params = useLocalSearchParams<{ requestId?: string; category?: string }>();
+  const service = params.category === "car_towing" ? "towing" : params.category || user?.mechanicProfile?.serviceCategory || "mechanic";
+  const steps = useMemo(() => flows[service] || flows.mechanic, [service]);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [requestId, setRequestId] = useState(params.requestId || "");
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
-  const [updating, setUpdating] = useState(false);
-  const [locationStatus, setLocationStatus] = useState<string | null>(null);
-  const [showCancel, setShowCancel] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const service = useMemo(
-    () => providerServiceFromRequestCategory(activeRequest?.category || params.category || user?.mechanicProfile?.serviceCategory),
-    [activeRequest?.category, params.category, user?.mechanicProfile?.serviceCategory]
-  );
-  const steps = useMemo(() => providerJobFlows[service], [service]);
-  const isCompleted = activeRequest?.status === "completed";
-  const isCancelled = activeRequest?.status === "cancelled";
-  const isClosed = isCompleted || isCancelled;
-  const nextStepIndex = useMemo(() => {
-    if (!activeRequest) return 0;
-    if (activeRequest.status === "completed") return steps.length - 1;
-    if (activeRequest.status === "cancelled") return 0;
-    if (activeRequest.status === "extra_work_requested" || activeRequest.status === "waiting_user_approval") {
-      const workStartedIndex = steps.findIndex((step) => step.status === "work_started");
-      return workStartedIndex >= 0 ? workStartedIndex : 0;
-    }
-    const currentIndex = steps.findIndex((step) => step.status === activeRequest.status);
-    return currentIndex >= 0 ? Math.min(currentIndex + 1, steps.length - 1) : 0;
-  }, [activeRequest, steps]);
-  const completedThroughIndex = isCompleted ? steps.length - 1 : nextStepIndex - 1;
 
   useEffect(() => {
     async function loadActive() {
@@ -57,82 +55,21 @@ export default function ProviderJobs() {
     loadActive();
   }, [token]);
 
-  useEffect(() => {
-    const shouldSyncLocation = Boolean(token && activeRequest && activeRequest.status !== "completed" && activeRequest.status !== "cancelled");
-    if (!shouldSyncLocation) return;
-
-    let stopped = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    async function syncLocation() {
-      if (!token || stopped) return;
-
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (!permission.granted) {
-          setLocationStatus("Location permission is required for live tracking.");
-          return;
-        }
-
-        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        await updateProviderLocation(token, {
-          lat: current.coords.latitude,
-          lng: current.coords.longitude,
-          addressText: "Provider live location"
-        });
-
-        setLocationStatus(`Live location synced at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
-      } catch (e: any) {
-        setLocationStatus(e?.message || "Failed to sync live location.");
-      }
-    }
-
-    syncLocation();
-    timer = setInterval(syncLocation, LOCATION_SYNC_MS);
-
-    return () => {
-      stopped = true;
-      if (timer) clearInterval(timer);
-    };
-  }, [activeRequest?.id, activeRequest?.status, token]);
-
   async function markNext() {
-    const next = steps[nextStepIndex];
+    const next = steps[activeIndex];
     if (!next) return;
     if (!token || !requestId.trim()) {
+      setActiveIndex((current) => Math.min(current + 1, steps.length - 1));
       return;
     }
 
     try {
-      setUpdating(true);
       setError(null);
       const updated = await updateRequestStatus(token, requestId.trim(), next.status);
       setActiveRequest(updated);
+      setActiveIndex((current) => Math.min(current + 1, steps.length - 1));
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to update status");
-    } finally {
-      setUpdating(false);
-    }
-  }
-
-  async function onCancelJob() {
-    if (!token || !requestId.trim()) return;
-
-    try {
-      setUpdating(true);
-      setError(null);
-      const updated = await updateRequestStatus(
-        token,
-        requestId.trim(),
-        "cancelled",
-        cancelReason.trim() || "Provider cancelled the job"
-      );
-      setActiveRequest(updated);
-      setShowCancel(false);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Failed to cancel job");
-    } finally {
-      setUpdating(false);
     }
   }
 
@@ -147,54 +84,30 @@ export default function ProviderJobs() {
 
         <Card style={styles.customer}>
           <View style={styles.customerTop}>
-            <IconBox icon={getServiceIcon(activeRequest?.category || (service === "towing" ? "car_towing" : service))} />
+            <IconBox icon={service === "fuel_delivery" ? "water" : service === "towing" ? "car" : "construct"} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{getServiceTitle(activeRequest?.category || (service === "towing" ? "car_towing" : service))} job</Text>
+              <Text style={styles.name}>{(activeRequest?.category || service).replace("_", " ").toUpperCase()} job</Text>
               <Text style={styles.meta}>
                 {activeRequest?.pickupLocation?.addressText || "Load or accept a request to update backend status."}
               </Text>
             </View>
-            <StatusPill
-              label={activeRequest?.status?.replaceAll("_", " ") || "Assigned"}
-              tone={isCompleted ? "success" : isCancelled ? "danger" : "primary"}
-            />
+            <StatusPill label="Assigned" />
           </View>
           <Field label="Request ID" icon="reader" placeholder="Paste assigned request ID" value={requestId} onChangeText={setRequestId} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {locationStatus && !isClosed ? <Text style={styles.locationText}>{locationStatus}</Text> : null}
-          {isCompleted ? <Text style={styles.doneText}>This job is completed and moved to your earnings/history.</Text> : null}
-          {isCancelled ? <Text style={styles.cancelledText}>This job was cancelled and removed from active work.</Text> : null}
-          {activeRequest ? (
-            <PrimaryButton
-              title="Open Chat"
-              icon="chatbubble"
-              variant="outline"
-              onPress={() => router.push({ pathname: "/(provider)/chat/[requestId]", params: { requestId: activeRequest.id } })}
-            />
-          ) : null}
         </Card>
 
         <Card style={styles.steps}>
           {steps.map((step, index) => (
             <View key={step.status} style={styles.stepRow}>
-              <View style={[styles.stepDot, index <= completedThroughIndex ? styles.stepDotActive : null]} />
-              <Text style={[styles.stepText, index <= completedThroughIndex ? styles.stepTextActive : null]}>{step.label}</Text>
+              <View style={[styles.stepDot, index <= activeIndex ? styles.stepDotActive : null]} />
+              <Text style={[styles.stepText, index <= activeIndex ? styles.stepTextActive : null]}>{step.label}</Text>
             </View>
           ))}
         </Card>
 
-        {isClosed ? (
-          <PrimaryButton title="Back to Dashboard" icon="speedometer" variant="success" onPress={() => router.replace("/(provider)/dashboard")} />
-        ) : (
-          <PrimaryButton
-            title={updating ? "Updating..." : `Mark ${steps[nextStepIndex]?.label || "Completed"}`}
-            icon="navigate"
-            variant="success"
-            disabled={updating}
-            onPress={markNext}
-          />
-        )}
-        {activeRequest?.category === "mechanic" && !isClosed ? (
+        <PrimaryButton title={`Mark ${steps[activeIndex]?.label || "Completed"}`} icon="navigate" variant="success" onPress={markNext} />
+        {activeRequest?.category === "mechanic" ? (
           <PrimaryButton
             title="Request Extra Work Approval"
             icon="construct"
@@ -216,34 +129,7 @@ export default function ProviderJobs() {
             }}
           />
         ) : null}
-        {!isClosed ? (
-          showCancel ? (
-            <Card style={styles.cancelBox}>
-              <Text style={styles.cancelTitle}>Cancel this job?</Text>
-              <Text style={styles.cancelText}>The customer will see the request as cancelled.</Text>
-              <Field
-                label="Reason"
-                icon="document-text"
-                placeholder="Reason for cancellation"
-                value={cancelReason}
-                onChangeText={setCancelReason}
-              />
-              <View style={styles.cancelActions}>
-                <PrimaryButton title="Keep Job" variant="outline" style={{ flex: 1 }} onPress={() => setShowCancel(false)} />
-                <PrimaryButton
-                  title={updating ? "Cancelling..." : "Confirm Cancel"}
-                  icon="close-circle"
-                  variant="danger"
-                  disabled={updating}
-                  style={{ flex: 1 }}
-                  onPress={onCancelJob}
-                />
-              </View>
-            </Card>
-          ) : (
-            <PrimaryButton title="Cancel Job" icon="close-circle" variant="outline" onPress={() => setShowCancel(true)} />
-          )
-        ) : null}
+        <PrimaryButton title="Cancel Job" variant="outline" />
       </AppShell>
       <BottomNav role="provider" active="Jobs" />
     </View>
@@ -265,12 +151,5 @@ const styles = StyleSheet.create({
   stepDotActive: { backgroundColor: ui.colors.success },
   stepText: { color: ui.colors.muted, fontSize: 13, fontWeight: "800" },
   stepTextActive: { color: ui.colors.text },
-  locationText: { color: ui.colors.primary, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  doneText: { color: ui.colors.success, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  cancelledText: { color: ui.colors.danger, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  cancelBox: { gap: 12, borderColor: ui.colors.dangerSoft },
-  cancelTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  cancelText: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  cancelActions: { flexDirection: "row", gap: 10 },
   error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
 });

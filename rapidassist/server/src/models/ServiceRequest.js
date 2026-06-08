@@ -50,16 +50,6 @@ const statusTimelineSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const reviewSchema = new mongoose.Schema(
-  {
-    rating: { type: Number, min: 1, max: 5, default: null },
-    comment: { type: String, default: null, trim: true, maxlength: 400 },
-    byUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
-    reviewedAt: { type: Date, default: null }
-  },
-  { _id: false }
-);
-
 const serviceRequestSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -109,8 +99,7 @@ const serviceRequestSchema = new mongoose.Schema(
     statusTimeline: [statusTimelineSchema],
     acceptedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
-    cancelledAt: { type: Date, default: null },
-    review: { type: reviewSchema, default: null }
+    cancelledAt: { type: Date, default: null }
   },
   { timestamps: true }
 );
@@ -143,14 +132,6 @@ serviceRequestSchema.methods.toJSONSafe = function toJSONSafe() {
     acceptedAt: this.acceptedAt,
     completedAt: this.completedAt,
     cancelledAt: this.cancelledAt,
-    review: this.review
-      ? {
-          rating: this.review.rating,
-          comment: this.review.comment,
-          byUserId: this.review.byUserId ? this.review.byUserId.toString() : null,
-          reviewedAt: this.review.reviewedAt
-        }
-      : null,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };
