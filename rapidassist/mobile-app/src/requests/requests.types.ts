@@ -6,6 +6,7 @@ export type RequestLocation = {
   lat: number;
   lng: number;
   addressText?: string | null;
+  updatedAt?: string | null;
 };
 
 export type RequestStatus =
@@ -22,12 +23,36 @@ export type RequestStatus =
   | "inspection_started"
   | "extra_work_requested"
   | "work_started"
+  | "service_finished"
   | "completed"
   | "cancelled";
 
 export type PriceLine = {
   label: string;
   amount: number;
+};
+
+export type ChatMessage = {
+  id: string;
+  requestId: string;
+  senderId: string;
+  senderRole: "user" | "mechanic";
+  sender: {
+    id: string;
+    name: string;
+    phone: string;
+    role: "user" | "mechanic";
+  } | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RequestReview = {
+  rating: number;
+  comment: string | null;
+  byUserId: string | null;
+  reviewedAt: string | null;
 };
 
 export type ServiceRequest = {
@@ -44,6 +69,7 @@ export type ServiceRequest = {
   };
   pickupLocation: RequestLocation;
   destinationLocation: RequestLocation | null;
+  providerLocation?: RequestLocation | null;
   issueType: string | null;
   description: string | null;
   photos: string[];
@@ -68,8 +94,22 @@ export type ServiceRequest = {
     total: number;
   };
   status: RequestStatus;
+  review: RequestReview | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type NearbyProvider = {
+  id: string;
+  name: string;
+  serviceCategory: "mechanic" | "fuel_delivery" | "towing" | null;
+  ratingAvg: number;
+  ratingCount: number;
+  completedJobs: number;
+  distanceKm: number;
+  etaMinutes: number;
+  score: number;
+  location: RequestLocation;
 };
 
 export type CreateRequestInput = {
@@ -83,6 +123,7 @@ export type CreateRequestInput = {
   };
   pickupLocation: RequestLocation;
   destinationLocation?: RequestLocation | null;
+  distanceKm?: number | null;
   issueType?: string | null;
   description?: string | null;
   fuelDetails?: {

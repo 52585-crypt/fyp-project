@@ -6,8 +6,9 @@ export type MechanicProfile = {
   selfieUrl: string;
   idCardFrontUrl: string;
   idCardBackUrl: string;
-  workshopPhotoUrl: string;
+  workshopPhotoUrl: string | null;
   certificateUrl: string | null;
+  drivingLicenseUrl: string | null;
   liveLocation?: {
     lat: number;
     lng: number;
@@ -31,6 +32,10 @@ export type SafeUser = {
   certificateUrl: string | null;
   verificationStatus: "unverified" | "pending" | "verified" | "rejected";
   mechanicProfile?: MechanicProfile | null;
+  ratingAvg?: number;
+  ratingCount?: number;
+  completedJobs?: number;
+  complaintsCount?: number;
   providerState?: {
     isOnline: boolean;
     currentLocation?: {
