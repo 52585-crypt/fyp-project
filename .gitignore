@@ -12,3 +12,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.idea/
+.worktrees/
+*.log
+*.err.log
+rebase-staged-backup.patch
+*.docx
