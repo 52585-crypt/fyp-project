@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link, router } from "expo-router";
-import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { login } from "../../src/auth/auth.api";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { getNetworkErrorMessage } from "../../src/config/api";
@@ -36,7 +37,7 @@ export default function Login() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <StatusPill label="Secure Login" />
           <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in as a user or provider. Your role decides the dashboard.</Text>
+          <Text style={styles.subtitle}>Your next journey starts here. Sign in to continue.</Text>
 
           <View style={styles.form}>
             <Field label="Phone number" icon="call" placeholder="03001234567" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
@@ -57,13 +58,12 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ui.colors.bg },
-  container: { flexGrow: 1, padding: 18, paddingBottom: 56, justifyContent: "center" },
+  container: { flexGrow: 1, padding: 24, paddingBottom: 56, justifyContent: "center", width: "100%", maxWidth: 520, alignSelf: "center" },
   title: { marginTop: 14, color: ui.colors.text, fontSize: 32, fontWeight: "900" },
-  subtitle: { marginTop: 8, color: ui.colors.muted, fontSize: 14, lineHeight: 21, fontWeight: "700" },
+  subtitle: { marginTop: 10, color: ui.colors.muted, fontSize: 14, lineHeight: 22, fontWeight: "400" },
   form: { marginTop: 22, gap: 12 },
   hint: { color: ui.colors.muted, fontSize: 12, fontWeight: "700" },
   error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" },
   bottom: { marginTop: 18, color: ui.colors.muted, textAlign: "center", fontSize: 13, fontWeight: "700" },
   link: { color: ui.colors.primary, fontWeight: "900" }
 });
-

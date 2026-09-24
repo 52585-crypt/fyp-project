@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminApi, API_BASE_URL } from "../config/api";
+import { adminApi } from "../config/api";
 
 const refreshMs = 15000;
 
@@ -83,16 +83,16 @@ export function Dashboard() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.topbar}>
+      <div className="page-topbar">
         <div>
-          <div style={styles.title}>Admin Dashboard</div>
+          <div className="page-eyebrow">YOUR WORKSPACE AT A GLANCE</div>
+          <h1 style={styles.title}>Operations overview</h1>
           <div style={styles.subtitle}>
             RapidAssist operations overview{lastUpdated ? ` - updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
           </div>
-          <div style={styles.apiMeta}>API: {API_BASE_URL}</div>
         </div>
         <div style={styles.nav}>
-          <button type="button" onClick={loadDashboard} style={styles.refreshButton}>
+          <button type="button" disabled={loading} onClick={loadDashboard} style={styles.refreshButton}>
             {loading ? "Refreshing..." : "Refresh"}
           </button>
           <Link to="/providers" style={styles.link}>Provider Verification</Link>
@@ -100,7 +100,8 @@ export function Dashboard() {
         </div>
       </div>
 
-      {error ? <div style={styles.error}>{error}</div> : null}
+      {error ? <div role="alert" style={styles.error}>{error}</div> : null}
+      {!data ? <div role="status" style={styles.emptySmall}>{loading ? "Loading your operations overview…" : "Dashboard data is unavailable. Refresh to try again."}</div> : <>
       {!error && (stats.pendingProviders > 0 || stats.activeRequests > 0) ? (
         <div style={styles.alert}>
           <div>
@@ -113,7 +114,7 @@ export function Dashboard() {
         </div>
       ) : null}
 
-      <div style={styles.heroGrid}>
+      <div className="dashboard-hero">
         <div style={styles.heroPanel}>
           <div style={styles.eyebrow}>Request volume</div>
           <div style={styles.heroValue}>{totalRequests.toLocaleString()}</div>
@@ -156,7 +157,7 @@ export function Dashboard() {
         />
       </div>
 
-      <div style={styles.grid}>
+      <div className="stats-grid">
         <StatCard title="Users" value={stats.users ?? 0} />
         <StatCard title="Providers" value={stats.providers ?? 0} />
         <StatCard title="Vehicles" value={stats.vehicles ?? 0} />
@@ -168,7 +169,7 @@ export function Dashboard() {
         <StatCard title="Reviews" value={stats.reviewedRequests ?? 0} />
       </div>
 
-      <div style={styles.twoColumn}>
+      <div className="panel-grid">
         <Panel title="Requests by service">
           <BreakdownRow label="Car Towing" value={categoryBreakdown.car_towing || 0} total={totalRequests} />
           <BreakdownRow label="Fuel Delivery" value={categoryBreakdown.fuel_delivery || 0} total={totalRequests} />
@@ -185,7 +186,7 @@ export function Dashboard() {
         </Panel>
       </div>
 
-      <div style={styles.twoColumnWide}>
+      <div className="panel-grid">
         <Panel
           title="Pending provider queue"
           action={<Link to="/providers" style={styles.smallLink}>Review all</Link>}
@@ -214,7 +215,7 @@ export function Dashboard() {
           ) : (
             <div style={styles.stack}>
               {(data?.recentRequests || []).map((request) => (
-                <div key={request.id} style={styles.requestRow}>
+                <div key={request.id} className="request-row">
                   <div>
                     <div style={styles.rowTitle}>{serviceTitle(request.category)}</div>
                     <div style={styles.rowMeta}>
@@ -238,6 +239,7 @@ export function Dashboard() {
           )}
         </Panel>
       </div>
+      </>}
     </div>
   );
 }
@@ -300,7 +302,7 @@ function BreakdownRow({ label, value, total }) {
 }
 
 const styles = {
-  page: { minHeight: "100vh", padding: 18, background: "var(--bg)" },
+  page: { padding: "clamp(18px, 3vw, 40px)", maxWidth: 1800, margin: "0 auto" },
   topbar: {
     display: "flex",
     alignItems: "center",
@@ -312,7 +314,7 @@ const styles = {
     background: "white",
     boxShadow: "var(--shadow)"
   },
-  title: { fontSize: 22, fontWeight: 900, color: "var(--text)" },
+  title: { margin: 0, fontSize: 28, letterSpacing: "-0.8px", fontWeight: 750, color: "var(--text)" },
   subtitle: { marginTop: 4, color: "var(--muted)", fontSize: 13 },
   apiMeta: { marginTop: 4, color: "var(--muted)", fontSize: 11, fontWeight: 800 },
   nav: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" },
@@ -352,27 +354,27 @@ const styles = {
   alertText: { marginTop: 3, color: "#92400e", fontSize: 12, fontWeight: 700 },
   alertLink: { color: "#92400e", fontSize: 12, fontWeight: 900 },
   heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(4, minmax(0, 1fr))", gap: 12 },
-  heroPanel: { border: "1px solid var(--border)", borderRadius: 18, padding: 18, background: "#111827", color: "white" },
+  heroPanel: { borderRadius: 18, padding: 24, background: "#123c30", color: "white" },
   eyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 900 },
   heroValue: { marginTop: 8, fontSize: 38, fontWeight: 900 },
   heroMeta: { marginTop: 4, color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: 800 },
   progressTrack: { marginTop: 18, height: 10, borderRadius: 999, background: "rgba(255,255,255,0.18)", overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 999, background: "var(--primary)" },
+  progressFill: { height: "100%", borderRadius: 999, background: "#80dbaf" },
   heroFoot: { marginTop: 10, color: "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: 800 },
-  actionCard: { border: "1px solid var(--border)", borderRadius: 18, padding: 16, background: "white" },
-  warningCard: { background: "#fffbeb", borderColor: "#fde68a" },
-  successCard: { background: "#f0fdf4", borderColor: "#bbf7d0" },
-  primaryCard: { background: "#eff6ff", borderColor: "#bfdbfe" },
+  actionCard: { border: "1px solid var(--border)", borderRadius: 16, padding: 20, background: "white", boxShadow: "var(--shadow)" },
+  warningCard: { borderTop: "3px solid #dca644" },
+  successCard: { borderTop: "3px solid #80bda1" },
+  primaryCard: { borderTop: "3px solid var(--primary)" },
   actionTitle: { color: "var(--muted)", fontSize: 12, fontWeight: 900 },
-  actionValue: { marginTop: 10, color: "var(--text)", fontSize: 28, fontWeight: 900 },
+  actionValue: { marginTop: 10, color: "var(--text)", fontSize: 26, letterSpacing: "-0.8px", fontWeight: 750 },
   actionText: { marginTop: 8, color: "var(--muted)", fontSize: 12, fontWeight: 700, lineHeight: 1.45 },
   grid: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 },
-  card: { border: "1px solid var(--border)", borderRadius: 16, padding: 14, background: "var(--surface)" },
+  card: { border: "1px solid var(--border)", borderRadius: 14, padding: 18, background: "white" },
   cardTitle: { color: "var(--muted)", fontWeight: 900, fontSize: 12 },
   cardValue: { marginTop: 8, fontSize: 24, fontWeight: 900, color: "var(--text)" },
   twoColumn: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 },
   twoColumnWide: { marginTop: 16, display: "grid", gridTemplateColumns: "0.85fr 1.35fr", gap: 16, alignItems: "start" },
-  panel: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 16, boxShadow: "var(--shadow)" },
+  panel: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 22, boxShadow: "var(--shadow)" },
   panelHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
   panelTitle: { color: "var(--text)", fontSize: 17, fontWeight: 900 },
   panelBody: { marginTop: 12 },
@@ -407,5 +409,5 @@ const styles = {
   rowMeta: { marginTop: 3, color: "var(--muted)", fontSize: 12, fontWeight: 700 },
   badge: { justifySelf: "start", borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 900, textTransform: "capitalize" },
   amount: { color: "var(--text)", fontWeight: 900, textAlign: "right" },
-  emptySmall: { color: "var(--muted)", fontSize: 13, fontWeight: 800 }
+  emptySmall: { color: "var(--muted)", fontSize: 13, padding: "22px 12px", textAlign: "center", background: "var(--surface)", borderRadius: 12 }
 };

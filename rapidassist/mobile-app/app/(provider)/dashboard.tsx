@@ -166,7 +166,7 @@ export default function ProviderDashboard() {
         title={`Hello, ${user?.name || "Provider"}`}
         subtitle={serviceLabel}
         right={
-          <Pressable onPress={toggleOnline} style={[styles.toggle, online ? styles.toggleOn : null]}>
+          <Pressable accessibilityRole="switch" accessibilityLabel="Available for jobs" accessibilityState={{ checked: online }} hitSlop={8} onPress={toggleOnline} style={[styles.toggle, online ? styles.toggleOn : null]}>
             <View style={[styles.toggleDot, online ? styles.toggleDotOn : null]} />
           </Pressable>
         }

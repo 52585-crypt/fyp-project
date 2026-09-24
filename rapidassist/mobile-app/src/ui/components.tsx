@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ui } from "./system";
 
@@ -35,9 +36,9 @@ export function AppShell({
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {body}
         </ScrollView>
       ) : (
@@ -90,6 +91,8 @@ export function PrimaryButton({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -109,13 +112,14 @@ export function PrimaryButton({
   );
 }
 
-export function Field({ icon, label, ...props }: TextInputProps & { icon?: IconName; label?: string }) {
+export function Field({ icon, label, style, onFocus, onBlur, ...props }: TextInputProps & { icon?: IconName; label?: string }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View>
       {label ? <Text style={styles.fieldLabel}>{label}</Text> : null}
-      <View style={styles.field}>
-        {icon ? <Ionicons name={icon} size={18} color={ui.colors.muted} /> : null}
-        <TextInput placeholderTextColor={ui.colors.muted} style={styles.input} {...props} />
+      <View style={[styles.field, focused ? styles.fieldFocused : null]}>
+        {icon ? <Ionicons name={icon} size={18} color={focused ? ui.colors.primary : ui.colors.muted} /> : null}
+        <TextInput placeholderTextColor={ui.colors.muted} accessibilityLabel={label} {...props} style={[styles.input, style]} onFocus={(event) => { setFocused(true); onFocus?.(event); }} onBlur={(event) => { setFocused(false); onBlur?.(event); }} />
       </View>
     </View>
   );
@@ -142,6 +146,7 @@ export function Metric({ label, value, icon }: { label: string; value: string; i
 }
 
 export function BottomNav({ role, active }: { role: "user" | "provider"; active: string }) {
+  const insets = useSafeAreaInsets();
   const userTabs = [
     { label: "Home", icon: "home", href: "/(user)/home" },
     { label: "Request", icon: "add-circle", href: "/(user)/request" },
@@ -157,12 +162,12 @@ export function BottomNav({ role, active }: { role: "user" | "provider"; active:
   const tabs = role === "user" ? userTabs : providerTabs;
 
   return (
-    <View style={styles.bottomNav}>
+    <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12), minHeight: 72 + insets.bottom }]}>
       {tabs.map((tab) => {
         const selected = active === tab.label;
         return (
-          <Pressable key={tab.label} onPress={() => router.replace(tab.href)} style={styles.navItem}>
-            <Ionicons name={tab.icon} size={21} color={selected ? ui.colors.primary : ui.colors.muted} />
+          <Pressable key={tab.label} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={tab.label} onPress={() => router.replace(tab.href)} style={styles.navItem}>
+            <View style={[styles.navIcon, selected ? styles.navIconActive : null]}><Ionicons name={tab.icon} size={21} color={selected ? ui.colors.primary : ui.colors.muted} /></View>
             <Text style={[styles.navText, selected ? styles.navTextActive : null]}>{tab.label}</Text>
           </Pressable>
         );
@@ -184,33 +189,36 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ui.colors.bg },
   scrollContent: { paddingBottom: screenBottomPadding },
   staticContent: { flex: 1, paddingBottom: screenBottomPadding },
-  content: { padding: 18 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-  title: { color: ui.colors.text, fontSize: 24, fontWeight: "900", letterSpacing: 0 },
-  subtitle: { marginTop: 4, color: ui.colors.muted, fontSize: 13, fontWeight: "700", lineHeight: 18 },
-  card: { borderRadius: ui.radius.lg, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, padding: 14, ...ui.shadow },
+  content: { padding: 20, width: "100%", maxWidth: 760, alignSelf: "center" },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24, marginTop: 8 },
+  title: { color: ui.colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.7 },
+  subtitle: { marginTop: 5, color: ui.colors.muted, fontSize: 13, fontWeight: "500", lineHeight: 19 },
+  card: { borderRadius: ui.radius.lg, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, padding: 18, ...ui.shadow },
   iconBox: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  button: { height: 52, borderRadius: ui.radius.md, backgroundColor: ui.colors.primary, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  button: { minHeight: 52, paddingHorizontal: 14, paddingVertical: 13, borderRadius: ui.radius.md, backgroundColor: ui.colors.primary, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   buttonDark: { backgroundColor: ui.colors.dark },
   buttonOutline: { backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border },
   buttonDanger: { backgroundColor: ui.colors.danger },
   buttonSuccess: { backgroundColor: ui.colors.success },
   buttonDisabled: { opacity: 0.52 },
-  buttonText: { color: "white", fontSize: 15, fontWeight: "900" },
+  buttonText: { color: "white", fontSize: 14, fontWeight: "700", flexShrink: 1, textAlign: "center" },
   buttonTextOutline: { color: ui.colors.primary },
-  fieldLabel: { marginBottom: 7, color: ui.colors.text, fontSize: 13, fontWeight: "900" },
+  fieldLabel: { marginBottom: 8, color: ui.colors.text, fontSize: 13, fontWeight: "600" },
   field: { height: 52, borderRadius: ui.radius.md, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14 },
-  input: { flex: 1, color: ui.colors.text, fontSize: 15, fontWeight: "700" },
+  fieldFocused: { borderColor: ui.colors.primary, backgroundColor: "#F8FCFA" },
+  input: { flex: 1, minWidth: 0, color: ui.colors.text, fontSize: 15, fontWeight: "400", paddingVertical: 12 },
   pill: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   pillText: { fontSize: 11, fontWeight: "900" },
-  metric: { flex: 1, minHeight: 124, gap: 8 },
-  metricValue: { color: ui.colors.text, fontSize: 19, fontWeight: "900" },
-  metricLabel: { color: ui.colors.muted, fontSize: 12, fontWeight: "800" },
+  metric: { flex: 1, minWidth: 90, minHeight: 132, gap: 8, padding: 12 },
+  metricValue: { color: ui.colors.text, fontSize: 20, fontWeight: "800", letterSpacing: -0.5 },
+  metricLabel: { color: ui.colors.muted, fontSize: 12, fontWeight: "500" },
   bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, minHeight: bottomNavHeight, borderTopWidth: 1, borderTopColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingBottom: 10 },
-  navItem: { minWidth: 62, alignItems: "center", justifyContent: "center" },
-  navText: { marginTop: 4, color: ui.colors.muted, fontSize: 10, fontWeight: "900" },
+  navItem: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center" },
+  navIcon: { width: 48, height: 30, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  navIconActive: { backgroundColor: ui.colors.primarySoft },
+  navText: { marginTop: 4, color: ui.colors.muted, fontSize: 11, fontWeight: "600" },
   navTextActive: { color: ui.colors.primary },
-  sectionRow: { marginTop: 16, marginBottom: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
+  sectionRow: { marginTop: 26, marginBottom: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  sectionTitle: { color: ui.colors.text, fontSize: 17, fontWeight: "800", letterSpacing: -0.3 },
   sectionAction: { color: ui.colors.primary, fontSize: 12, fontWeight: "900" }
 });

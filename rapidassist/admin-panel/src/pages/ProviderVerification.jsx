@@ -39,7 +39,8 @@ export function ProviderVerification() {
   const [filter, setFilter] = useState("pending");
   const [providers, setProviders] = useState([]);
   const [selectedId, setSelectedId] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshCount, setRefreshCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,21 +49,11 @@ export function ProviderVerification() {
     [providers, selectedId]
   );
 
-  async function loadProviders(nextFilter = filter) {
-    try {
-      setLoading(true);
-      setError("");
-      const res = await adminApi.get("/api/admin/providers", { params: { status: nextFilter } });
-      setProviders(res.data.providers || []);
-      setSelectedId((current) => {
-        const exists = (res.data.providers || []).some((provider) => provider.id === current);
-        return exists ? current : res.data.providers?.[0]?.id || "";
-      });
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Failed to load providers");
-    } finally {
-      setLoading(false);
-    }
+  function refreshProviders(nextFilter = filter) {
+    setLoading(true);
+    setError("");
+    setFilter(nextFilter);
+    setRefreshCount((count) => count + 1);
   }
 
   async function updateVerification(status) {
@@ -89,14 +80,29 @@ export function ProviderVerification() {
   }
 
   useEffect(() => {
-    loadProviders(filter);
-  }, [filter]);
+    const controller = new AbortController();
+    adminApi.get("/api/admin/providers", { params: { status: filter }, signal: controller.signal })
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        const nextProviders = res.data.providers || [];
+        setProviders(nextProviders);
+        setSelectedId((current) => nextProviders.some((provider) => provider.id === current) ? current : nextProviders[0]?.id || "");
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setError(err?.response?.data?.message || err?.message || "Failed to load providers");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [filter, refreshCount]);
 
   return (
     <div style={styles.page}>
-      <div style={styles.topbar}>
+      <div className="page-topbar">
         <div>
-          <div style={styles.title}>Provider Verification</div>
+          <div className="page-eyebrow">PEOPLE BEHIND THE SERVICE</div>
+          <h1 style={styles.title}>Provider verification</h1>
           <div style={styles.subtitle}>Review identity documents and approve service providers.</div>
         </div>
         <div style={styles.nav}>
@@ -110,23 +116,25 @@ export function ProviderVerification() {
           <button
             key={item}
             type="button"
-            onClick={() => setFilter(item)}
+            aria-pressed={filter === item}
+            disabled={actionLoading}
+            onClick={() => refreshProviders(item)}
             style={{ ...styles.filterButton, ...(filter === item ? styles.filterButtonActive : null) }}
           >
             {item}
           </button>
         ))}
-        <button type="button" onClick={() => loadProviders(filter)} style={styles.refreshButton}>
+        <button type="button" disabled={loading || actionLoading} onClick={() => refreshProviders()} style={styles.refreshButton}>
           {loading ? "Loading..." : "Refresh"}
         </button>
       </div>
 
-      {error ? <div style={styles.error}>{error}</div> : null}
+      {error ? <div role="alert" style={styles.error}>{error}</div> : null}
 
-      <div style={styles.layout}>
+      <div className="provider-layout" aria-busy={loading}>
         <div style={styles.list}>
           {providers.length === 0 ? (
-            <div style={styles.empty}>No providers found for this filter.</div>
+            <div role="status" style={styles.empty}>{loading ? "Loading providers…" : error ? "Provider list is unavailable. Please refresh." : "All caught up. No providers in this queue."}</div>
           ) : (
             providers.map((provider) => {
               const selectedProvider = selected?.id === provider.id;
@@ -134,6 +142,7 @@ export function ProviderVerification() {
                 <button
                   key={provider.id}
                   type="button"
+                  aria-pressed={selectedProvider}
                   onClick={() => setSelectedId(provider.id)}
                   style={{ ...styles.providerRow, ...(selectedProvider ? styles.providerRowSelected : null) }}
                 >
@@ -159,7 +168,7 @@ export function ProviderVerification() {
                 <span style={{ ...styles.status, ...statusTone(selected.verificationStatus) }}>{selected.verificationStatus}</span>
               </div>
 
-              <div style={styles.infoGrid}>
+              <div className="detail-grid">
                 <Info label="Phone" value={selected.phone} />
                 <Info label="Completed jobs" value={selected.completedJobs || 0} />
                 <Info label="Rating" value={`${selected.ratingAvg || 0} (${selected.ratingCount || 0})`} />
@@ -169,7 +178,7 @@ export function ProviderVerification() {
               </div>
 
               <div style={styles.sectionTitle}>Documents</div>
-              <div style={styles.docs}>
+              <div className="detail-grid">
                 {providerDocs(selected).map((doc) => (
                   <div key={doc.label} style={styles.doc}>
                     <div style={styles.docLabel}>{doc.label}</div>
@@ -223,13 +232,13 @@ function Info({ label, value }) {
   return (
     <div style={styles.info}>
       <div style={styles.infoLabel}>{label}</div>
-      <div style={styles.infoValue}>{value || "N/A"}</div>
+      <div style={styles.infoValue}>{value ?? "N/A"}</div>
     </div>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", padding: 18, background: "var(--bg)" },
+  page: { padding: "clamp(18px, 3vw, 40px)", maxWidth: 1800, margin: "0 auto" },
   topbar: {
     display: "flex",
     alignItems: "center",
@@ -241,7 +250,7 @@ const styles = {
     background: "white",
     boxShadow: "var(--shadow)"
   },
-  title: { fontSize: 22, fontWeight: 900, color: "var(--text)" },
+  title: { margin: 0, fontSize: 28, letterSpacing: "-0.8px", fontWeight: 750, color: "var(--text)" },
   subtitle: { marginTop: 4, color: "var(--muted)", fontSize: 13 },
   nav: { display: "flex", alignItems: "center", gap: 14 },
   link: { color: "var(--primary)", fontWeight: 900 },
@@ -303,7 +312,7 @@ const styles = {
     fontWeight: 900,
     textTransform: "capitalize"
   },
-  detail: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 16, boxShadow: "var(--shadow)" },
+  detail: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 22, boxShadow: "var(--shadow)" },
   detailHeader: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" },
   detailTitle: { color: "var(--text)", fontSize: 20, fontWeight: 900 },
   detailMeta: { marginTop: 4, color: "var(--muted)", fontSize: 13, fontWeight: 700 },
