@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
+  
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.16.2",
