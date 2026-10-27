@@ -3,11 +3,12 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./styles/theme.css";
 import App from "./App.jsx";
+import { AdminAuthProvider } from "./auth/AdminAuth.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <AdminAuthProvider><App /></AdminAuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );

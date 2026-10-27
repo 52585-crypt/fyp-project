@@ -1,0 +1,1201 @@
+text,label
+The wheel studs have snapped and cannot hold the wheel; I need recovery,towing
+Gari soft mud mein axle tak dhans gai recovery chahiye,towing
+The brakes need workshop repairs and the car needs recovery from here,towing
+My car is out of high-octane petrol; please deliver that fuel,fuel_delivery
+The fuel tank is damaged and the car needs recovery instead of being driven,towing
+Recovery truck nahi on site battery help chahiye,mechanic
+Tank mein petrol nahi raha delivery chahiye,fuel_delivery
+Mujhe mechanic visit nahi car transport service chahiye,towing
+I parked the car on reserve and want fuel delivered here,fuel_delivery
+Gari mein missing hai fuel tank khali nahi,mechanic
+I need petrol delivered at gate number two,fuel_delivery
+Gari ki axle bend hai road par nahi chala sakte recovery chahiye,towing
+Toll plaza ke paas non running car khari hai recover karwa dein,towing
+Engine ka cover loose ho kar vibrate kar raha hai,mechanic
+"After an accident, the bumper is caught against the wheel; send a tow truck",towing
+Airport road se broken car service center le jani hai,towing
+Gari flatbed par load karne ke liye winch chahiye,towing
+Takker ke baad front side damage hai gari tow karni hai,towing
+The car is stuck in a deep hole; please arrange recovery,towing
+The chassis was damaged in an accident and needs flatbed recovery,towing
+"Repairs can wait; for now, take the car home on a flatbed",towing
+Water is dripping at a hose clamp and I need a repair,mechanic
+Lower arm toot gaya hai gari chal nahi sakti tow kar dein,towing
+I can drive after refueling; I only need fuel brought here,fuel_delivery
+Engine se smoke aane ke baad mechanic ne tow recommend kiya,towing
+AC belt se noise aati hai check karwa dein,mechanic
+Tyres keechar mein dhans kar spin karte hain winch bhejo,towing
+Tow truck chaie car road se neechay phansi ha,towing
+The van cannot be driven after an accident; please arrange towing,towing
+Diesel tank mein hai magar van start nahi ho rahi,mechanic
+Regular petrol ki choti delivery book karni hai,fuel_delivery
+Do liter petrol meri location par la dein,fuel_delivery
+Jump start try ho chuka hai ab garage tak tow kar dein,towing
+Can mere paas hai bas petrol bhar kar pohancha dein,fuel_delivery
+Car ka front end khadday mein hai lift karna parega,towing
+The car is stuck below the road,towing
+Gari ka pichla wheel jam hai usay flatbed par le jayein,towing
+Safar se pehle refill nahi kiya ab diesel khatam hai,fuel_delivery
+The car is parked and the radiator fan is not switching on,mechanic
+Gari ko garage nahi le jana diesel deliver kar dein,fuel_delivery
+I need transport arranged for a damaged car going for body repairs,towing
+Please send a petrol delivery rider so I can refill the tank,fuel_delivery
+Fuel khatam ho gaya hai delivery ka rate bata dein,fuel_delivery
+Bike me ptrol nhi bacha help chahiye,fuel_delivery
+Spare nahi aur rim damaged hai car garage pohanchani hai,towing
+I ran out of fuel on the motorway and the car is on the shoulder,fuel_delivery
+Reserve wala petrol bhi khatam ho gaya,fuel_delivery
+The engine cranks but there is no petrol in the tank,fuel_delivery
+Gari ka oil sara nikal gaya hai engine band hai tow karwana hai,towing
+Rasta lamba ho gaya fuel kafi nahi raha delivery chahiye,fuel_delivery
+Dono aglay tyres phat gaye hain spare aik hai tow chahiye,towing
+Tyre puncture nahi hua gari fuel na hone se ruki hai,fuel_delivery
+Fuel delivery will not solve this; the gearbox is broken and I need towing,towing
+The motorcycle engine has seized and needs recovery to a workshop,towing
+My electric bike has stopped and needs transport to a charging point,towing
+The tire is slowly losing air,mechanic
+Hose clamp se pani tapak raha hai repair chahiye,mechanic
+My car is stuck in beach sand and needs towing,towing
+Petrol zero hai kuch petrol pohancha dein,fuel_delivery
+The power window is stuck down and needs repair,mechanic
+Fuel delivery book kar do meri gari raste mein khali tank ke sath khari hai,fuel_delivery
+The diesel has run out,fuel_delivery
+Neither headlight is turning on,mechanic
+I have run out of diesel on the highway,fuel_delivery
+Tank mein diesel bohat kam hai nearest pump tak nahi pohanchunga,fuel_delivery
+Gear lever loose lag raha hai check karwana hai,mechanic
+Pickup off road phans gai hai heavy recovery chahiye,towing
+Car ko tow karwane ke liye booking chahiye,towing
+The tire can be changed; I just need someone with tools,mechanic
+Ring road par gari ka petrol khatam hai,fuel_delivery
+Pichlay tyre ki hawa nikal gai hai puncture repair chahiye,mechanic
+Petrol end ho gya hai meri pin pe deliver kr do,fuel_delivery
+My diesel SUV has run out of fuel,fuel_delivery
+The car slid into a roadside hollow and needs towing,towing
+Petrol delivery meri taxi tak karwa dein,fuel_delivery
+I have run out of fuel; please tell me the delivery charge,fuel_delivery
+I want a fuel top-up delivered to my current location,fuel_delivery
+The drive shaft is broken and the car needs to be recovered,towing
+Accident mein suspension collapse hui hai car uthwani hai,towing
+Fuel khareed kar yahan pohanchane ki service chahiye,fuel_delivery
+Temperature sensor ki reading ghalat lagti hai check chahiye,mechanic
+I need help cleaning the battery connections,mechanic
+Subah se start karne ki koshish hai battery weak lagti hai,mechanic
+Petrol khatam hai main service lane mein safely park hoon,fuel_delivery
+Horn weak awaz deta hai electrical check chahiye,mechanic
+My petrol scooter is empty; please deliver one liter,fuel_delivery
+Do wheels ditch mein hain gari uthwani hai,towing
+My family is waiting in the car because we have run out of petrol,fuel_delivery
+My motorcycle ran out of fuel while leaving the village; I need petrol,fuel_delivery
+Petrol khatam hai can mein petrol le kar aa jayein,fuel_delivery
+Andar ki light on thi ab car ko jump chahiye,mechanic
+Wipers slow chalte hain motor inspect karwa dein,mechanic
+Nayi battery lagwai hai phir bhi self nahi lag raha,mechanic
+Chain ki tension set karni hai mechanic bhejo,mechanic
+Wheel nuts check karwa do tyre change ke baad awaz hai,mechanic
+Exhaust bracket check karna hai pipe vibrate hota hai,mechanic
+The engine fan runs constantly and I need the sensor checked,mechanic
+The spark plug wire is loose and the motorcycle misfires,mechanic
+Tyre sidewall phat gai hai spare nahi garage tak tow chahiye,towing
+I need an OBD scan at home because the engine light is on,mechanic
+The wheels spin in snow and I need the car recovered,towing
+Subah nikla tha petrol dalwana bhool gaya ab tank empty hai,fuel_delivery
+School ke bahar meri car ko petrol delivery chahiye,fuel_delivery
+Gari reserve se bhi neeche hai petrol urgently chahiye,fuel_delivery
+Petrol lene paidal nahi ja sakta gari ka tank khali hai,fuel_delivery
+Engine se knock ki awaz aati hai check karwana hai,mechanic
+Residential street mein car band hai petrol nahi bacha,fuel_delivery
+The mini truck is parked at the side with no diesel left,fuel_delivery
+Please collect my car here and take it to a mechanic,towing
+I need recovery assistance to get the car off a median,towing
+My motorcycle has run out of petrol,fuel_delivery
+Tank top up meri current location par karwana hai,fuel_delivery
+I ran out of petrol at night and need a delivery,fuel_delivery
+Pump band hai aur meri gari mein petrol khatam hai,fuel_delivery
+I need an urgent diesel top-up delivery,fuel_delivery
+Bonnet crush ho gaya hai accident wali car le jani hai,towing
+Subah jaldi petrol ki delivery possible hai tank empty hai,fuel_delivery
+Factory gate par van mein diesel dalne ke liye la dein,fuel_delivery
+Terminal saaf karne ke liye help chahiye,mechanic
+Farm road par diesel wali pickup khali tank ke sath khari hai,fuel_delivery
+The car will not start after the rain and needs an electrical check,mechanic
+The engine will not start; book a tow from my home to the dealership,towing
+The underside of the car is caught on a rock and needs winch recovery,towing
+The brakes have failed; I have stopped the car and need a tow,towing
+Tyre repair kit nahi hai puncture fix karwana hai,mechanic
+Portable jump starter wala mechanic aa sakta hai,mechanic
+My electric car is out of charge and needs transport to a charging point,towing
+I need five liters of diesel because the tank is empty,fuel_delivery
+AC compressor on nahi hota electrical inspection chahiye,mechanic
+I ran out during a long drive and the car needs petrol,fuel_delivery
+Tank refill ke liye petrol rider bhej dein,fuel_delivery
+I stopped after an oil warning and need an inspection,mechanic
+Collision ke baad axle toot gaya tow chahiye,towing
+Sedan mein petrol nahi bacha fuel delivery book karni hai,fuel_delivery
+Hazard lights ka switch kaam nahi karta,mechanic
+A fuse in the car keeps blowing,mechanic
+Gaon se nikalte waqt bike ka fuel khatam hua petrol chahiye,fuel_delivery
+The hood is crushed and the accident-damaged car needs transport,towing
+Meri broken down gari garage drop karwa dein,towing
+Acceleration par power kam mehsoos hoti hai inspection chahiye,mechanic
+Petrol finish hai main petrol station ke band gate ke bahar hoon,fuel_delivery
+Starter relay ka masla lag raha hai,mechanic
+Bike ki clutch cable adjust karwani hai,mechanic
+Gari park ki hai temperature barhne ki wajah check karni hai,mechanic
+Normal petrol chahiye diesel nahi meri car ka tank khali hai,fuel_delivery
+AC on karne par hawa aati hai lekin thandi nahi,mechanic
+Taxi gearbox kharab hai passengers utar gaye ab tow chahiye,towing
+There is noise from the AC belt; please inspect it,mechanic
+"Please bring diesel, not petrol; the van has run out of fuel",fuel_delivery
+Brake pedal dabane par squeak hai gari inspect karwao,mechanic
+Parking se non running car workshop shift karni hai,towing
+My car is outside the house and has no petrol in it,fuel_delivery
+Bonnet ke andar pipe dheela nazar aa raha hai check chahiye,mechanic
+The car cannot be moved even by pushing; I need a winch truck,towing
+My motorcycle is out of petrol at the university gate,fuel_delivery
+A broken-down car needs transport from the airport road to a service center,towing
+Diesel supply chahiye meri van ka tank dry hai,fuel_delivery
+The taxi gearbox has failed; the passengers have got out and I need a tow,towing
+"The tire is flat, there is no spare, and repair is unavailable; please tow the car",towing
+The hazard light switch does not work,mechanic
+Please test the battery voltage; starting is difficult,mechanic
+Please send the request to someone nearby who can bring petrol,fuel_delivery
+I cannot push the motorcycle to the station; please bring petrol,fuel_delivery
+The car slid into the soft roadside and became stuck,towing
+The tire and rim are both damaged and the vehicle needs recovery,towing
+The van has run out of diesel near the city entrance,fuel_delivery
+The exhaust is making a rattling noise,mechanic
+The scooter's tank has run dry,fuel_delivery
+Budget kam hai do liter petrol ki delivery kar dein,fuel_delivery
+I need the scooter starter wiring checked,mechanic
+My motorcycle frame bent in an accident and needs transport pickup,towing
+Race dene par gari jhatkay marti hai,mechanic
+Spark plug wire loose hai bike missing karti hai,mechanic
+I do not need a tow; please bring some diesel,fuel_delivery
+An exhaust fitting is loose and rattles,mechanic
+A motorcycle wheel is broken and it needs transport on a carrier,towing
+The delivery vehicle was damaged in an accident and needs workshop pickup,towing
+Fuel bilkul zero ho gaya gari yahin refill karwani hai,fuel_delivery
+The dashboard turns on when I turn the key but the starter does not engage,mechanic
+"I do not need a full tank, just enough petrol to reach a station",fuel_delivery
+My car has an empty tank in the industrial area; please deliver fuel,fuel_delivery
+Can a mechanic come with a portable jump starter?,mechanic
+"After a rear collision, a wheel is misaligned and I need a tow",towing
+Pani utar gaya hai lekin band gari ko wahan se uthwana hai,towing
+Gari ke neeche mud jama hai tyres grip nahi le rahe tow out chahiye,towing
+Range zero dikha rahi hai petrol khatam hai,fuel_delivery
+The radiator is broken and all the coolant is gone; I need a tow,towing
+Ghar ke bahar gari khari hai us mein petrol nahi hai,fuel_delivery
+The handbrake lever travels too far and needs adjustment,mechanic
+The engine stopped in water; I need a tow without restarting it,towing
+Paanch liter unleaded petrol pohancha dein,fuel_delivery
+Petrol pump tak fasla zyada hai meri range kam hai fuel chahiye,fuel_delivery
+Van ka drive shaft broken hai recovery truck bhej dein,towing
+Diesel chahiye petrol mat bhejna van ka fuel finish hai,fuel_delivery
+Parking mein gari hai tank empty hai petrol mangwana hai,fuel_delivery
+The motorcycle tire valve is broken and the tube needs replacing,mechanic
+My car is stopped on a residential street with no petrol left,fuel_delivery
+Spare wheel nikal liya hai fitting mein help chahiye,mechanic
+The engine was running in a long queue and now the tank is empty,fuel_delivery
+The van battery is weak; please send battery assistance,mechanic
+Car carrier arrange karna hai gari chalti nahi,towing
+Kya abhi paanch liter petrol deliver ho sakta hai,fuel_delivery
+Car neutral mein bhi roll nahi hoti flatbed recovery chahiye,towing
+Body repair ke liye damaged car transport arrange karna hai,towing
+EV completely discharged hai tow karke charging station le jana hai,towing
+The mechanic says the engine needs dismantling; please tow it to the garage,towing
+The motorcycle chain is loose and needs adjustment,mechanic
+A brake pipe has burst; the car is off and needs a tow truck,towing
+Mini van mein petrol dalne ke liye delivery chahiye,fuel_delivery
+The car is in a parking space; please inspect the starter here,mechanic
+Gear selector jam hai mechanic ne flatbed bulane ko kaha,towing
+Off road trail par SUV phans gai tow assistance chahiye,towing
+There is a nail in the tire and I need it repaired,mechanic
+The family SUV is out of petrol; please arrange a refill,fuel_delivery
+The mechanic confirmed the tank is empty and said to add petrol,fuel_delivery
+Can someone check why my starter will not engage?,mechanic
+Wipers beech mein ruk gaye hain,mechanic
+I hear a grinding sound when changing gears and need an inspection,mechanic
+Bus stop ke paas gari khari hai uska petrol finish hai,fuel_delivery
+Motorcycle engine fail hai ghar tak transport kar dein,towing
+The steering does not respond; the car is parked and I need a tow booked,towing
+The low-fuel light was on for a long time and now the car has stopped,fuel_delivery
+The electric car has a drive error and needs recovery to a service center,towing
+Fuel emergency hai car ka tank empty ho chuka hai,fuel_delivery
+My friend's car has run out of fuel; send petrol to their location,fuel_delivery
+I need to arrange a car carrier for a vehicle that does not run,towing
+Please do not send a tow truck; the car only needs fuel supplied,fuel_delivery
+A wheel jammed after the crash and I need a carrier,towing
+Accident wali car body shop le jani hai,towing
+Wheel bearing jam hai gari roll nahi hoti recovery chahiye,towing
+Pickup mein diesel nahi bacha,fuel_delivery
+I need petrol to start the car because the tank is completely dry,fuel_delivery
+High octane khatam hai meri car ke liye wahi deliver karein,fuel_delivery
+It looks like the alternator is not charging the battery,mechanic
+Fog light ki wiring loose ho gai hai,mechanic
+Diesel finish hai,fuel_delivery
+Traffic mein fuel khatam ho gaya ab petrol mangwana hai,fuel_delivery
+Tyre valve se hiss ki awaz aati hai,mechanic
+Brake lagane par cheekhne ki awaz aati hai inspection chahiye,mechanic
+Accident ke baad tyre body se ragarta hai car recover karwao,towing
+I want to order an emergency diesel refill,fuel_delivery
+The wheels spin in the mud but the car cannot get out,towing
+Mechanic nahi petrol ki delivery chahiye,fuel_delivery
+The van stopped because it ran out of diesel,fuel_delivery
+My car needs an emergency delivery of four liters of petrol,fuel_delivery
+Power window neeche phans gai hai repair chahiye,mechanic
+Battery down nahi tank empty hai petrol bhejein,fuel_delivery
+The reversing light does not turn on when reverse is selected,mechanic
+I have added petrol but the engine still will not start,mechanic
+Please bring a little petrol to my parked car,fuel_delivery
+Fuel delivery wale ko mera pickup point bhej dein,fuel_delivery
+The car is stuck in gear and will not move; I need vehicle recovery,towing
+The dashboard lights are dim and the engine will not start,mechanic
+I want to confirm a petrol order for the car with the empty tank,fuel_delivery
+Flatbed ki availability bata dein car chala kar nahi le ja sakta,towing
+The diesel pickup is on a farm road with an empty tank,fuel_delivery
+Clutch fail ho gaya gear engage nahi hota tow karwana hai,towing
+A non-running car is at home and needs taking to the mechanic's garage,towing
+The central locking has stopped working,mechanic
+The car has sunk into mud and needs to be pulled out,towing
+The car will not come out of the mud and needs a recovery vehicle,towing
+Desert track par car atak gai hai winch service chahiye,towing
+Purani gari months se band hai garage transport karwani hai,towing
+There is no oil pressure; I turned the engine off and need transport to a garage,towing
+My hatchback's tank is dry and I need petrol,fuel_delivery
+A non-running car is parked near the toll plaza; please arrange recovery,towing
+Radiator toot gaya hai coolant sara nikal gaya tow chahiye,towing
+The front of the car is in a hole and needs recovery lifting,towing
+The tank is empty; please drop off some petrol,fuel_delivery
+The wheels are buried in sand and a recovery truck is needed,towing
+Hatchback ka tank dry hai petrol chahiye,fuel_delivery
+Bike ki battery down hai jump start chahiye,mechanic
+My budget is limited; please deliver two liters of petrol,fuel_delivery
+Please check flatbed availability; I cannot drive the car there,towing
+Key on hoti hai engine crank nahi karta,mechanic
+The motorcycle's front fork bent in a crash and it needs to be transported,towing
+Service road par petrol khatam hua hai,fuel_delivery
+The windshield wipers have stopped halfway,mechanic
+Gari gear mein phans gai hai move nahi hoti recovery chahiye,towing
+The motorcycle engine has failed; please transport it home,towing
+The rear axle is displaced and the vehicle needs transport,towing
+Fuel light kafi der se jal rahi thi ab gari band ho gai,fuel_delivery
+The water has receded but the disabled car needs to be recovered from there,towing
+Bike ko pump tak dhakka nahi de sakta petrol la dein,fuel_delivery
+Baraf mein wheel spin kar rahe hain gari recover karwani hai,towing
+Car road se phisal kar ditch mein chali gai hai,towing
+The lights cut in and out when a battery cable moves,mechanic
+Mujhe petrol mangwana hai gari ka tank khali ho gaya,fuel_delivery
+SUV ke liye das liter diesel current location pe chahiye,fuel_delivery
+I have no petrol left; please bring some,fuel_delivery
+Workshop se doosri workshop tak kharab car transport karni hai,towing
+I do not have enough fuel left to reach the petrol station,fuel_delivery
+Basement parking mein kharab gari hai recovery pickup chahiye,towing
+The car was running normally until it ran out of petrol,fuel_delivery
+There is no petrol left in the tank and I need a delivery,fuel_delivery
+"I need petrol delivered, not a mechanic",fuel_delivery
+Steering mein vibration ki wajah check karni hai,mechanic
+Fuel pump check karna hai petrol tank mein mojood hai,mechanic
+The engine cannot be repaired roadside; please take the car to a garage,towing
+Clutch toot gaya hai tow karke mechanic ke paas le jana hai,towing
+Electric scooter ki charge khatam hai ghar tak pickup chahiye,towing
+The engine cranks very slowly,mechanic
+The diesel pickup needs five liters delivered,fuel_delivery
+Traffic jam mein petrol kharch ho gaya ab fuel chahiye,fuel_delivery
+I have been trying to start the car all morning; the battery seems weak,mechanic
+Range sirf aik kilometer hai aur pump bohat door hai petrol chahiye,fuel_delivery
+Clutch cable tight hai bike neutral karna mushkil hai,mechanic
+Market ke bahar bike petrol ke baghair khari hai,fuel_delivery
+Workshop pickup ke liye recovery gaari bhejo,towing
+Crash ke baad wheel jam ho gaya carrier chahiye,towing
+School van ka diesel khatam hai refill pohancha dein,fuel_delivery
+I need the car moved using a flatbed truck,towing
+Wiper ka motor awaz karta hai blades nahi hilte,mechanic
+Stone ke upar chassis atka hai car khud nahi nikalti,towing
+Tow truck meri location par bhej dein,towing
+Bike ki chain utar gai hai wapas lagwani hai,mechanic
+The engine has locked up; I need a tow without another start attempt,towing
+Radiator accident mein puncture hua gari recover karni hai,towing
+Brake pipe burst hai gari off hai tow truck chahiye,towing
+Bridge ke baad shoulder par khara hoon petrol khatam hai,fuel_delivery
+Kya fuel wala meri shared pin par aa sakta hai,fuel_delivery
+Fan ka fuse check kar do fan chalta nahi,mechanic
+Tank mein aik qatra petrol nahi bacha,fuel_delivery
+Engine mount ki wajah se vibration lagti hai check karwa dein,mechanic
+Delivery charges samait paanch liter petrol kitne ka ayega,fuel_delivery
+Delivery bike ka petrol finish hai do liter bhej dein,fuel_delivery
+I need a petrol delivery to refill the mini van,fuel_delivery
+"After smoke came from the engine, the mechanic recommended a tow",towing
+The car struggles to start when the engine is cold,mechanic
+Gari petrol wali hai tank empty hai diesel na le ana,fuel_delivery
+Tyre dheere dheere hawa chhor raha hai,mechanic
+Thora petrol baqi hai lekin aglay pump tak kafi nahi,fuel_delivery
+Brake fluid nikal gaya hai gari drive nahi karunga tow kar dein,towing
+Roadside ditch se car nikalwane ki request hai,towing
+My tank is empty and I cannot walk to get petrol,fuel_delivery
+Bonnet se chir chir ki awaz aa rahi hai,mechanic
+My electric scooter is out of charge and needs pickup to take it home,towing
+The coolant reservoir level keeps falling,mechanic
+The rough track gave way and the back of the car is stuck,towing
+Yahan se meri gari utha kar mechanic ke paas le jayein,towing
+Fuel delivery ka estimated arrival bata dein petrol khatam hai,fuel_delivery
+Gari ka fuse bar bar jal raha hai,mechanic
+Long drive par fuel khatam hua gari ko petrol chahiye,fuel_delivery
+Meri bike me petrol khtam h do liter la do,fuel_delivery
+Car fuel ke baghair raste mein band ho gai hai,fuel_delivery
+Fuel is not the issue; a wheel is broken and I need recovery,towing
+There was no accident; I have simply run out of diesel,fuel_delivery
+All the oil has drained out; the engine is off and I need a tow,towing
+There is no puncture; the car stopped because it ran out of fuel,fuel_delivery
+Diesel sirf nearest pump tak pohanchne jitna le aayein,fuel_delivery
+Mini truck side par khara hai diesel bilkul khatam hai,fuel_delivery
+Overheat ke baad gari band kar di hai workshop tak tow kar dein,towing
+Fuel full karwaya tha starting issue ab bhi hai,mechanic
+Recovery booking mein garage ka address add karna hai,towing
+The engine is misfiring,mechanic
+Dashboard display flicker kar raha hai,mechanic
+The car is stuck in snow and needs a recovery vehicle,towing
+I ran out of petrol on a mountain road; can someone deliver some,fuel_delivery
+Flatbed truck se car shift karwani hai,towing
+Horn bilkul kaam nahi kar raha,mechanic
+The car keeps misfiring and I need the ignition coil checked,mechanic
+Gari road se neeche phans gayi hai,towing
+Accident ya breakdown nahi petrol ki kami hai,fuel_delivery
+Steering lock ho gaya hai flatbed chahiye,towing
+I need tire repair help rather than fuel delivery,mechanic
+Emergency petrol ke liye provider assign kar dein,fuel_delivery
+I ran out of fuel before the toll plaza,fuel_delivery
+Please check the wheel nuts; there is a noise after a tire change,mechanic
+The gear linkage feels loose and needs checking,mechanic
+Oil change ke baad chotay drops aa rahe hain mechanic chahiye,mechanic
+Dashboard ki lights dim hain aur engine start nahi hota,mechanic
+The pickup is stuck off-road and needs recovery assistance,towing
+Radiator cap ke paas seepage hai gari parked hai,mechanic
+Please send a mechanic to set the chain tension,mechanic
+The motorcycle clutch cable is tight and neutral is hard to select,mechanic
+The brake fluid has leaked out and I will not drive the car; please tow it,towing
+Petrol delivery kitni der mein aa sakti hai tank empty hai,fuel_delivery
+I need help fitting the spare tire,mechanic
+I suspect a starter relay problem and need it checked,mechanic
+Send a recovery vehicle to collect my car for the workshop,towing
+Ignition switch kabhi kaam karta hai kabhi nahi,mechanic
+My trip has stopped because I ran out of petrol,fuel_delivery
+I need a small power-steering fluid leak inspected,mechanic
+Gari mitti mein dhans gai hai bahar kheenchna hai,towing
+Choti electrical repair ke liye mobile mechanic chahiye,mechanic
+Engine lock ho gaya hai start try nahi karni tow chahiye,towing
+Washer pump se pani nahi aa raha,mechanic
+EV ki charge bilkul khatam hai charger tak transport chahiye,towing
+Gari gutter mein wheel girne se phans gai hai,towing
+I need someone to inspect a knocking noise from the engine,mechanic
+Rental car ka fuel kam tha ab road par khatam ho gaya,fuel_delivery
+Engine bohat overheat hua hai ab drive nahi karni tow arrange karo,towing
+The engine does not need repair; I need fuel brought to fill the tank,fuel_delivery
+The temperature sensor reading seems wrong and needs checking,mechanic
+One wheel is off the ground on a rough track; please recover the car,towing
+Bike ki headlight nahi jalti wiring check karwao,mechanic
+The motorcycle starts with the kick lever but not the electric starter,mechanic
+The timing belt has broken; arrange a tow without starting the car,towing
+The mechanic said not to drive the car and to arrange a tow,towing
+Even the reserve fuel has run out,fuel_delivery
+The car has sunk into soft mud up to the axle and needs recovery,towing
+The engine revs stay unusually high after a cold start,mechanic
+I need someone to jump-start the battery,mechanic
+Diesel ka can le kar koi yahan aa jaye,fuel_delivery
+I need to leave the office parking lot but the petrol tank is empty,fuel_delivery
+Alternator battery charge nahi kar raha lagta hai,mechanic
+Mechanic ne engine kholne ka kaha garage tak tow kar dein,towing
+The station is closed and my car has no petrol left,fuel_delivery
+Pani se nikali hui car start nahi karni garage tow kar dein,towing
+One headlight bulb has blown,mechanic
+Two wheels are in a ditch and the car needs to be recovered,towing
+Wiper blade toot gai hai nayi fit karni hai,mechanic
+I need my car towed to a workshop,towing
+Please bring diesel for the van at the factory gate,fuel_delivery
+Gear linkage loose hai usay check karna hai,mechanic
+Flood mein kharab hui parked car garage transport karni hai,towing
+Rain ke baad shoulder mein car dhans gai pull out chahiye,towing
+A jump start has already been tried; please tow the car to a garage,towing
+Battery ke terminals par zang laga hua hai,mechanic
+Tank emty hai petrol drop kar do,fuel_delivery
+There is a screw in the front right tire and it loses air,mechanic
+Kharab car aik garage se doosre garage tow karwani hai,towing
+Paanch liter diesel mangwana hai tank khali hai,fuel_delivery
+The car is stuck on a curb and needs lifting clear,towing
+Clutch pedal se awaz aa rahi hai check karwana hai,mechanic
+Bike mein petrol hai magar kick se start nahi hoti,mechanic
+Meri bike kharab hai usay workshop tak uthwa kar le jana hai,towing
+Beach ki ret mein car stuck hai towing chahiye,towing
+The front tire is punctured and I have a spare,mechanic
+Petrol khatam hai gari petrol pump se do kilometer pehle khari hai,fuel_delivery
+The starting problem does not need a repair; the petrol is completely gone,fuel_delivery
+Silencer se kharkharahat ki awaz aa rahi hai,mechanic
+Diesel khatam hone se van band ho gai hai,fuel_delivery
+The tank ran empty on the airport road,fuel_delivery
+White smoke is coming from the exhaust and I have parked the car for inspection,mechanic
+A hose under the hood looks loose and I need it checked,mechanic
+How much would five liters of petrol cost including delivery?,fuel_delivery
+Can five liters of petrol be delivered now,fuel_delivery
+Two tires are cut and cannot be repaired on site; I need a tow,towing
+It is neither an accident nor a breakdown; I am short of petrol,fuel_delivery
+Major engine damage hai roadside repair nahi transport chahiye,towing
+There is no fuel in the tank; please arrange petrol delivery here today,fuel_delivery
+I do not need fuel delivery; I need a battery test,mechanic
+Wheel gari se alag ho gaya hai tow truck chahiye,towing
+Wheel nuts toot gaye hain gari drive nahi karni flatbed chahiye,towing
+The engine alternates between smooth and rough running,mechanic
+The diesel level is fine; I need the starting system checked,mechanic
+I have a fuel can; I just need petrol brought here,fuel_delivery
+Please check the health of my car battery,mechanic
+Diesl finish ho gya van side pe h refill bhejo,fuel_delivery
+Koi meri bike tak petrol pohancha sakta hai,fuel_delivery
+Differential seize hai pickup garage transport karni hai,towing
+The engine speed keeps rising and falling at idle,mechanic
+Indicators blink nahi kar rahe,mechanic
+Fuel ki smell thi car off kar di hai mechanic inspect kare,mechanic
+I need a flatbed because my automatic car's wheels will not roll,towing
+Please check the fan fuse; the fan will not run,mechanic
+A suspension failure has left the car leaning to one side and it needs towing,towing
+I need to pick up the children but the car has no fuel,fuel_delivery
+The battery warning light stays on with the engine running,mechanic
+Scooter ki battery charge hai lekin starter kaam nahi karta,mechanic
+AC fan sirf highest speed par chalta hai,mechanic
+Family gari mein wait kar rahi hai petrol khatam hai,fuel_delivery
+The suspension is broken and the car needs to be taken to a workshop,towing
+The courier motorcycle has an empty tank and needs fuel delivered,fuel_delivery
+I need on-site battery help rather than a recovery truck,mechanic
+The AC blower only works at its highest speed,mechanic
+Petrol pump tak jane ke liye fuel nahi bacha,fuel_delivery
+Ghar par band gari khari hai mechanic ke garage le jani hai,towing
+Self bohat slow ghoom raha hai,mechanic
+Service lane mein disabled vehicle hai towing chahiye,towing
+My car is out of petrol on the ring road,fuel_delivery
+Car ko chaar liter petrol ki emergency delivery chahiye,fuel_delivery
+I have a fuel emergency; the car tank is empty,fuel_delivery
+A tire burst damaged the suspension; please arrange a tow,towing
+The automatic transmission has failed and I need a car carrier,towing
+A wheel has come off the car and I need a tow truck,towing
+Raat bhar headlights on reh gayin ab battery down hai,mechanic
+Passenger sath hain petrol lene nahi ja sakta fuel bhejein,fuel_delivery
+Exhaust se kala dhuan aa raha hai engine check karna hai,mechanic
+Gari khet ke kacchay raste se bahar nahi aa rahi,towing
+Ignition ghumata hoon to sirf click ki awaz aati hai,mechanic
+Gari khadday mein phans gai hai bahar nikalwa dein,towing
+The station is farther than my remaining range; I need fuel delivered,fuel_delivery
+Gari start karne ke liye petrol chahiye tank bilkul dry hai,fuel_delivery
+Low fuel par chalta raha ab bilkul khatam ho gaya,fuel_delivery
+Fuel khatam hote hi car side par rok li ab refill chahiye,fuel_delivery
+Bike start hoti hai phir choke band karte hi ruk jati hai,mechanic
+Driver side window aadhi khul kar ruk jati hai,mechanic
+Tyre change ho sakta hai bas tools wala banda chahiye,mechanic
+Engine oil filter ke paas seepage check karni hai,mechanic
+Neutral mein engine bohat hilta hai,mechanic
+Coolant bar bar kam ho raha hai leak check karwana hai,mechanic
+Handbrake bohat upar tak aati hai adjustment chahiye,mechanic
+Gaon ki road par hoon petrol pump nahi mil raha tank khali hai,fuel_delivery
+I ran out of fuel in traffic and need petrol delivered,fuel_delivery
+Bike ka engine seize hai workshop tak recovery chahiye,towing
+The fog light wiring has come loose,mechanic
+Van diesel wali hai uske liye diesel hi deliver karna,fuel_delivery
+I need someone who can read the check-engine fault code,mechanic
+Wheel studs sab toot gaye wheel hold nahi hota recovery chahiye,towing
+I need the fuel pump checked; there is petrol in the tank,mechanic
+Alternator belt check karni hai battery light aayi hai,mechanic
+The car is stuck at the road edge; I need recovery before moving it,towing
+Self lag raha hai magar tank mein petrol nahi hai,fuel_delivery
+Automatic transmission fail hai car carrier chahiye,towing
+Courier motorcycle ka tank empty hai fuel rider chahiye,fuel_delivery
+Exhaust se safed dhuan aa raha hai gari park kar di hai,mechanic
+"Car tank empty, need a fuel delivery",fuel_delivery
+Tow nahi karwana thora diesel la dein,fuel_delivery
+Toll plaza se pehle fuel finish ho gaya,fuel_delivery
+The van ran out of diesel outside the city and is parked at the side,fuel_delivery
+Fuel ka masla nahi wheel toot gaya hai recovery chahiye,towing
+Start ka issue repair wala nahi petrol bilkul khatam hai,fuel_delivery
+Car ka engine nahi hai usay carrier par move karna hai,towing
+A wiper blade broke and I need a replacement fitted,mechanic
+Gari ka fuel tank bilkul khali hai,fuel_delivery
+Battery theek hai petrol na hone se gari start nahi hoti,fuel_delivery
+There is a disabled vehicle in the service lane and I need towing,towing
+The tire sidewall is torn and there is no spare; I need a tow to a garage,towing
+There is a hissing sound from the tire valve,mechanic
+I just need enough fuel to reach a filling station,fuel_delivery
+Engine ki earth wire loose lagti hai electrician chahiye,mechanic
+Window switch dabane par sheesha hilta nahi,mechanic
+The car feels weak under acceleration and needs inspection,mechanic
+"After leaving the underpass, my car stopped because it ran out of fuel",fuel_delivery
+A wheel fell into a roadside drain and the car is stuck,towing
+Silencer ki fitting loose hai awaz karti hai,mechanic
+I need ten liters of diesel for the SUV at my current location,fuel_delivery
+Fuel low hai pump tak nahi ja sakta delivery kar dein,fuel_delivery
+I need the cause of a steering vibration checked,mechanic
+Car start nahi hoti mechanic visit ho chuki ab tow karna hai,towing
+Meri car diesel par chalti hai us ka diesel finish hai,fuel_delivery
+High beam chalti hai low beam nahi electrician chahiye,mechanic
+The gearbox is jammed and the car needs transport to a garage,towing
+The car is stuck below an embankment; please arrange a winch truck,towing
+Railway station ke paas diesel khatam ho gaya,fuel_delivery
+Battery test theek tha petrol na hone ka masla hai,fuel_delivery
+Electric car ki drive system fail hai flatbed se service center le jayein,towing
+Engine repair ki zarurat nahi fuel bharwana hai,fuel_delivery
+My car will not move after an accident,towing
+The fuel needle is on E and I checked that the tank is empty,fuel_delivery
+Starter motor ghoomti hai lekin engine nahi ghoomta,mechanic
+I need ten liters of petrol delivered,fuel_delivery
+The air conditioning blower is not working,mechanic
+Towing cancel karni hai masla sirf petrol khatam hone ka hai,fuel_delivery
+The axle broke in a collision and I need a tow,towing
+The rear wheel is jammed; please take the car on a flatbed,towing
+The horn sounds weak and needs an electrical check,mechanic
+Fuel wala nahi tyre repair wala chahiye,mechanic
+Raste mein kharab gari ko dealership tak pohanchana hai,towing
+Signal par rukte hi engine band ho jata hai,mechanic
+Handbrake release nahi ho rahi wheels locked hain recovery chahiye,towing
+All four SUV wheels are stuck in sand; please arrange recovery,towing
+Key ghumane par dashboard on hota hai self nahi lagta,mechanic
+"The car will not start, a mechanic has already visited, and it now needs towing",towing
+I need my SUV recovered from sand,towing
+Brake light pedal dabane par on nahi hoti,mechanic
+Rental gari mili hai magar us ka tank empty hai petrol chahiye,fuel_delivery
+I ran out of petrol on my way home from work; send a delivery,fuel_delivery
+The car is not driveable; this is a transport request,towing
+Scooter accident ke baad roll nahi karta load karna hoga,towing
+The front wheel is bent inward; please tow the car,towing
+There is seepage near the radiator cap while the car is parked,mechanic
+Petrol meter E par hai aur tank check kiya khali hai,fuel_delivery
+"Need tow truck, car stuck below the road",towing
+The nearest filling station is far away; please bring petrol here,fuel_delivery
+The motorcycle is parked and its throttle cable is sticking,mechanic
+Petrol khatm hone ki wajah se safar ruk gaya hai,fuel_delivery
+Tank mein fuel nahi hai aaj yahin petrol deliver karwa dein,fuel_delivery
+Mini truck chal nahi sakta garage tak towing book karni hai,towing
+Mechanic ne bhi kaha tank khali hai petrol dalwao,fuel_delivery
+The motorcycle chain has slipped off and needs refitting,mechanic
+The car has a puncture that can be repaired where it is,mechanic
+"I need regular petrol, not diesel; my car's tank is empty",fuel_delivery
+Gari bilkul theek chal rahi thi petrol khatam hone par ruk gai,fuel_delivery
+The mini truck's axle has broken and needs a recovery vehicle,towing
+The car has no engine and needs to be moved on a carrier,towing
+There is a light tapping sound from the engine bay,mechanic
+The engine ground cable seems loose; I need an auto electrician,mechanic
+The old car has not run for months and needs transport to a garage,towing
+Please send someone to my location with a diesel refill,fuel_delivery
+A belt in the car seems loose and needs its tension checked,mechanic
+Agla tyre puncture ho gaya hai spare mojood hai,mechanic
+Motorbike ke liye sirf do liter petrol kafi hoga le aayein,fuel_delivery
+Jump start ke baad battery dobara discharge ho gai,mechanic
+I need to add the garage address to my vehicle recovery booking,towing
+Keechar mein tyres ghoom rahe hain gari nikal nahi rahi,towing
+"The car is misfiring, but the fuel tank is not empty",mechanic
+Radiator ka fan on nahi ho raha gari park hai,mechanic
+The car stopped on the road because it had no fuel left,fuel_delivery
+Industrial area mein car ka tank khali hai fuel deliver karein,fuel_delivery
+Small oil drops appeared after an oil change; I need a mechanic,mechanic
+Engine seize ho gaya workshop tak tow chahiye,towing
+University ke gate par bike ka petrol finish hai,fuel_delivery
+The car ran out of petrol two kilometers before the filling station,fuel_delivery
+The gear lever feels loose and I need it checked,mechanic
+The steering rack is broken and the car needs recovery transport,towing
+Gari road edge par atak gai hai move nahi karni recovery bhejo,towing
+The dashboard display is flickering,mechanic
+A winch is needed to load the car onto a flatbed,towing
+Hotel parking mein tank empty mila petrol mangwana hai,fuel_delivery
+Brake lights mein aik side kaam nahi karti,mechanic
+The car is stuck at the edge of a drain and needs recovery,towing
+Car chalne ke qabil nahi recovery van chahiye,towing
+No water is coming from the windshield washer pump,mechanic
+The car jerks when I press the accelerator,mechanic
+I need an oil seepage near the oil filter checked,mechanic
+The left indicator flashes very fast and needs a bulb check,mechanic
+"Car broken down, call a flatbed please",towing
+The sedan has no petrol left and I want to book a fuel delivery,fuel_delivery
+Spark plug ka masla lagta hai engine rough chal raha hai,mechanic
+Airport lene ja raha tha petrol khatam ho gaya,fuel_delivery
+AC on karoon to idle par engine band hota hai,mechanic
+I do not need the car taken to a garage; please deliver diesel,fuel_delivery
+Tow ka estimate chahiye pickup yahan drop workshop hai,towing
+Tyre mein keel lagi hui hai repair karwana hai,mechanic
+Gaari teen din khari rahi ab battery weak hai,mechanic
+Trip ke darmiyan diesel mangwana hai van ruki hui hai,fuel_delivery
+The engine will not start and the security light keeps blinking,mechanic
+The steering linkage has broken and the car needs recovery transport,towing
+Bike ka spark plug saaf ya replace karwana hai,mechanic
+Bike idle par band hoti hai carburetor check karna hai,mechanic
+I missed the filling station and now the car tank is empty,fuel_delivery
+Barish ke baad kacchay raste mein gari phans gai recovery chahiye,towing
+Van ki battery weak hai battery service bhejein,mechanic
+Drive shaft toot gaya hai gaari ko uthana parega,towing
+Mechanic ne kaha gari nahi chalani tow karwani hai,towing
+The indicators are not blinking,mechanic
+Car road se slide ho kar side ke gadday mein hai towing chahiye,towing
+The battery clamp has broken and I need the battery secured,mechanic
+I need vehicle transport rather than a mechanic visit,towing
+Battery clamp toot gaya hai battery secure karwani hai,mechanic
+The EV is completely discharged and needs towing to a charging station,towing
+Scooter ke self ki wiring check karwani hai,mechanic
+Make it three liters of petrol; it is for my motorcycle,fuel_delivery
+The wipers run slowly; please inspect the motor,mechanic
+Petrol bharne ke baad khud chala loon ga bas fuel le ayein,fuel_delivery
+There is a squealing sound from the engine belt,mechanic
+Scooty ka petrol khali hai aik liter deliver kar dein,fuel_delivery
+I turned the car off after noticing a fuel smell; I need a mechanic to inspect it,mechanic
+Accident nahi hua bas diesel khatam ho gaya,fuel_delivery
+Please send a tow truck to my location,towing
+The car will not roll even in neutral and needs flatbed recovery,towing
+There is no diesel left in the pickup,fuel_delivery
+The dashcam stayed on and drained my car battery,mechanic
+The engine only stays running if I keep pressing the accelerator,mechanic
+Car ka tyre bilkul shred ho gaya spare nahi flatbed bhejo,towing
+Wheel ke nuts bohat tight hain tyre change nahi ho raha,mechanic
+I do not want further roadside repairs; please tow the car home,towing
+Spare tyre lagane mein madad chahiye,mechanic
+Fuel delivery nahi chahiye battery test karwani hai,mechanic
+Front wheel andar ki taraf mur gaya hai tow kar dein,towing
+I did not refill before the trip and now the diesel is gone,fuel_delivery
+The plug in my tubeless tire is leaking and needs repairing again,mechanic
+The wheel nuts are too tight for me to change the tire,mechanic
+Dost ki gari mein fuel khatam hua hai uski location par petrol bhej dein,fuel_delivery
+The starter does not work even after fitting a new battery,mechanic
+Flatbed chahiye meri automatic car ke wheels roll nahi karte,towing
+Office se wapsi par petrol finish hua hai delivery bhejein,fuel_delivery
+The electric car's drive system has failed; take it to a service center on a flatbed,towing
+There is no fault with the car; it has simply run out of fuel,fuel_delivery
+My motorcycle has broken down and needs transport to a workshop,towing
+Tow truck mat bhejein fuel supply se gari chal jayegi,fuel_delivery
+The rear motorcycle tire is punctured and the tube needs repair,mechanic
+Gari subah thandi ho to mushkil se start hoti hai,mechanic
+Mud is packed under the car and the tires cannot grip; I need a recovery pull,towing
+Airport road par tank khali ho gaya hai,fuel_delivery
+The front wheel bent in an accident and the car cannot be driven,towing
+Petrol ki smell aa rahi hai gari band kar ke leak inspection chahiye,mechanic
+I forgot to refuel before leaving this morning and now the tank is empty,fuel_delivery
+Recovery truck ki zarurat hai gari drive nahi ho sakti,towing
+The chassis is caught on a stone and the car needs assistance to get free,towing
+Live location share kar di hai yahan petrol bhej dein,fuel_delivery
+The SUV suspension has failed and it needs flatbed transport,towing
+Motorway par fuel khatam ho gaya gari side par hai,fuel_delivery
+Hospital ke bahar khara hoon gari mein petrol nahi bacha,fuel_delivery
+Can high-octane petrol be delivered to my location? The tank is empty,fuel_delivery
+Gaari side par park kar li hai reserve fuel pe risk nahi lena petrol bhejo,fuel_delivery
+I am outside the hospital and the car has no petrol left,fuel_delivery
+Meri bike ka frame accident mein bend hua pickup chahiye,towing
+Diesel ki emergency refill order karni hai,fuel_delivery
+Gari mein fuel ki kami nahi wiring ka masla lagta hai,mechanic
+Key detect nahi ho rahi auto electrician bhej dein,mechanic
+I do not need a tow; I need the spare tire fitted,mechanic
+I am safely parked in the service lane after running out of petrol,fuel_delivery
+The AC compressor does not engage and needs an electrical inspection,mechanic
+Fuel warning dekhi nahi aur ab gari petrol ke baghair khari hai,fuel_delivery
+Meri location par high octane petrol mil sakta hai tank khali hai,fuel_delivery
+City se bahar diesel khatam ho gaya van side par khari hai,fuel_delivery
+The engine stalls at idle when I switch on the AC,mechanic
+The route became longer than expected and I need fuel delivered,fuel_delivery
+Road ka kinara tootne se car neeche atak gai hai,towing
+I need the car towed home from the ring road,towing
+Stepney hai koi aa kar laga de,mechanic
+Battery ki taar hilane se lights aati jati hain,mechanic
+A disabled car is parked on the highway shoulder; please send a tow,towing
+Gari start hoti hai phir foran band ho jati hai,mechanic
+The engine does not respond properly to the accelerator,mechanic
+I need three liters of petrol because my motorcycle has stopped,fuel_delivery
+Gari khari hai steering pump se awaz aa rahi hai,mechanic
+The accident-damaged car needs to go to a body shop,towing
+Diesel wali SUV ka fuel khatam ho gaya,fuel_delivery
+There is a little petrol left but not enough to reach the next station,fuel_delivery
+"Car stuck in a ditch, please send recovery",towing
+The car starts with a jump but not normally with the key,mechanic
+The brake pedal goes to the floor; I have stopped and need a tow,towing
+Mujhe sirf itna fuel chahiye ke pump tak pohanch jaun,fuel_delivery
+Bike ka horn dabane par awaz nahi aati,mechanic
+Car mein itna fuel nahi ke pump tak ja sakoon,fuel_delivery
+Can someone collect petrol from a station and bring it to me?,fuel_delivery
+The remaining range is one kilometer and the station is far away; I need petrol,fuel_delivery
+Mech nahi chahiye gaari garage tak tow krni ha,towing
+Gari breakdown ho gai hai garage tak transport karwani hai,towing
+Steering link toot gaya hai gari ko recovery par le jana hai,towing
+I ran out of petrol in the clinic parking lot,fuel_delivery
+Meter ghalat reading de raha tha ab petrol bilkul nahi hai,fuel_delivery
+The clutch pedal is making a noise and needs checking,mechanic
+Gari median par charh kar atak gai hai recovery chahiye,towing
+I have passengers and cannot go to collect petrol; please send fuel,fuel_delivery
+Bike ka petrol khatam ho gaya hai,fuel_delivery
+The range display shows zero and I have run out of petrol,fuel_delivery
+The van ran out of diesel on the bypass and needs a refill,fuel_delivery
+Charging system test chahiye battery roz down hoti hai,mechanic
+I need the clutch pedal free play adjusted,mechanic
+The ignition turns on but the engine does not crank,mechanic
+Tyre pressure warning aa rahi hai tyres check karne hain,mechanic
+Start karte waqt battery terminal garam hota hai gari band hai,mechanic
+The car is stuck on a desert track and needs winch assistance,towing
+Bike ki chain dheeli hai adjustment karwana hai,mechanic
+There is petrol in my motorcycle but it will not kick-start,mechanic
+The brakes squeal and I need an inspection,mechanic
+Tyre burst ke sath suspension damage hai tow arrange kar do,towing
+There is corrosion on the battery terminals,mechanic
+The wiper motor makes a noise but the blades do not move,mechanic
+Phisal kar gari road ke side mein dhans gai hai,towing
+The scooter battery is charged but the starter does not work,mechanic
+There is no open station nearby and my fuel is almost zero,fuel_delivery
+Gari curb par phans gai hai neeche se uthana hoga,towing
+Gaari ki battery ki health check kar dein,mechanic
+I misjudged the fuel needed for the trip and ran out of petrol,fuel_delivery
+Steering ghumane par awaz aati hai gari park hai,mechanic
+The vibration may be from an engine mount; please check it,mechanic
+The delivery van's gearbox has failed and needs towing to a garage,towing
+The bike was running on reserve and has stopped; please bring petrol,fuel_delivery
+Petrol khatam nahi hua accident ki wajah se towing chahiye,towing
+Underpass se nikal kar car fuel ki wajah se band hui hai,fuel_delivery
+Baraf mein car phans gai hai recovery vehicle chahiye,towing
+The starter motor spins but does not turn the engine,mechanic
+Engine start nahi hota aur security light blink karti hai,mechanic
+The battery went flat again after a jump start,mechanic
+My tank is empty; can I pay cash for a fuel delivery?,fuel_delivery
+Gari kharab ha flat bed bula do,towing
+Dono headlights on nahi ho rahi hain,mechanic
+I kept going on low fuel and now it has completely run out,fuel_delivery
+The tire valve is leaking air,mechanic
+Flood damaged van ab dry jagah hai workshop le jani hai,towing
+The tires spin while sunk in mud; please send a winch vehicle,towing
+Engine oil warning aayi hai gari rok kar inspection chahiye,mechanic
+Mujhe foran diesel top up ki delivery chahiye,fuel_delivery
+The car has enough fuel and seems to have a wiring problem,mechanic
+The drive shaft broke on the road and the car needs recovery,towing
+Can someone bring petrol to my motorcycle?,fuel_delivery
+I found the tank empty in the hotel parking lot and need petrol delivered,fuel_delivery
+The engine stopped because the tank ran empty,fuel_delivery
+The car is parked near the bus stop with no petrol left,fuel_delivery
+The motorcycle stalls as soon as I turn the choke off,mechanic
+I want to book a tow for my car,towing
+Accident se gari ka chassis damage hai flatbed recovery chahiye,towing
+The road edge gave way and the car is stuck below it,towing
+Gari ki belt loose lag rahi hai tension check karna hai,mechanic
+Rear axle apni jagah se nikal gai hai transport chahiye,towing
+Central locking kaam nahi kar rahi hai,mechanic
+I was going to pick someone up at the airport when I ran out of petrol,fuel_delivery
+Charon tyres damage hain gari transport karwani hai,towing
+Engine se bohat dhuan nikla ab gari off hai flatbed chahiye,towing
+I filled the tank but the starting problem is still there,mechanic
+AC ka blower nahi chal raha,mechanic
+Tubeless tyre ka plug leak kar raha hai dobara repair chahiye,mechanic
+I left the headlights on overnight and now the battery is flat,mechanic
+Drive shaft road par toot gaya gari move nahi hoti,towing
+"Car will not drive after a crash, need a tow",towing
+The rental car was low on fuel and ran out on the road,fuel_delivery
+Hospital parking mein car nahi chalti ghar tak tow chahiye,towing
+I need petrol brought over because the car tank is empty,fuel_delivery
+My motorcycle horn makes no sound when pressed,mechanic
+The clutch has failed and gears will not engage; I need towing,towing
+Bike ka pichla tyre puncture hai tube repair chahiye,mechanic
+The clutch has broken and I need a tow to a mechanic,towing
+The van is out of diesel and needs fuel before it can start,fuel_delivery
+Coolant pipe phat gaya sara coolant nikla tow chahiye,towing
+Belt ke paas pulley awaz kar rahi hai,mechanic
+The car's fuel tank is completely empty,fuel_delivery
+Bypass par van ka diesel finish ho gaya refill chahiye,fuel_delivery
+Gari phans gai hai tow truck chahiye,towing
+Both front tires have burst and I only have one spare; I need a tow,towing
+Qareeb koi open pump nahi aur fuel almost zero hai,fuel_delivery
+Tyres aur engine theek hain fuel top up chahiye,fuel_delivery
+Meri gari ko workshop tak tow karna hai,towing
+Tyre pnchr ha spare laga do plz,mechanic
+Reserve light ke baad pump nahi mila petrol finish hai,fuel_delivery
+My motorcycle chain slipped off the sprocket; I need help,mechanic
+Mechanic ghar aa kar chota starting fault check kar sakta hai,mechanic
+Petrol wali van ka tank khali hai petrol bhejna,fuel_delivery
+Nothing happens when I press the motorcycle starter button,mechanic
+The diesel gauge is empty and the van needs fuel,fuel_delivery
+One side of the brake lights is not working,mechanic
+My motorcycle battery is flat and needs a jump start,mechanic
+There is not a drop of petrol left in the tank,fuel_delivery
+Book a fuel delivery; my car is stranded with an empty tank,fuel_delivery
+"There is fuel and the battery is fine, but the engine is seized and needs a tow",towing
+I have shared my live location; please send petrol here,fuel_delivery
+My petrol car has an empty tank; please do not bring diesel,fuel_delivery
+The scooter's wheel is jammed and I need a transport vehicle,towing
+SUV ko rait se bahar nikalwana hai,towing
+Petrol le kar aane wala qareeb hai to request bhej dein,fuel_delivery
+Meri gari motorway par kharab hai usay shehar ke garage le jana hai,towing
+Please check the exhaust bracket; the pipe vibrates,mechanic
+The car has been removed from water; tow it to a garage without starting it,towing
+The brake pedal squeaks; please inspect the parked car,mechanic
+I need a broken-down car transported from one workshop to another,towing
+Petrol refill se gari theek nahi hui mechanic ne garage towing boli,towing
+Tow service meri shared location par mil jayegi,towing
+The rear left tire is losing air; please send puncture repair help,mechanic
+Accident mein agla wheel mur gaya gari nahi chal sakti,towing
+The taxi's tank is empty and the passengers are waiting,fuel_delivery
+I need a tubeless tire puncture patched,mechanic
+I pulled over when the fuel ran out and now need a refill delivered,fuel_delivery
+Tank empty hone ki wajah se engine band hua hai,fuel_delivery
+Scooter ka tank khali ho gaya hai,fuel_delivery
+My headlights are weak; can you test the battery?,mechanic
+Kaccha rasta toot gaya car ka back end phans gaya,towing
+Please send my pickup point to the fuel delivery provider,fuel_delivery
+Teen liter petrol chahiye bike ruk gai hai,fuel_delivery
+Can a mechanic visit my home to check a starting fault?,mechanic
+Gari ko flatbed par load kar ke le jana hai,towing
+Petrol mojood hai lekin gari start nahi hoti,mechanic
+Gari ki steering response nahi deti parked hai tow book karein,towing
+Bike accident mein front fork mur gaya usay load kar ke le jana hai,towing
+The axle is bent and the car cannot be driven on the road; I need recovery,towing
+Gear badalne par kharak ki awaz aati hai inspection chahiye,mechanic
+The petrol was used up in a traffic jam and I now need fuel,fuel_delivery
+The timing chain has failed and the car needs moving to a workshop,towing
+I am stranded on the main road without petrol; send fuel,fuel_delivery
+Engine repair road par nahi ho sakti garage tak le jayein,towing
+Dashboard par immobilizer error hai check chahiye,mechanic
+Wrong turn ki wajah se reserve bhi finish ho gaya petrol bhejo,fuel_delivery
+Please send eight liters of diesel for the van,fuel_delivery
+Hotel se non running rental car workshop shift karni hai,towing
+I need a diesel delivery for my van's dry tank,fuel_delivery
+I want to cancel the tow because the only problem is an empty petrol tank,fuel_delivery
+Dashboard ki sari lights achanak off ho gai hain,mechanic
+Gari ka koi fault nahi bas fuel finish hai,fuel_delivery
+My car is out of gas,fuel_delivery
+Lambi line mein engine chalta raha ab tank khali hai,fuel_delivery
+Please bring just enough diesel to reach the nearest station,fuel_delivery
+Engine belt se cheekhne jaisi awaz aati hai,mechanic
+Engine se tik tik ki awaz aa rahi hai,mechanic
+Pressing start only produces a click,mechanic
+The van's drive shaft is broken; please send a recovery truck,towing
+Accident wali gari ka bumper wheel mein phansa hai tow truck bhejein,towing
+Office basement se meri kharab car utha kar garage le jayein,towing
+"After a wrong turn, even the reserve ran out; please send petrol",fuel_delivery
+Delivery vehicle accident mein damage hai workshop pickup chahiye,towing
+Please assign a provider for an emergency petrol delivery,fuel_delivery
+I need a mobile mechanic for a small electrical repair,mechanic
+Petrol ki delivery gate number do par chahiye,fuel_delivery
+The dashboard shows an immobilizer error that needs checking,mechanic
+Clutch bohat sakht ho gaya hai adjustment chahiye,mechanic
+Gearbox se drive nahi aa rahi car workshop le jani hai,towing
+Tyre ke sath rim bhi toot gaya hai recovery chahiye,towing
+Meri location par diesel deliver karne wala available hai,fuel_delivery
+Timing chain fail hui hai gari ko workshop shift karna hai,towing
+I need a towing estimate with pickup here and drop-off at the workshop,towing
+Parked gari ke neeche oil ke qatre nazar aa rahe hain,mechanic
+Self ki awaz aa rahi hai engine pakar nahi raha fuel mojood hai,mechanic
+Meri gari start nahi ho rahi,mechanic
+I can see oil drops under the parked car,mechanic
+Gari tow krwani ha workshop tk,towing
+The driver-side window stops halfway down,mechanic
+I do not have a tire repair kit and need the puncture fixed,mechanic
+Lower suspension tootne se car aik side jhuk gai tow karni hai,towing
+My car runs on diesel and has run out of it,fuel_delivery
+The fuel is completely gone and I need a refill delivered to the car,fuel_delivery
+Engine fan lagatar chal raha hai sensor check karwana hai,mechanic
+The radiator was punctured in an accident and the car needs recovery,towing
+Car ka neeche wala hissa pathar par atka hai winch chahiye,towing
+I have a spare wheel; can someone fit it?,mechanic
+Accidnt k bad gari chal nhi rhi tow chaiye,towing
+SUV ki suspension fail hui flatbed transport chahiye,towing
+The car is stuck on a muddy track after rain and needs recovery,towing
+Gari nala ke kinare phans gai hai usay recover karna hai,towing
+Coolant bottle ka level kam hota rehta hai,mechanic
+My car will not run in the hospital parking lot and needs towing home,towing
+I have a jack but need help changing the tire,mechanic
+Start button dabao to click aata hai bas,mechanic
+"The battery is not flat; the tank is empty, so please send petrol",fuel_delivery
+The car slid off the road into a ditch,towing
+Reverse light gear lagane par on nahi hoti,mechanic
+Office parking se nikalna hai lekin petrol khali hai,fuel_delivery
+Bike self nahi leti lekin kick se chal jati hai,mechanic
+A broken-down car is in a basement parking lot and needs recovery pickup,towing
+I have run out of diesel near the railway station,fuel_delivery
+Barish ke baad gari start nahi ho rahi wiring check chahiye,mechanic
+"Bike out of petrol, bring two liters please",fuel_delivery
+Battery ko jump start karwana hai,mechanic
+There is major engine damage and I need transport to a workshop,towing
+Can you bring diesel tonight? The van's tank is empty,fuel_delivery
+Ghar se gari dealership le jani hai engine start nahi hota tow book karo,towing
+"Got a puncture, please fit my spare",mechanic
+The wheel hub is broken; take the car to a garage on a flatbed,towing
+Diesel refill ke liye banda meri location par bhej dein,fuel_delivery
+Mini truck ka axle toot gaya recovery vehicle chahiye,towing
+Oil sump toot gaya car ko flatbed par le jayein,towing
+Battery replace karne ke baad bhi gari nahi chali ab transport chahiye,towing
+Shopping mall ki parking mein fuel khatam ho gaya,fuel_delivery
+I ran out of petrol on the service road,fuel_delivery
+I need an emergency diesel delivery to my map pin,fuel_delivery
+Diesel ki emergency delivery meri pin par chahiye,fuel_delivery
+The engine stalls whenever I stop at a traffic light,mechanic
+Bike ke liye petrol deliver kar sakte ho,fuel_delivery
+Can you deliver petrol for my motorcycle?,fuel_delivery
+Bike reserve pe chal rahi thi ab band ho gayi petrol la do,fuel_delivery
+"Out of petrol, please deliver to my pin",fuel_delivery
+Do tyres cut gaye hain on site repair nahi hogi tow chahiye,towing
+The coolant level keeps dropping and I need a leak inspection,mechanic
+I need the motorcycle spark plug cleaned or replaced,mechanic
+Steering rack toot gai hai car ko chala nahi sakte,towing
+Please collect my broken-down car and drop it at a garage,towing
+I want to book a small delivery of regular petrol,fuel_delivery
+Petrol pump jane ka zariya nahi tank khali hai delivery chahiye,fuel_delivery
+Qareebi pump door hai petrol yahin la dein,fuel_delivery
+Right front tyre mein screw hai hawa kam hoti hai,mechanic
+Tubeless tyre ka puncture band karwana hai,mechanic
+Full tank nahi bas pump tak jane jitna petrol chahiye,fuel_delivery
+Pahari raste mein petrol khatam ho gaya delivery mil sakti hai,fuel_delivery
+Fuel gauge empty par hai aur gari ruk gai,fuel_delivery
+Refueling did not fix the car and the mechanic advised towing it to a garage,towing
+The handbrake will not release and the wheels are locked; I need recovery,towing
+Gari ki range khatam hai fuel bhejna parega,fuel_delivery
+The check engine light is on and I need a fault scan,mechanic
+My car is stuck and needs towing,towing
+There is fuel in the tank but the car will not start,mechanic
+Scooter ka wheel jam ho gaya hai pickup vehicle chahiye,towing
+Cabin fuse box mein loose connection lagta hai,mechanic
+The front end was damaged in a collision and the car needs towing,towing
+Need my car towed to the repair shop,towing
+Dashcam chalta reh gaya ab battery drain ho gai,mechanic
+I need a faulty car towed between two garages,towing
+Please arrange petrol delivery to my taxi,fuel_delivery
+Flat tyre hai spare bhi nahi repair available nahi tow kar dein,towing
+Road par aur repair try nahi karni tow se ghar le chalo,towing
+Petrol bhi hai battery bhi theek hai engine seized hai tow chahiye,towing
+A battery terminal heats up during starting; the car is now off for inspection,mechanic
+I parked at the side rather than continue on reserve; please send petrol,fuel_delivery
+The wheel studs have broken; I cannot drive the car and need a flatbed,towing
+I need a punctured motorcycle inner tube repaired,mechanic
+The motorcycle was on reserve and now that is empty too,fuel_delivery
+Battery ki warning light engine chalne par bhi on hai,mechanic
+Wheel hub toot gaya hai flatbed par garage le jao,towing
+Gearbox jam ho gaya hai gari ko garage transport karna hai,towing
+My bike has no gas left and I need a refill delivered,fuel_delivery
+Das liter petrol ki delivery chahiye,fuel_delivery
+"No mechanic visit needed, just tow the car to a garage",towing
+Diesel ka level theek hai starting system check chahiye,mechanic
+Please bring two liters of petrol to my location,fuel_delivery
+The tire pressure warning is on and I need the tires checked,mechanic
+Gari ka self nahi lagta koi check kar de,mechanic
+Main main road ke petrol ke baghair khara hoon fuel bhejo,fuel_delivery
+The battery test was fine; the problem is lack of petrol,fuel_delivery
+My car needs a petrol delivery outside the school,fuel_delivery
+Tyre mein puncture hai car yahin repair ho sakti hai,mechanic
+Engine kabhi smooth kabhi rough chal raha hai,mechanic
+The car starts and immediately stalls,mechanic
+The mini truck cannot be driven and I need towing to a garage,towing
+Battery ka terminal dheela ho gaya hai,mechanic
+My SUV is stuck on an off-road trail and needs recovery assistance,towing
+I switched the car off after smelling petrol and need a leak inspection,mechanic
+The engine overheated badly; I will not drive it and need a tow arranged,towing
+The car has broken down and needs transport to a garage,towing
+The battery seems completely dead,mechanic
+The scooter will not roll after an accident and needs to be loaded for transport,towing
+Engine garam hone ke baad dobara start nahi hota,mechanic
+The car does not have enough fuel to get me to a station,fuel_delivery
+Please collect my broken-down car from the office basement and take it to a garage,towing
+Tyre ka valve leak kar raha hai,mechanic
+Is anyone available to deliver diesel to my location?,fuel_delivery
+Bike ka wheel toot gaya carrier se le jani hai,towing
+"After the accident, the tire rubs against the body; please recover the car",towing
+Petrol dalwa liya hai phir bhi engine start nahi hua,mechanic
+The tank has too little diesel to reach the nearest station,fuel_delivery
+Clutch pedal ka free play set karwana hai,mechanic
+Two liters should be enough for my motorcycle; please bring that,fuel_delivery
+The battery light came on and I need the alternator belt checked,mechanic
+Sand mein wheels dab gaye car ko recovery truck nikale,towing
+The engine has seized and I need a tow to a workshop,towing
+The car cannot get out of a muddy farm track and needs recovery,towing
+The gauge gave a wrong reading and now there is no petrol left,fuel_delivery
+A parked car damaged by flooding needs transport to a garage,towing
+Van accident ke baad chal nahi sakti tow arrange karein,towing
+The tank is full and the ignition makes clicking sounds,mechanic
+The tires and engine are fine; I need a fuel top-up delivered,fuel_delivery
+Thora sa petrol meri parked car tak bhej do,fuel_delivery
+The clutch has become very stiff and needs adjustment,mechanic
+I need the motorcycle clutch cable adjusted,mechanic
+I need a recovery truck because the car cannot be driven,towing
+The car is below reserve and urgently needs petrol delivered,fuel_delivery
+Is an early-morning petrol delivery possible? My tank is empty,fuel_delivery
+Fuel is too low to reach a station; please arrange delivery,fuel_delivery
+My motorcycle is outside the market without petrol,fuel_delivery
+Food delivery karte hue bike ka petrol khatam hua hai,fuel_delivery
+Gari kichar se nahi nikal rahi tow rope wali recovery chahiye,towing
+Raat ko petrol khatam ho gaya ab delivery chahiye,fuel_delivery
+Petrol khatam ho gaya,fuel_delivery
+The gear selector is jammed and the mechanic told me to call a flatbed,towing
+Gari ka fuel tank damage hai drive nahi karni recover karwa dein,towing
+Ignition coil check karwani hai gari missing karti hai,mechanic
+The car broke down on the road and needs transport to the dealership,towing
+Battery wali electric bike band hai charging point tak pickup chahiye,towing
+Deisel khatam hai van start nahi hogi jab tak fuel na aye,fuel_delivery
+A lot of smoke came from the engine; the car is off and needs a flatbed,towing
+The oil sump is broken; please take the car on a flatbed,towing
+I need a service that buys fuel and delivers it here,fuel_delivery
+Accident ke baad gari move nahi kar rahi,towing
+The key is not being detected; please send an auto electrician,mechanic
+Tank full hai aur ignition par click click hota hai,mechanic
+All four tires are damaged and I need the car transported,towing
+Khali tank wali car ke liye petrol order confirm karna hai,fuel_delivery
+I hear a single click when I turn the ignition,mechanic
+All the dashboard lights have suddenly gone out,mechanic
+Battery bilkul dead lag rahi hai,mechanic
+Battery voltage test karwa do start mushkil hota hai,mechanic
+Ring road se gari ghar tak tow karwani hai,towing
+I have run out of fuel,fuel_delivery
+Parked gari ke brake pads check karwane hain,mechanic
+There seems to be a loose connection in the cabin fuse box,mechanic
+"The roadside mechanic could not repair it, so I now need towing",towing
+A car tire is shredded and there is no spare; send a flatbed,towing
+I am outside a closed petrol station with an empty tank,fuel_delivery
+A coolant pipe burst and all the coolant drained out; I need towing,towing
+I am out of petrol; please bring some in a fuel container,fuel_delivery
+I have no way to get to a petrol station and my tank is empty; I need delivery,fuel_delivery
+The petrol van has an empty tank; please send petrol,fuel_delivery
+Remote se gari unlock nahi hoti lock check karwana hai,mechanic
+The van has diesel in the tank but will not start,mechanic
+I have taken out the spare wheel and need help fitting it,mechanic
+Gari strt nai ho ri bttry ka issue lgta ha,mechanic
+The brake lights do not turn on when I press the pedal,mechanic
+A pulley near the drive belt is making a noise,mechanic
+Car won't start,mechanic
+I need the van towed from here to a garage,towing
+Suspension toot gai hai gari workshop le jani hai,towing
+Kacchay raste par gari ka aik wheel hawa mein hai recover karwa dein,towing
+Bike ki chain sprocket se utar gayi hai help karo,mechanic
+The remote will not unlock the car and I need the lock checked,mechanic
+My car has broken down on the motorway and needs transport to a city garage,towing
+Parking karte waqt wheel drain mein gira recovery chahiye,towing
+The car sank into the shoulder after rain and needs pulling out,towing
+Timing belt toot gai hai gari start nahi karni tow karwa dein,towing
+Cold start par rpm bohat high rehta hai,mechanic
+Pani mein engine band hua tha ab start nahi karna tow chahiye,towing
+I will run out before the next petrol station and need a delivery,fuel_delivery
+The car is stuck on the road median and needs recovery,towing
+The engine shakes badly while idling in neutral,mechanic
+Petrol quantity teen liter rakhna meri bike ke liye hai,fuel_delivery
+Car ka tank emty h fuel delivry chaiye,fuel_delivery
+Electric car mein drive error hai service center recovery chahiye,towing
+Can the fuel delivery provider come to my shared pin?,fuel_delivery
+Brakes repair workshop mein honge yahan se car recover karni hai,towing
+Please deliver five liters of unleaded petrol,fuel_delivery
+I need diesel delivered during my trip because the van is stopped,fuel_delivery
+Please give me the delivery arrival estimate; I am out of petrol,fuel_delivery
+Roadside mechanic repair nahi kar saka ab towing chahiye,towing
+The car is parked and the steering makes a noise when turned,mechanic
+I have not run out of petrol; I need towing because of an accident,towing
+I need the brake pads checked on my parked car,mechanic
+There is no spare and the rim is damaged; the car needs transport to a garage,towing
+Diesel pickup ko paanch liter diesel chahiye,fuel_delivery
+There is a ticking sound coming from the engine,mechanic
+Bachon ko lene jana hai gari mein fuel nahi hai,fuel_delivery
+Engine misfire kar raha hai,mechanic
+Clinic ki parking mein petrol khatam hua hai,fuel_delivery
+The door lock actuator makes a noise but does not lock the door,mechanic
+Meri gari ka petrol khtm ho gya hai,fuel_delivery
+Roadside repair is not possible; the car needs to be taken away,towing
+It cranks without firing even though there is fuel,mechanic
+Accelerator dabane par engine response nahi deta,mechanic
+I am requesting recovery of my car from a roadside ditch,towing
+I have parked the car and need the rising engine temperature checked,mechanic
+"Diesel ran out, van is at the side, please send a refill",fuel_delivery
+Door lock actuator awaz karta hai lock nahi hota,mechanic
+Gari driveable nahi transport ki request hai,towing
+The suspension collapsed in an accident and the car needs lifting onto a recovery truck,towing
+The car has no range left and needs fuel brought to it,fuel_delivery
+Reserve par gari khari ki hai aur fuel yahin mangwana hai,fuel_delivery
+Abhi raat ke waqt diesel la sakte hain van khali hai,fuel_delivery
+Highway shoulder par disabled car khari hai tow bhej dein,towing
+Tow ki zarurat nahi spare tyre fit karwana hai,mechanic
+Check engine light jal rahi hai fault scan karwana hai,mechanic
+Car ko dhakka de kar bhi move nahi kar sakte winch truck chahiye,towing
+I missed the low-fuel warning and the car is now stranded without petrol,fuel_delivery
+The car is parked and the steering pump is making a noise,mechanic
+The high beams work but the low beams do not; I need an electrician,mechanic
+Can I get a towing service at my shared location?,towing
+Safar mein fuel ka andaza ghalat hua petrol khatam hai,fuel_delivery
+Petrol lene koi pump ja kar meri location par aa sakta hai,fuel_delivery
+Handbrake ka adjustment karwana hai,mechanic
+A battery terminal has come loose,mechanic
+A non-running rental car needs moving from the hotel to a workshop,towing
+The car cannot be driven and needs a recovery vehicle,towing
+Check engine code read karne wala banda chahiye,mechanic
+Left indicator bohat fast blink karta hai bulb check chahiye,mechanic
+I could not find a station after the reserve light came on and now the petrol is gone,fuel_delivery
+Fuel delivery se masla solve nahi hoga gearbox toot gaya tow chahiye,towing
+There is a small coolant leak near a radiator hose,mechanic
+Brake pedal bilkul neeche jata hai car rok di tow bhejein,towing
+Oil pressure khatam hai engine off kiya garage transport chahiye,towing
+Aglay petrol pump se pehle fuel khatam ho jayega delivery chahiye,fuel_delivery
+The school van is out of diesel; please bring a refill,fuel_delivery
+Gari chhor kar nahi ja sakta petrol yahan mangwana hai,fuel_delivery
+A non-running car needs moving from a parking lot to a workshop,towing
+Brake bilkul fail hain gari rok di hai tow chahiye,towing
+Repair baad mein karwani hai abhi gaari flatbed se ghar le jayein,towing
+The car has sunk into sand and needs a vehicle with a winch,towing
+Motorcycle ki tube puncture repair karni hai,mechanic
+Family SUV mein petrol finish hai refill mangwa dein,fuel_delivery
+Radiator ke pipe ke paas halka coolant leak hai,mechanic
+Left rear wheel ki hawa nikal rahi hai puncture wala bhejein,mechanic
+Bike ka self button dabane par kuch nahi hota,mechanic
+The car needs to be transported on a flatbed,towing
+Rear collision ke baad gari ka wheel seedha nahi hai tow chahiye,towing
+The gearbox provides no drive and the car needs taking to a workshop,towing
+Bike reserve par thi ab us mein bhi petrol nahi,fuel_delivery
+The battery is fine; the car will not start because it has no petrol,fuel_delivery
+The horn has stopped working,mechanic
+A wheel dropped into a drain while parking and needs recovery,towing
+Engine ko start rehne ke liye race deni parti hai,mechanic
+Headlights ki roshni kam hai battery check chahiye,mechanic
+My bike ran out of petrol while I was delivering food,fuel_delivery
+OBD scan ghar par karwana hai engine light on hai,mechanic
+An interior light was left on and now the car needs a jump,mechanic
+A loose engine cover is vibrating,mechanic
+Gari ret mein dhans gai hai winch wali gaari chahiye,towing
+Could someone come here with a can of diesel?,fuel_delivery
+How soon can petrol be delivered? My tank is empty,fuel_delivery
+I ran out of fuel in the shopping mall parking lot,fuel_delivery
+Delivery van ka gearbox fail hai garage tak tow karna hai,towing
+Ek headlight ka bulb fuse ho gaya hai,mechanic
+The rear tire has gone flat and needs a puncture repair,mechanic
+"The van runs on diesel, so please deliver diesel for it",fuel_delivery
+Bike ka accelerator cable phans raha hai bike park hai,mechanic
+Engine bay se choti tapping sound aa rahi hai,mechanic
+The washer nozzle is blocked and no water reaches the windshield,mechanic
+My motorcycle headlight will not turn on; please check the wiring,mechanic
+My motorcycle stalls at idle and needs the carburetor checked,mechanic
+Van ko yahan se garage tak tow karwana hai,towing
+Bike ke tyre ka valve toot gaya tube replace chahiye,mechanic
+Median se car neeche utarwane ke liye recovery chahiye,towing
+The car sat unused for three days and now the battery is weak,mechanic
+The steering is locked and I need a flatbed,towing
+Washer nozzle band hai pani windshield par nahi aata,mechanic
+Car stuck ha ditch me recovery bhej do,towing
+I cannot leave the car and need petrol brought here,fuel_delivery
+The flood-damaged van is now on dry ground and needs transport to a workshop,towing
+The window does not move when I press its switch,mechanic
+Gaari parking mein hai yahin aakar starter check kar dein,mechanic
+The engine is running rough and a spark plug may be faulty,mechanic
+My delivery motorcycle is out of petrol; please send two liters,fuel_delivery
+Car embankment se neeche phans gai winch truck arrange karo,towing
+Van ke liye aath liter diesel bhej dein,fuel_delivery
+The car still will not run after a battery replacement and now needs transport,towing
+The engine will not restart once it gets hot,mechanic
+City entrance ke paas van ka diesel khatam hai,fuel_delivery
+I am on a village road with an empty tank and cannot find a petrol station,fuel_delivery
+Taxi ka tank empty ho gaya passengers wait kar rahe hain,fuel_delivery
+Fuel station miss kar diya ab car tank empty hai,fuel_delivery
+I am on the shoulder after the bridge with no petrol left,fuel_delivery
+The differential has seized and the pickup needs transport to a garage,towing
+There is a chirping noise from under the hood,mechanic
+"Car will not start, looks like a battery issue",mechanic
+Gari jump se chal jati hai normal key se nahi,mechanic
+I switched the car off after overheating; please tow it to a workshop,towing
+The fuel gauge is on empty and the car has stopped,fuel_delivery
+SUV ke charon wheels ret mein phanse hain recover kar dein,towing
+Diesel gauge empty hai van ko fuel chahiye,fuel_delivery
+I need the handbrake adjusted,mechanic
+The control arm has broken and the car cannot be driven; please tow it,towing
+Please test the charging system; the battery goes flat every day,mechanic
+Highway par diesel finish ho gaya hai,fuel_delivery
+The rental car has an empty tank and I need petrol,fuel_delivery
+Road par repair mumkin nahi car ko le jana parega,towing
+Tank empty hai fuel delivery cash par mil jayegi,fuel_delivery
+The ignition switch works intermittently,mechanic
+Black smoke is coming from the exhaust and I need the engine checked,mechanic
+Power steering fluid ka chota leak check chahiye,mechanic
+A wheel bearing has seized and the car will not roll; I need recovery,towing
+The car is parked with an empty tank and I need petrol delivered,fuel_delivery
+Engine ki idle speed upar neeche ho rahi hai,mechanic
+Jack hai lekin tyre badalne ka tareeqa nahi aata,mechanic
+The air conditioning blows air but it is not cold,mechanic

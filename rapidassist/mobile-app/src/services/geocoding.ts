@@ -37,30 +37,40 @@ export async function searchPlaces(query: string, near?: Coordinate): Promise<Ge
     params.set("lon", String(near.longitude));
   }
 
-  const response = await fetch(`${PHOTON_SEARCH_URL}?${params.toString()}`, {
-    headers: { Accept: "application/json" }
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(`${PHOTON_SEARCH_URL}?${params.toString()}`, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" }
+    });
 
-  if (!response.ok) {
-    throw new Error("Location search is unavailable right now.");
-  }
+    if (!response.ok) {
+      throw new Error("Location search is unavailable right now.");
+    }
 
-  const data = (await response.json()) as { features?: PhotonFeature[] };
-  return (data.features || [])
-    .map((feature) => {
-      const coordinates = feature.geometry?.coordinates;
-      if (!coordinates) return null;
+    const data = (await response.json()) as { features?: PhotonFeature[] };
+    if (!Array.isArray(data?.features)) throw new Error("Location search returned an invalid response. Please try again.");
+    return data.features
+      .map((feature) => {
+        const coordinates = feature.geometry?.coordinates;
+        if (!Array.isArray(coordinates) || coordinates.length !== 2) return null;
 
-      const [longitude, latitude] = coordinates;
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        const [longitude, latitude] = coordinates;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-      return {
-        latitude,
-        longitude,
-        label: formatPhotonLabel(feature)
-      };
-    })
-    .filter((result): result is GeocodingResult => Boolean(result));
+        return {
+          latitude,
+          longitude,
+          label: formatPhotonLabel(feature)
+        };
+      })
+      .filter((result): result is GeocodingResult => Boolean(result));
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Location search timed out. Please try again.");
+    if (error instanceof TypeError) throw new Error("Unable to search locations. Check your connection and try again.");
+    throw error;
+  } finally { clearTimeout(timeout); }
 }
 
 function formatPhotonLabel(feature: PhotonFeature) {

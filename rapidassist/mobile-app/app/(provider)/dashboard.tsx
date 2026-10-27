@@ -4,49 +4,50 @@ import * as Location from "expo-location";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
-import { acceptRequest, getProviderActiveRequest, getProviderEarnings, listOpenRequests, updateProviderAvailability } from "../../src/requests/requests.api";
+import { acceptRequest, declineRequest, getProviderEarnings, updateProviderAvailability } from "../../src/requests/requests.api";
 import { getProviderServiceTitle, getRequestTitle, getServiceIcon } from "../../src/requests/serviceCatalog";
-import type { ProviderEarnings, ServiceRequest } from "../../src/requests/requests.types";
+import type { ProviderEarnings } from "../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle, StatusPill } from "../../src/ui/components";
 import { ui } from "../../src/ui/system";
+import { useDispatchUpdates, useOfferSeconds } from "../../src/requests/DispatchProvider";
 
-const AVAILABILITY_LOCATION_SYNC_MS = 2 * 60 * 1000;
 
 export default function ProviderDashboard() {
   const { token, user } = useAuth();
-  const [online, setOnline] = useState(Boolean(user?.providerState?.isOnline));
-  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const { offers: requests, activeJob: activeRequest, online, setOnline, refresh, connected, error: dispatchError } = useDispatchUpdates();
   const [earnings, setEarnings] = useState<ProviderEarnings | null>(null);
   const [loading, setLoading] = useState(false);
   const [availabilityStatus, setAvailabilityStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const incoming = requests[0] || null;
-  const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
+  const seconds = useOfferSeconds(incoming?.dispatch?.expiresAt);
   const serviceLabel = useMemo(() => getProviderServiceTitle(user?.mechanicProfile?.serviceCategory), [user]);
 
-  async function loadRequests(includeOpen = online) {
+  async function loadRequests() {
     if (!token) return;
     try {
-      setError(null);
-      const [open, active, providerEarnings] = await Promise.all([
-        includeOpen ? listOpenRequests(token) : Promise.resolve([]),
-        getProviderActiveRequest(token),
-        getProviderEarnings(token)
-      ]);
-      setRequests(open);
-      setActiveRequest(active);
-      setEarnings(providerEarnings);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Failed to load requests");
-    }
+      await refresh();
+      setEarnings(await getProviderEarnings(token));
+    } catch (e: any) { setError(e?.response?.data?.message || e?.message || "Unable to refresh dashboard."); }
+  }
+
+  async function onDecline() {
+    if (!token || !incoming?.dispatch?.offerId) return;
+    try {
+      setLoading(true);
+      await declineRequest(token, incoming.id, incoming.dispatch.offerId);
+      await refresh();
+    } catch (e: any) { setError(e?.response?.data?.message || e?.message || "Unable to decline offer."); }
+    finally { setLoading(false); }
   }
 
   async function onAccept() {
     if (!token || !incoming) return;
     try {
       setLoading(true);
-      const accepted = await acceptRequest(token, incoming.id);
+      const accepted = await acceptRequest(token, incoming.id, incoming.dispatch?.offerId);
+      await refresh();
       router.push({
         pathname: "/(provider)/jobs",
         params: { requestId: accepted.id, category: accepted.category }
@@ -88,15 +89,6 @@ export default function ProviderDashboard() {
       // Fall back to the signup location below.
     }
 
-    const saved = user?.mechanicProfile?.liveLocation;
-    if (Number.isFinite(saved?.lat) && Number.isFinite(saved?.lng)) {
-      return {
-        lat: Number(saved?.lat),
-        lng: Number(saved?.lng),
-        addressText: saved?.addressText || "Saved provider location"
-      };
-    }
-
     throw new Error("Location permission is required to go online.");
   }
 
@@ -110,51 +102,13 @@ export default function ProviderDashboard() {
       const location = next ? await getAvailabilityLocation() : null;
       await updateProviderAvailability(token, next, location);
       setAvailabilityStatus(next ? "Online with live location." : "Offline.");
-      if (next) {
-        loadRequests(true);
-      } else {
-        setRequests([]);
-      }
+      await refresh();
     } catch (e: any) {
       setOnline(previous);
       setError(e?.response?.data?.message || e?.message || "Failed to update availability");
       setAvailabilityStatus(null);
     }
   }
-
-  useEffect(() => {
-    setOnline(Boolean(user?.providerState?.isOnline));
-  }, [user?.providerState?.isOnline]);
-
-  useEffect(() => {
-    if (!token || !online) return;
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    async function syncOnlineLocation() {
-      try {
-        setAvailabilityStatus("Refreshing your live location...");
-        const location = await getAvailabilityLocation();
-        if (cancelled) return;
-        await updateProviderAvailability(token!, true, location);
-        if (!cancelled) setAvailabilityStatus("Online with live location.");
-      } catch (e: any) {
-        if (!cancelled) {
-          setAvailabilityStatus(null);
-          setError(e?.response?.data?.message || e?.message || "Failed to sync provider location");
-        }
-      }
-    }
-
-    syncOnlineLocation();
-    timer = setInterval(syncOnlineLocation, AVAILABILITY_LOCATION_SYNC_MS);
-
-    return () => {
-      cancelled = true;
-      if (timer) clearInterval(timer);
-    };
-  }, [online, token, user?.id]);
 
   useEffect(() => {
     loadRequests();
@@ -214,7 +168,7 @@ export default function ProviderDashboard() {
           </>
         ) : null}
 
-        <SectionTitle title="Incoming request" action={incoming ? "New" : "None"} />
+        <SectionTitle title="Your dispatch offer" action={incoming ? `${seconds}s remaining` : connected ? "Live" : "Refreshing"} />
         <Card style={styles.job}>
           <View style={styles.jobTop}>
             <IconBox icon={getServiceIcon(incoming?.category)} />
@@ -230,9 +184,9 @@ export default function ProviderDashboard() {
             </View>
             {incoming ? <StatusPill label={incoming.status.replaceAll("_", " ")} tone="warning" /> : null}
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error || dispatchError ? <Text style={styles.error}>{error || dispatchError}</Text> : null}
           <View style={styles.actions}>
-            <PrimaryButton title="Refresh" variant="outline" style={{ flex: 1 }} onPress={loadRequests} />
+            <PrimaryButton title={incoming ? "Decline" : "Refresh"} disabled={loading} variant="outline" style={{ flex: 1 }} onPress={incoming ? onDecline : loadRequests} />
             <PrimaryButton
               title="Details"
               icon="reader"
@@ -244,7 +198,7 @@ export default function ProviderDashboard() {
                 router.push({ pathname: "/(provider)/requests/[requestId]", params: { requestId: incoming.id } });
               }}
             />
-            <PrimaryButton title={loading ? "Accepting..." : "Accept"} icon="checkmark" variant="success" disabled={!incoming || loading} style={{ flex: 1 }} onPress={onAccept} />
+            <PrimaryButton title={loading ? "Accepting..." : "Accept"} icon="checkmark" variant="success" disabled={!incoming || loading || seconds === 0} style={{ flex: 1 }} onPress={onAccept} />
           </View>
         </Card>
 
@@ -253,7 +207,7 @@ export default function ProviderDashboard() {
           <IconBox icon="shield-checkmark" tone={user?.verificationStatus === "verified" ? "success" : "warning"} />
           <View style={{ flex: 1 }}>
             <Text style={styles.verifyTitle}>{user?.verificationStatus === "verified" ? "Verified provider" : "Verification pending"}</Text>
-            <Text style={styles.verifyText}>Only verified service-category providers should receive production jobs.</Text>
+            <Text style={styles.verifyText}>Complete verification to receive jobs matching your service.</Text>
           </View>
         </Card>
       </AppShell>
@@ -272,7 +226,7 @@ const styles = StyleSheet.create({
   heroText: { marginTop: 8, color: "rgba(255,255,255,0.78)", fontSize: 13, lineHeight: 19, fontWeight: "700" },
   availabilityText: { marginTop: 8, color: "rgba(255,255,255,0.86)", fontSize: 12, lineHeight: 17, fontWeight: "800" },
   heroIcon: { width: 82, height: 82, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.14)", alignItems: "center", justifyContent: "center" },
-  metrics: { marginTop: 12, flexDirection: "row", gap: 12 },
+  metrics: { marginTop: 16, flexDirection: "row", flexWrap: "wrap", gap: 10 },
   job: { gap: 14 },
   jobTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   jobTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },

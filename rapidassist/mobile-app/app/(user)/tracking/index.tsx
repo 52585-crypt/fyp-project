@@ -5,12 +5,14 @@ import { router } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
 import { ReviewPromptCard, ReviewSummary } from "../../../src/components/ReviewPromptCard";
-import { approveExtraWork, listMyRequests, updateRequestStatus } from "../../../src/requests/requests.api";
+import { approveExtraWork, listMyRequests, retryDispatch, updateRequestStatus } from "../../../src/requests/requests.api";
+import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
 import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
 import { getDrivingRouteMetrics } from "../../../src/services/routing";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 import { distanceKm, type Coordinate } from "../../../src/utils/distance";
+import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../../../src/services/requestCache";
 
 const TRACKING_REFRESH_MS = 5000;
 
@@ -92,7 +94,8 @@ function fallbackEtaMinutes(from: Coordinate, to: Coordinate) {
 }
 
 export default function UserTracking() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const { revision, connected } = useDispatchUpdates();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -100,23 +103,46 @@ export default function UserTracking() {
   const [routeDistanceKm, setRouteDistanceKm] = useState<number | null>(null);
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [route, setRoute] = useState<Coordinate[]>([]);
+  const [approximate, setApproximate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trackedRequestIdRef = useRef<string | null>(null);
+  const freshRequest = useRef(false);
   const steps = useMemo(() => stepsFor(request?.category), [request?.category]);
   const step = useMemo(() => activeStep(request?.status, request?.category), [request?.category, request?.status]);
   const providerLocation = useMemo(() => providerLocationText(request), [request?.providerLocation]);
   const providerCoordinate = useMemo(() => requestCoordinate(request?.providerLocation), [request?.providerLocation]);
-  const customerCoordinate = useMemo(() => requestCoordinate(request?.pickupLocation), [request?.pickupLocation]);
+  const goingToDestination = request?.category === "car_towing" && ["vehicle_loaded", "reached_destination"].includes(request.status);
+  const customerCoordinate = useMemo(() => requestCoordinate(goingToDestination ? request?.destinationLocation : request?.pickupLocation), [goingToDestination, request?.destinationLocation, request?.pickupLocation]);
+  const locationStale = !request?.providerLocation?.updatedAt || Date.now() - Date.parse(request.providerLocation.updatedAt) > 45000;
   const trackingDistance = useMemo(() => formatTrackingDistance(routeDistanceKm), [routeDistanceKm]);
   const extraWork = request?.mechanicDetails?.extraWork;
   const isClosed = request?.status === "completed" || request?.status === "cancelled";
   const canCompleteJob = request?.status === "service_finished";
+  const cacheKey = user?.id ? `rapidassist.customerActiveJob.${user.id}` : null;
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    let active = true;
+    freshRequest.current = false;
+    void readCachedRequest(cacheKey, true).then((saved) => {
+      if (active && saved && !freshRequest.current) { trackedRequestIdRef.current = saved.id; setRequest(saved); }
+    });
+    return () => { active = false; };
+  }, [cacheKey]);
+
+  useEffect(() => {
+    if (!cacheKey || !request) return;
+    void writeCachedRequest(cacheKey, request, true);
+  }, [cacheKey, request]);
 
   async function load() {
     if (!token) return;
     try {
       setError(null);
       const requests = await listMyRequests(token);
+      freshRequest.current = true;
+      if (!requests.length && cacheKey) void removeCachedRequest(cacheKey);
       const activeRequest = requests.find((item) => item.status !== "completed" && item.status !== "cancelled");
       const trackedCompletedRequest = trackedRequestIdRef.current
         ? requests.find((item) => item.id === trackedRequestIdRef.current && item.status === "completed")
@@ -185,13 +211,14 @@ export default function UserTracking() {
     load();
     const timer = setInterval(load, TRACKING_REFRESH_MS);
     return () => clearInterval(timer);
-  }, [token]);
+  }, [token, revision]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadRouteMetrics() {
-      if (!providerCoordinate || !customerCoordinate || isClosed) {
+      setRoute([]);
+      if (!providerCoordinate || !customerCoordinate || isClosed || locationStale) {
         setRouteDistanceKm(null);
         setEtaMinutes(null);
         return;
@@ -202,11 +229,14 @@ export default function UserTracking() {
         const metrics = await getDrivingRouteMetrics(providerCoordinate, customerCoordinate);
         if (!cancelled) {
           setRouteDistanceKm(metrics.distanceKm);
+          setRoute(metrics.coordinates);
+          setApproximate(false);
           setEtaMinutes(metrics.durationMinutes || fallbackEtaMinutes(providerCoordinate, customerCoordinate));
         }
       } catch {
         if (!cancelled) {
           const fallbackDistance = distanceKm(providerCoordinate, customerCoordinate);
+          setApproximate(true);
           setRouteDistanceKm(fallbackDistance);
           setEtaMinutes(fallbackEtaMinutes(providerCoordinate, customerCoordinate));
         }
@@ -220,18 +250,32 @@ export default function UserTracking() {
     return () => {
       cancelled = true;
     };
-  }, [customerCoordinate, isClosed, providerCoordinate]);
+  }, [customerCoordinate?.latitude, customerCoordinate?.longitude, isClosed, providerCoordinate?.latitude, providerCoordinate?.longitude, locationStale]);
 
   return (
     <View style={{ flex: 1 }}>
       <AppShell title="Live Tracking" subtitle={request ? `${titleFor(request.category)} - ${request.status.replaceAll("_", " ")}` : "Provider route and request progress."}>
+        {request?.status === "searching_provider" ? <Card style={{ marginBottom: 14, gap: 10 }}>
+          <StatusPill label="SMART ROADSIDE DISPATCH" />
+          <Text style={styles.providerName}>{request.dispatch?.state === "unavailable" ? "No provider accepted yet" : request.dispatch?.state === "offered" ? "Waiting for a provider to accept" : "Finding the best available provider"}</Text>
+          <Text style={styles.providerMeta}>Searching within {request.dispatch?.radiusKm || 5} km · {request.dispatch?.attempts || 0} providers contacted. Offers move automatically to the next provider.</Text>
+          {request.dispatch?.state === "unavailable" || !request.dispatch ? <PrimaryButton title={updating ? "Searching…" : "Search again"} disabled={updating} onPress={async () => {
+            if (!token) return;
+            setUpdating(true);
+            try { setRequest(await retryDispatch(token, request.id)); setError(null); }
+            catch (e: any) { setError(e?.response?.data?.message || e?.message || "Unable to restart search."); }
+            finally { setUpdating(false); }
+          }} /> : null}
+        </Card> : null}
+        {request?.status === "provider_arrived" ? <Card style={{ marginBottom: 14 }}><Text style={styles.providerName}>Your provider has arrived</Text><Text style={styles.providerMeta}>Meet {request.provider?.name || "your provider"} at the pickup point.</Text></Card> : null}
         {providerCoordinate && customerCoordinate ? (
           <LocationMapPreview
             pickup={providerCoordinate}
             destination={customerCoordinate}
+            route={route}
             pickupLabel="Provider"
-            destinationLabel="Customer"
-            title="Provider live route"
+            destinationLabel={goingToDestination ? "Drop-off" : "Customer"}
+            title={locationStale ? "Location delayed · showing last known position" : "Provider live route"}
           />
         ) : (
           <View style={styles.map}>
@@ -245,8 +289,8 @@ export default function UserTracking() {
         <Card style={styles.provider}>
           <View style={styles.metrics}>
             <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>ETA</Text>
-              <Text style={styles.metricValue}>{routeLoading ? "..." : etaMinutes ? `${etaMinutes} min` : "Waiting"}</Text>
+              <Text style={styles.metricLabel}>{approximate ? "Approximate ETA" : "ETA"}</Text>
+              <Text style={styles.metricValue}>{request?.status === "provider_arrived" ? "Arrived" : locationStale ? "Unavailable" : routeLoading ? "..." : etaMinutes ? `${etaMinutes} min` : "Waiting"}</Text>
             </View>
             <View style={styles.metricBox}>
               <Text style={styles.metricLabel}>Distance</Text>
@@ -256,7 +300,8 @@ export default function UserTracking() {
           <View style={styles.providerTop}>
             <IconBox icon={request?.category === "mechanic" ? "construct" : request?.category === "fuel_delivery" ? "water" : "car"} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.providerName}>{request ? titleFor(request.category) : "No active request"}</Text>
+              <Text style={styles.providerName}>{request?.provider?.name || (request ? titleFor(request.category) : "No active request")}</Text>
+              {request?.provider ? <Text style={styles.providerMeta}>{request.provider.ratingCount ? `★ ${request.provider.ratingAvg.toFixed(1)} · ${request.provider.ratingCount} reviews` : "New verified provider"}</Text> : null}
               <Text style={styles.providerMeta}>
                 {request ? `PKR ${request.estimate?.total?.toLocaleString() || 0} - ${request.pickupLocation?.addressText || "Pickup"}` : "Create a request to start tracking."}
               </Text>
@@ -284,6 +329,7 @@ export default function UserTracking() {
             />
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Text style={styles.providerMeta}>{connected ? "Live updates connected" : "Reconnecting live updates · refreshing automatically"}{approximate ? " · Road route unavailable; ETA is approximate." : ""}</Text>
           {request?.status === "cancelled" ? <Text style={styles.cancelledText}>This request has been cancelled.</Text> : null}
           {canCompleteJob ? <Text style={styles.confirmText}>Provider marked the service finished. Confirm completion to unlock rating.</Text> : null}
           {request?.status === "completed" ? <Text style={styles.doneText}>This request is completed.</Text> : null}
@@ -306,6 +352,10 @@ export default function UserTracking() {
 
         {token && request?.status === "completed" && request.providerId && !request.review?.rating ? (
           <ReviewPromptCard token={token} request={request} onSubmitted={setRequest} />
+        ) : null}
+
+        {request?.status === "completed" ? (
+          <PrimaryButton title="Payment & Invoice" icon="receipt" variant="success" onPress={() => router.push({ pathname: "/(user)/payment/[requestId]", params: { requestId: request.id } })} />
         ) : null}
 
         {extraWork && request?.status === "extra_work_requested" ? (

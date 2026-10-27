@@ -1,0 +1,194 @@
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, usePathname } from "expo-router";
+import * as Location from "expo-location";
+import { useAuth } from "../auth/AuthProvider";
+import { createSocket } from "../services/socket";
+import { getDispatchOffers, getProviderActiveRequest, updateProviderLocation } from "./requests.api";
+import type { ServiceRequest } from "./requests.types";
+import { ui } from "../ui/system";
+import { startProviderBackgroundLocation, stopProviderBackgroundLocation } from "../services/backgroundLocation";
+import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../services/requestCache";
+
+type DispatchState = {
+  offers: ServiceRequest[];
+  activeJob: ServiceRequest | null;
+  online: boolean;
+  setOnline: (value: boolean) => void;
+  revision: number;
+  connected: boolean;
+  serverOffset: number;
+  error: string | null;
+  refresh: () => Promise<void>;
+};
+const Context = createContext<DispatchState | null>(null);
+export function useDispatchUpdates() {
+  const context = useContext(Context);
+  if (!context) throw new Error("DispatchProvider missing");
+  return context;
+}
+export function useOfferSeconds(expiresAt?: string | null) {
+  const { serverOffset } = useDispatchUpdates();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(timer); }, []);
+  return expiresAt ? Math.max(0, Math.ceil((Date.parse(expiresAt) - now - serverOffset) / 1000)) : 0;
+}
+
+export function DispatchProvider({ children }: { children: React.ReactNode }) {
+  const { token, user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [offers, setOffers] = useState<ServiceRequest[]>([]);
+  const [activeJob, setActiveJob] = useState<ServiceRequest | null>(null);
+  const [online, setOnline] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [connected, setConnected] = useState(false);
+  const [serverOffset, setServerOffset] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [foreground, setForeground] = useState(AppState.currentState !== "background");
+  const sessionRef = useRef(token);
+  sessionRef.current = token;
+  const fetching = useRef(false);
+  const freshJob = useRef(false);
+  const provider = user?.role === "mechanic";
+  const cacheKey = user?.id ? `rapidassist.activeJob.${user.id}` : null;
+
+  useEffect(() => {
+    setOffers([]); setActiveJob(null); setNotice(null); setError(null);
+    setOnline(Boolean(user?.providerState?.isOnline));
+    freshJob.current = false;
+  }, [token, user?.id, user?.providerState?.isOnline]);
+
+  useEffect(() => {
+    if (!provider || !cacheKey) return;
+    let active = true;
+    void readCachedRequest(cacheKey).then((saved) => {
+      if (active && saved && !freshJob.current) setActiveJob(saved);
+    });
+    return () => { active = false; };
+  }, [cacheKey, provider]);
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    if (activeJob) void writeCachedRequest(cacheKey, activeJob);
+  }, [activeJob, cacheKey]);
+
+  const refresh = useCallback(async () => {
+    if (!token || !provider || fetching.current) return;
+    fetching.current = true;
+    try {
+      const started = Date.now();
+      const [data, active] = await Promise.all([getDispatchOffers(token), getProviderActiveRequest(token)]);
+      if (sessionRef.current !== token) return;
+      freshJob.current = true;
+      setServerOffset(Date.parse(data.serverTime) - (started + Date.now()) / 2);
+      setOffers(data.requests); setActiveJob(active); setError(null);
+      if (!active && cacheKey) await removeCachedRequest(cacheKey);
+    } catch (e: any) {
+      if (sessionRef.current === token) setError(e?.response?.data?.message || "Connection interrupted. Retrying offers…");
+    } finally { fetching.current = false; }
+  }, [token, provider, cacheKey]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => setForeground(state === "active"));
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!foreground) return;
+    void refresh();
+    const timer = setInterval(refresh, 3000);
+    return () => clearInterval(timer);
+  }, [refresh, foreground]);
+
+  useEffect(() => {
+    if (!token || !foreground) return;
+    const socket = createSocket(token);
+    socket.on("connect", () => { setConnected(true); setRevision((n) => n + 1); void refresh(); });
+    socket.on("disconnect", () => setConnected(false));
+    socket.on("connect_error", () => setConnected(false));
+    socket.on("request:changed", (event: { kind: string }) => {
+      setRevision((n) => n + 1);
+      if (provider) void refresh();
+      else if (event.kind === "arrived") setNotice("Your provider has arrived at the pickup point.");
+      else if (event.kind === "assigned") setNotice("Provider confirmed! Follow their arrival live.");
+    });
+    socket.connect();
+    return () => { socket.disconnect(); setConnected(false); };
+  }, [token, provider, refresh, foreground]);
+
+  // Lives above the screens, so navigation never stops an active job's GPS sync.
+  useEffect(() => {
+    if (!token || !provider || !foreground || (!online && !activeJob)) return;
+    let stopped = false;
+    let busy = false;
+    async function sync() {
+      if (busy || stopped) return;
+      busy = true;
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (!permission.granted) throw new Error("Enable location permission to receive nearby jobs and share your arrival.");
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        if (stopped) return;
+        await updateProviderLocation(token!, {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          addressText: "Provider live location",
+          accuracy: position.coords.accuracy,
+          heading: position.coords.heading,
+          speed: position.coords.speed,
+          capturedAt: new Date(position.timestamp).toISOString()
+        });
+      } catch (e: any) {
+        if (!stopped) setError(e?.message || "Unable to update your location.");
+      } finally { busy = false; }
+    }
+    void sync();
+    const timer = setInterval(sync, 10000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [token, provider, foreground, online, activeJob?.id]);
+
+  useEffect(() => {
+    if (!provider || !token || !activeJob?.id) {
+      void stopProviderBackgroundLocation().catch(() => {});
+      return;
+    }
+    void startProviderBackgroundLocation().then((started) => {
+      if (!started) setError("Background location permission is needed to keep live tracking active when the app is minimized.");
+    }).catch((e: any) => setError(e?.message || "Unable to start background location."));
+  }, [activeJob?.id, provider, token]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 8000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  return <Context.Provider value={{ offers, activeJob, online, setOnline, revision, connected, serverOffset, error, refresh }}>
+    {children}
+    {notice ? <View style={[styles.notice, { top: insets.top + 8 }]} accessibilityLiveRegion="polite">
+      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push("/(user)/tracking"); }}><Text style={styles.noticeText}>{notice}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" hitSlop={12} onPress={() => setNotice(null)}><Text style={styles.noticeText}>×</Text></Pressable>
+    </View> : null}
+    {provider ? <OfferBanner /> : null}
+  </Context.Provider>;
+}
+function OfferBanner() {
+  const pathname = usePathname();
+  const { offers } = useDispatchUpdates();
+  const offer = offers[0];
+  const seconds = useOfferSeconds(offer?.dispatch?.expiresAt);
+  const insets = useSafeAreaInsets();
+  if (!offer || !seconds || pathname.includes("/requests/") || pathname.endsWith("/dashboard")) return null;
+  return <Pressable accessibilityRole="button" style={[styles.offer, { bottom: insets.bottom + 82 }]} onPress={() => router.push({ pathname: "/(provider)/requests/[requestId]", params: { requestId: offer.id } })}>
+    <Text style={styles.noticeText}>New roadside job · {seconds}s to respond</Text>
+    <Text style={styles.offerDetail}>PKR {offer.estimate.total.toLocaleString()} · Tap to review offer</Text>
+  </Pressable>;
+}
+const styles = StyleSheet.create({
+  notice: { position: "absolute", left: 16, right: 16, padding: 16, borderRadius: 16, backgroundColor: ui.colors.dark, flexDirection: "row", gap: 16, zIndex: 100 },
+  offer: { position: "absolute", left: 16, right: 16, padding: 14, borderRadius: 16, backgroundColor: ui.colors.dark, zIndex: 90 },
+  noticeText: { color: "white", fontSize: 14, fontWeight: "700" },
+  offerDetail: { color: "#B9E6CF", marginTop: 5, fontSize: 12 }
+});

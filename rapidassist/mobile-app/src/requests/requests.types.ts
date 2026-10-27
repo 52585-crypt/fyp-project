@@ -1,4 +1,5 @@
 export type RequestCategory = "car_towing" | "fuel_delivery" | "mechanic";
+export type RequestPriority = "normal" | "high" | "urgent";
 export type FuelType = "petrol" | "diesel";
 export type MechanicIssueCategory = "battery" | "engine" | "tyre" | "brake" | "overheating" | "general_inspection";
 
@@ -6,6 +7,11 @@ export type RequestLocation = {
   lat: number;
   lng: number;
   addressText?: string | null;
+  accuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  capturedAt?: string | null;
+  receivedAt?: string | null;
   updatedAt?: string | null;
 };
 
@@ -37,6 +43,7 @@ export type ChatMessage = {
   requestId: string;
   senderId: string;
   senderRole: "user" | "mechanic";
+  clientMessageId?: string | null;
   sender: {
     id: string;
     name: string;
@@ -56,11 +63,22 @@ export type RequestReview = {
 };
 
 export type ServiceRequest = {
+  dispatch?: {
+    state: "searching" | "offered" | "unavailable" | "assigned" | "cancelled";
+    offerId: string | null;
+    offeredAt: string | null;
+    expiresAt: string | null;
+    deadline: string | null;
+    attempts: number;
+    radiusKm: number;
+  } | null;
+  provider?: { id: string; name: string; phone: string; ratingAvg: number; ratingCount: number } | null;
   id: string;
   userId: string;
   providerId: string | null;
   vehicleId: string | null;
   category: RequestCategory;
+  priority: RequestPriority;
   vehicleInfo: {
     type: string | null;
     make: string | null;
@@ -86,6 +104,9 @@ export type ServiceRequest = {
       estimatedTime: string | null;
       description: string | null;
       approvedByUser: boolean;
+      status?: "pending" | "approved" | "rejected";
+      requestedAt?: string | null;
+      decidedAt?: string | null;
     };
   };
   estimate: {
@@ -106,6 +127,7 @@ export type NearbyProvider = {
   ratingAvg: number;
   ratingCount: number;
   completedJobs: number;
+  paidJobs?: number;
   distanceKm: number;
   etaMinutes: number;
   score: number;
@@ -113,8 +135,10 @@ export type NearbyProvider = {
 };
 
 export type CreateRequestInput = {
+  clientRequestId?: string;
   vehicleId?: string | null;
   category: RequestCategory;
+  priority?: RequestPriority;
   vehicleInfo?: {
     type?: string | null;
     make?: string | null;

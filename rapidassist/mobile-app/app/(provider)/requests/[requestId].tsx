@@ -3,7 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { acceptRequest, getRequest, updateRequestStatus } from "../../../src/requests/requests.api";
+import { acceptRequest, declineRequest, getRequest, updateRequestStatus } from "../../../src/requests/requests.api";
+import { useDispatchUpdates, useOfferSeconds } from "../../../src/requests/DispatchProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
 import { getRequestTitle, getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
@@ -32,6 +33,7 @@ function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
 
 export default function ProviderRequestDetails() {
   const { token } = useAuth();
+  const { refresh, revision } = useDispatchUpdates();
   const params = useLocalSearchParams<{ requestId?: string }>();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,7 @@ export default function ProviderRequestDetails() {
   const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const isClosed = request?.status === "completed" || request?.status === "cancelled";
+  const seconds = useOfferSeconds(request?.dispatch?.expiresAt);
 
   async function loadRequest() {
     if (!token || !params.requestId) return;
@@ -49,6 +52,7 @@ export default function ProviderRequestDetails() {
       setError(null);
       setRequest(await getRequest(token, params.requestId));
     } catch (e: any) {
+      if (e?.response?.status === 403 || e?.response?.status === 404) setRequest(null);
       setError(e?.response?.data?.message || e?.message || "Failed to load request details");
     } finally {
       setLoading(false);
@@ -60,7 +64,8 @@ export default function ProviderRequestDetails() {
     try {
       setAccepting(true);
       setError(null);
-      const accepted = await acceptRequest(token, request.id);
+      const accepted = await acceptRequest(token, request.id, request.dispatch?.offerId);
+      await refresh();
       router.replace({
         pathname: "/(provider)/jobs",
         params: { requestId: accepted.id, category: accepted.category }
@@ -77,6 +82,12 @@ export default function ProviderRequestDetails() {
     try {
       setCancelling(true);
       setError(null);
+      if (!request.providerId && request.dispatch?.offerId) {
+        await declineRequest(token, request.id, request.dispatch.offerId);
+        await refresh();
+        router.replace("/(provider)/dashboard");
+        return;
+      }
       const updated = await updateRequestStatus(
         token,
         request.id,
@@ -103,11 +114,13 @@ export default function ProviderRequestDetails() {
 
   useEffect(() => {
     loadRequest();
-  }, [params.requestId, token]);
+    const timer = setInterval(loadRequest, 3000);
+    return () => clearInterval(timer);
+  }, [params.requestId, token, revision]);
 
   return (
     <View style={{ flex: 1 }}>
-      <AppShell title="Request Details" subtitle={request ? getRequestTitle(request.category) : "Review incoming job before accepting."}>
+      <AppShell title="Request Details" subtitle={request?.status === "searching_provider" ? `Offer expires in ${seconds}s` : request ? getRequestTitle(request.category) : "Review incoming job before accepting."}>
         <Card style={styles.summary}>
           <IconBox icon={getServiceIcon(request?.category)} tone="success" />
           <View style={{ flex: 1 }}>
@@ -203,7 +216,7 @@ export default function ProviderRequestDetails() {
                 title={accepting ? "Accepting..." : "Accept Job"}
                 icon="checkmark"
                 variant="success"
-                disabled={accepting || request.status !== "searching_provider"}
+                disabled={accepting || request.status !== "searching_provider" || seconds === 0}
                 style={{ flex: 1 }}
                 onPress={onAccept}
               />
@@ -215,8 +228,8 @@ export default function ProviderRequestDetails() {
               </Card>
             ) : showCancel ? (
               <Card style={styles.cancelBox}>
-                <Text style={styles.cancelTitle}>Cancel this request?</Text>
-                <Text style={styles.cancelText}>This will remove the request from active provider work.</Text>
+                <Text style={styles.cancelTitle}>{request.providerId ? "Cancel this job?" : "Decline this offer?"}</Text>
+                <Text style={styles.cancelText}>{request.providerId ? "The customer will be notified." : "The offer will move to the next available provider."}</Text>
                 <Field
                   label="Reason"
                   icon="document-text"
@@ -227,7 +240,7 @@ export default function ProviderRequestDetails() {
                 <View style={styles.actions}>
                   <PrimaryButton title="Keep Request" variant="outline" style={{ flex: 1 }} onPress={() => setShowCancel(false)} />
                   <PrimaryButton
-                    title={cancelling ? "Cancelling..." : "Confirm Cancel"}
+                    title={cancelling ? "Please wait..." : request.providerId ? "Confirm Cancel" : "Decline offer"}
                     icon="close-circle"
                     variant="danger"
                     disabled={cancelling}
@@ -238,7 +251,7 @@ export default function ProviderRequestDetails() {
               </Card>
             ) : (
               <PrimaryButton
-                title={request.providerId ? "Cancel Job" : "Cancel Request"}
+                title={request.providerId ? "Cancel Job" : "Decline offer"}
                 icon="close-circle"
                 variant="outline"
                 disabled={isClosed}

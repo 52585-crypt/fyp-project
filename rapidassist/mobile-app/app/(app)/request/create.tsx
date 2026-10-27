@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -8,6 +8,9 @@ import { RAButton } from "../../../src/components/RAButton";
 import { RATextInput } from "../../../src/components/RATextInput";
 import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
 import { useAuth } from "../../../src/auth/AuthProvider";
+import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
+import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
+import type { ServiceSuggestion } from "../../../src/ai/serviceSuggestion.types";
 import type { Vehicle } from "../../../src/vehicles/vehicles.types";
 import { listMyVehicles } from "../../../src/vehicles/vehicles.api";
 import type { FuelType, MechanicIssueCategory, NearbyProvider, PriceLine, RequestCategory } from "../../../src/requests/requests.types";
@@ -166,6 +169,7 @@ export default function CreateRequest() {
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState(() => serviceIdForCategory(params.category));
   const [description, setDescription] = useState("");
+  const [manualSelectionVersion, setManualSelectionVersion] = useState(0);
   const [lat, setLat] = useState("31.5204");
   const [lng, setLng] = useState("74.3587");
   const [addressText, setAddressText] = useState("Gulberg, Lahore");
@@ -188,6 +192,8 @@ export default function CreateRequest() {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const submission = useRef<{ fingerprint: string; id: string } | null>(null);
+  const submitting = useRef(false);
 
   const selectedService = useMemo(
     () => serviceOptions.find((option) => option.id === selectedServiceId) || serviceOptions[0],
@@ -485,11 +491,12 @@ export default function CreateRequest() {
   }
 
   async function onSubmit() {
-    if (!token || !vehicleId || !locationReady) return;
+    if (!token || !vehicleId || !locationReady || submitting.current) return;
+    submitting.current = true;
     try {
       setLoading(true);
       setError(null);
-      await createRequest(token, {
+      const input = {
         vehicleId,
         category: selectedService.category,
         issueType:
@@ -526,13 +533,29 @@ export default function CreateRequest() {
                 issueCategory: mechanicIssue
               }
             : undefined
-      });
+      };
+      const fingerprint = JSON.stringify(input);
+      if (submission.current?.fingerprint !== fingerprint) {
+        submission.current = {
+          fingerprint,
+          id: `dispatch-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        };
+      }
+      await createRequest(token, { ...input, clientRequestId: submission.current.id });
       router.replace("/(app)/home");
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Request failed");
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
+  }
+
+  function applyServiceSuggestion(suggestion: ServiceSuggestion) {
+    const selection = selectionFromSuggestion(suggestion);
+    if (!selection) return;
+    setSelectedServiceId(selection.serviceId);
+    if (selection.mechanicIssue) setMechanicIssue(selection.mechanicIssue);
   }
 
   return (
@@ -551,6 +574,15 @@ export default function CreateRequest() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          <ServiceSuggestionCard
+            token={token}
+            description={description}
+            onDescriptionChange={setDescription}
+            manualSelectionVersion={manualSelectionVersion}
+            onSuggestionAccepted={applyServiceSuggestion}
+            onSignInRequested={() => router.replace("/(auth)/login")}
+          />
+
           <Section title="Our Services">
             <View style={styles.serviceGrid}>
               {serviceOptions.map((option) => (
@@ -558,7 +590,10 @@ export default function CreateRequest() {
                   key={option.id}
                   item={option}
                   selected={option.id === selectedServiceId}
-                  onPress={() => setSelectedServiceId(option.id)}
+                  onPress={() => {
+                    setManualSelectionVersion((version) => version + 1);
+                    setSelectedServiceId(option.id);
+                  }}
                 />
               ))}
             </View>
@@ -768,10 +803,6 @@ export default function CreateRequest() {
               </View>
             </Section>
           ) : null}
-
-          <Section title="Problem Details">
-            <RATextInput icon="chatbox-ellipses" placeholder="Short description (optional)" value={description} onChangeText={setDescription} />
-          </Section>
 
           <View style={styles.reviewBox}>
             <Text style={styles.reviewTitle}>Service Summary</Text>

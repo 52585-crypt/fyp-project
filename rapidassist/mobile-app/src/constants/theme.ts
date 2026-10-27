@@ -1,19 +1,20 @@
 import { MD3LightTheme } from "react-native-paper";
+import { ui } from "../ui/system";
 
 export const appColors = {
-  background: "#F7F7FB",
-  surface: "#FFFFFF",
-  surfaceMuted: "#F4F2FA",
-  border: "#E6E2EF",
-  text: "#151124",
-  muted: "#6F6A7C",
-  primary: "#2D0C9E",
-  primaryDark: "#200579",
-  primarySoft: "#EEE9FF",
-  success: "#16A34A",
-  warning: "#F59E0B",
-  danger: "#DC2626",
-  dangerSoft: "#FEE2E2"
+  background: ui.colors.bg,
+  surface: ui.colors.surface,
+  surfaceMuted: ui.colors.surfaceAlt,
+  border: ui.colors.border,
+  text: ui.colors.text,
+  muted: ui.colors.muted,
+  primary: ui.colors.primary,
+  primaryDark: ui.colors.primaryDark,
+  primarySoft: ui.colors.primarySoft,
+  success: ui.colors.success,
+  warning: ui.colors.warning,
+  danger: ui.colors.danger,
+  dangerSoft: ui.colors.dangerSoft
 } as const;
 
 export const spacing = {
@@ -44,4 +45,3 @@ export const paperTheme = {
   },
   roundness: 3
 };
-

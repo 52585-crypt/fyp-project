@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, Vie
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ui } from "./system";
+import { useNotifications } from "../notifications/NotificationProvider";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 const bottomNavHeight = 86;
@@ -22,6 +23,8 @@ export function AppShell({
   right?: React.ReactNode;
   scroll?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = { paddingBottom: screenBottomPadding + insets.bottom };
   const body = (
     <View style={styles.content}>
       <View style={styles.header}>
@@ -38,11 +41,11 @@ export function AppShell({
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, bottomPadding]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {body}
         </ScrollView>
       ) : (
-        <View style={styles.staticContent}>{body}</View>
+        <View style={[styles.staticContent, bottomPadding]}>{body}</View>
       )}
     </SafeAreaView>
   );
@@ -147,16 +150,19 @@ export function Metric({ label, value, icon }: { label: string; value: string; i
 
 export function BottomNav({ role, active }: { role: "user" | "provider"; active: string }) {
   const insets = useSafeAreaInsets();
+  const { unread } = useNotifications();
   const userTabs = [
     { label: "Home", icon: "home", href: "/(user)/home" },
     { label: "Request", icon: "add-circle", href: "/(user)/request" },
     { label: "Track", icon: "navigate", href: "/(user)/tracking" },
+    { label: "Alerts", icon: "notifications", href: "/(user)/notifications" },
     { label: "Profile", icon: "person", href: "/(user)/profile" }
   ] as const;
   const providerTabs = [
     { label: "Home", icon: "speedometer", href: "/(provider)/dashboard" },
     { label: "Jobs", icon: "briefcase", href: "/(provider)/jobs" },
     { label: "Earn", icon: "wallet", href: "/(provider)/earnings" },
+    { label: "Alerts", icon: "notifications", href: "/(provider)/notifications" },
     { label: "Profile", icon: "person", href: "/(provider)/profile" }
   ] as const;
   const tabs = role === "user" ? userTabs : providerTabs;
@@ -167,7 +173,7 @@ export function BottomNav({ role, active }: { role: "user" | "provider"; active:
         const selected = active === tab.label;
         return (
           <Pressable key={tab.label} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={tab.label} onPress={() => router.replace(tab.href)} style={styles.navItem}>
-            <View style={[styles.navIcon, selected ? styles.navIconActive : null]}><Ionicons name={tab.icon} size={21} color={selected ? ui.colors.primary : ui.colors.muted} /></View>
+            <View style={[styles.navIcon, selected ? styles.navIconActive : null]}><Ionicons name={tab.icon} size={21} color={selected ? ui.colors.primary : ui.colors.muted} />{tab.label === "Alerts" && unread > 0 ? <View style={styles.navBadge}><Text style={styles.navBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}</View>
             <Text style={[styles.navText, selected ? styles.navTextActive : null]}>{tab.label}</Text>
           </Pressable>
         );
@@ -216,6 +222,8 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center" },
   navIcon: { width: 48, height: 30, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   navIconActive: { backgroundColor: ui.colors.primarySoft },
+  navBadge: { position: "absolute", right: 4, top: -3, minWidth: 17, height: 17, paddingHorizontal: 3, borderRadius: 9, backgroundColor: ui.colors.danger, alignItems: "center", justifyContent: "center" },
+  navBadgeText: { color: "white", fontSize: 9, fontWeight: "900" },
   navText: { marginTop: 4, color: ui.colors.muted, fontSize: 11, fontWeight: "600" },
   navTextActive: { color: ui.colors.primary },
   sectionRow: { marginTop: 26, marginBottom: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },

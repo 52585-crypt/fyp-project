@@ -43,12 +43,26 @@ export async function getRequest(token: string, id: string) {
   return res.data.request;
 }
 
-export async function acceptRequest(token: string, id: string) {
+export async function acceptRequest(token: string, id: string, offerId?: string | null) {
   const res = await api.patch<{ ok: boolean; request: ServiceRequest }>(
     `/api/requests/${id}/accept`,
-    {},
+    { offerId },
     { headers: { Authorization: `Bearer ${token}` } }
   );
+  return res.data.request;
+}
+
+export async function getDispatchOffers(token: string) {
+  const res = await api.get<{ requests: ServiceRequest[]; serverTime: string }>("/api/requests/open", { headers: { Authorization: `Bearer ${token}` } });
+  return res.data;
+}
+
+export async function declineRequest(token: string, id: string, offerId: string) {
+  await api.patch(`/api/requests/${id}/decline`, { offerId }, { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function retryDispatch(token: string, id: string) {
+  const res = await api.post<{ request: ServiceRequest }>(`/api/requests/${id}/dispatch/retry`, {}, { headers: { Authorization: `Bearer ${token}` } });
   return res.data.request;
 }
 
@@ -135,12 +149,11 @@ export async function getRequestMessages(token: string, id: string) {
   return res.data.messages;
 }
 
-export async function sendRequestMessage(token: string, id: string, body: string) {
+export async function sendRequestMessage(token: string, id: string, body: string, clientMessageId: string) {
   const res = await api.post<{ ok: boolean; message: ChatMessage }>(
     `/api/requests/${id}/messages`,
-    { body },
+    { body, clientMessageId },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data.message;
 }
-

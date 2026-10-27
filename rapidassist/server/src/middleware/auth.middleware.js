@@ -1,6 +1,7 @@
 const { verifyAccessToken } = require("../utils/jwt");
 const { User } = require("../models/User");
 const { getAccessTokenFromCookies } = require("../utils/authCookie");
+const { isObjectIdOrHexString } = require("mongoose");
 
 function getBearerToken(req) {
   const header = req.headers.authorization || "";
@@ -21,6 +22,9 @@ async function requireAuth(req, res, next) {
     }
 
     const decoded = verifyAccessToken(token);
+    if (!decoded || typeof decoded !== "object" || !isObjectIdOrHexString(decoded.sub)) {
+      throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
+    }
     const user = await User.findById(decoded.sub);
 
     if (!user) {
@@ -32,10 +36,25 @@ async function requireAuth(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
-    err.statusCode = err.statusCode || 401;
+    if (["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(err.name)) {
+      err = Object.assign(new Error("Session expired or invalid. Please sign in again."), { statusCode: 401 });
+    }
     next(err);
   }
 }
 
-module.exports = { requireAuth };
+function requireRole(...roles) {
+  return [
+    requireAuth,
+    (req, res, next) => {
+      if (roles.includes(req.user?.role)) return next();
+      const err = new Error("Forbidden");
+      err.statusCode = 403;
+      next(err);
+    }
+  ];
+}
 
+const requireAdmin = requireRole("admin");
+
+module.exports = { requireAuth, requireRole, requireAdmin };

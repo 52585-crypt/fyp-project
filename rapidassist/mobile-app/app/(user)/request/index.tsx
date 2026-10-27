@@ -1,12 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
+import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
+import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
+import type { ServiceSuggestion } from "../../../src/ai/serviceSuggestion.types";
 import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
 import { createRequest, listNearbyProviders } from "../../../src/requests/requests.api";
-import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory } from "../../../src/requests/requests.types";
+import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory, RequestPriority } from "../../../src/requests/requests.types";
 import {
   deleteFavoriteLocation,
   getFavoriteLocations,
@@ -99,8 +102,12 @@ export default function UserRequest() {
   const [fuelType, setFuelType] = useState<FuelType>("petrol");
   const [liters, setLiters] = useState("5");
   const [mechanicIssue, setMechanicIssue] = useState<MechanicIssueCategory>("battery");
+  const [priority, setPriority] = useState<RequestPriority>("normal");
   const [description, setDescription] = useState("");
+  const [manualSelectionVersion, setManualSelectionVersion] = useState(0);
   const [loading, setLoading] = useState(false);
+  const submission = useRef<{ fingerprint: string; id: string } | null>(null);
+  const submitting = useRef(false);
   const [locationLoading, setLocationLoading] = useState<"pickup" | "destination" | "current" | null>(null);
   const [routeDistanceKm, setRouteDistanceKm] = useState<number | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -356,12 +363,14 @@ export default function UserRequest() {
   }
 
   async function onSubmit() {
-    if (!token) return;
+    if (!token || submitting.current) return;
+    submitting.current = true;
     try {
       setLoading(true);
       setError(null);
-      await createRequest(token, {
+      const input = {
         category,
+        priority,
         vehicleInfo: {
           type: "car",
           model: vehicle,
@@ -396,24 +405,50 @@ export default function UserRequest() {
                 issueCategory: mechanicIssue
               }
             : undefined
-      });
+      };
+      const fingerprint = JSON.stringify(input);
+      if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, id: `dispatch-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      await createRequest(token, { ...input, clientRequestId: submission.current.id });
       router.push("/(user)/tracking");
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to create request");
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
+  }
+
+  function applyServiceSuggestion(suggestion: ServiceSuggestion) {
+    const selection = selectionFromSuggestion(suggestion);
+    if (!selection) return;
+    setCategory(selection.category);
+    if (selection.mechanicIssue) setMechanicIssue(selection.mechanicIssue);
   }
 
   return (
     <View style={{ flex: 1 }}>
       <AppShell title="Create Request" subtitle="Choose one of the three RapidAssist services.">
+        <ServiceSuggestionCard
+          token={token}
+          description={description}
+          onDescriptionChange={setDescription}
+          manualSelectionVersion={manualSelectionVersion}
+          onSuggestionAccepted={applyServiceSuggestion}
+          onSignInRequested={() => router.replace("/(auth)/login")}
+        />
         <SectionTitle title="Select service" />
         <View style={styles.serviceGrid}>
           {services.map((item) => {
             const active = category === item.value;
             return (
-              <Pressable key={item.value} onPress={() => setCategory(item.value)} style={[styles.service, active ? styles.serviceActive : null]}>
+              <Pressable
+                key={item.value}
+                onPress={() => {
+                  setManualSelectionVersion((version) => version + 1);
+                  setCategory(item.value);
+                }}
+                style={[styles.service, active ? styles.serviceActive : null]}
+              >
                 <IconBox icon={item.icon} tone={active ? "primary" : "dark"} />
                 <Text style={[styles.serviceText, active ? styles.serviceTextActive : null]}>{item.label}</Text>
               </Pressable>
@@ -570,7 +605,6 @@ export default function UserRequest() {
                     ? "Price uses road distance. Tap pickup or destination, then tap the map to adjust the pin."
                     : "Road distance unavailable, using straight-line distance. Tap pickup or destination, then tap the map to adjust the pin."}
               </Text>
-              <Field label="Breakdown reason" icon="alert-circle" placeholder="Accident, breakdown, stuck..." value={description} onChangeText={setDescription} />
             </Card>
           </>
         ) : null}
@@ -587,7 +621,6 @@ export default function UserRequest() {
                 ))}
               </View>
               <Field label="Quantity in liters" icon="water" keyboardType="numeric" value={liters} onChangeText={setLiters} />
-              <Field label="Notes" icon="alert-circle" placeholder="Car is parked near main gate..." value={description} onChangeText={setDescription} />
             </Card>
           </>
         ) : null}
@@ -605,11 +638,20 @@ export default function UserRequest() {
                 );
               })}
             </View>
-            <Card style={styles.form}>
-              <Field label="Issue description" icon="construct" placeholder="Describe what happened" value={description} onChangeText={setDescription} />
-            </Card>
           </>
         ) : null}
+
+        <SectionTitle title="Request priority" />
+        <Card style={styles.form}>
+          <View style={styles.segment}>
+            {(["normal", "high", "urgent"] as RequestPriority[]).map((item) => (
+              <Pressable key={item} onPress={() => setPriority(item)} style={[styles.segmentItem, priority === item ? styles.segmentItemActive : null]}>
+                <Text style={[styles.segmentText, priority === item ? styles.segmentTextActive : null]}>{item.toUpperCase()}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.distanceNote}>Priority is validated by the server and influences waiting cost in the batch assignment.</Text>
+        </Card>
 
         <SectionTitle title="Estimate" />
         <Card style={styles.estimate}>

@@ -81,7 +81,9 @@ async function writeFavoriteLocationsRaw(value: string) {
   }
   if (canUseLocalStorage()) {
     globalThis.localStorage.setItem(FAVORITE_LOCATIONS_KEY, value);
+    return;
   }
+  throw new Error("Unable to save favorite locations. Device storage is unavailable.");
 }
 
 function buildFavoriteLabel(input: SaveFavoriteLocationInput) {

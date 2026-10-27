@@ -78,7 +78,6 @@ export function Dashboard() {
     [stats.activeRequests, stats.cancelledRequests, stats.completedRequests]
   );
   const completionRate = totalRequests ? Math.round(((stats.completedRequests || 0) / totalRequests) * 100) : 0;
-  const averageJobValue = stats.completedRequests ? Math.round((stats.revenue || 0) / stats.completedRequests) : 0;
   const providerReadiness = stats.providers ? Math.round(((stats.onlineProviders || 0) / stats.providers) * 100) : 0;
 
   return (
@@ -96,7 +95,6 @@ export function Dashboard() {
             {loading ? "Refreshing..." : "Refresh"}
           </button>
           <Link to="/providers" style={styles.link}>Provider Verification</Link>
-          <Link to="/login" style={styles.link}>Logout</Link>
         </div>
       </div>
 
@@ -144,9 +142,9 @@ export function Dashboard() {
           tone="success"
         />
         <ActionCard
-          title="Revenue"
+          title="Collected revenue"
           value={formatCurrency(stats.revenue)}
-          text={`${formatCurrency(averageJobValue)} average completed job value.`}
+          text={`${formatCurrency(stats.serviceFeeRevenue)} platform fees · paid transactions only.`}
           tone="primary"
         />
         <ActionCard
@@ -167,6 +165,7 @@ export function Dashboard() {
         <StatCard title="Today Requests" value={stats.todayRequests ?? 0} />
         <StatCard title="Complaints" value={stats.complaints ?? 0} />
         <StatCard title="Reviews" value={stats.reviewedRequests ?? 0} />
+        <StatCard title="Provider Payouts (PKR)" value={stats.providerEarnings ?? 0} />
       </div>
 
       <div className="panel-grid">

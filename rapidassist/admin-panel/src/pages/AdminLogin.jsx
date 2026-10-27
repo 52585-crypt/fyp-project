@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
-import { adminApi } from "../config/api";
 import { Brand } from "../components/AdminLayout";
+import { useAdminAuth } from "../auth/AdminAuth";
+import { useNavigate } from "react-router-dom";
 
 export function AdminLogin() {
+  const { login } = useAdminAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,11 +17,10 @@ export function AdminLogin() {
     try {
       setLoading(true);
       setError("");
-      // Existing placeholder flow: real admin authentication is still pending.
-      await adminApi.get("/health");
-      window.location.href = "/dashboard";
+      await login(email.trim(), password);
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err?.response?.data?.message || "Unable to connect. Please try again.");
+      setError(err?.response?.data?.message || err?.message || "Unable to connect. Please try again.");
     } finally {
       setLoading(false);
     }

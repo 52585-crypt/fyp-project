@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "mobile-app",
-    "slug": "mobile-app",
+    "name": "RapidAssist",
+    "slug": "rapidassist",
+    "scheme": "rapidassist",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,13 +15,20 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.rapidassist.app",
       "infoPlist": {
         "NSCameraUsageDescription": "RapidAssist needs camera access to capture mechanic verification photos.",
         "NSPhotoLibraryUsageDescription": "RapidAssist needs photo library access to attach mechanic verification files.",
-        "NSLocationWhenInUseUsageDescription": "RapidAssist needs your live location to verify mechanic registration."
+        "NSLocationWhenInUseUsageDescription": "RapidAssist needs your live location to dispatch and track roadside jobs.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RapidAssist shares a provider's location during an active roadside job.",
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification"
+        ]
       }
     },
     "android": {
+      "package": "com.rapidassist.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -29,6 +37,9 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "READ_MEDIA_IMAGES"
       ],
       "usesCleartextTraffic": true,
@@ -50,9 +61,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "RapidAssist needs your live location to verify mechanic registration."
+          "locationWhenInUsePermission": "RapidAssist needs your live location to dispatch and track roadside jobs.",
+          "locationAlwaysAndWhenInUsePermission": "RapidAssist shares a provider's location during an active roadside job.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-notifications",
+      "expo-font"
     ]
   }
 }

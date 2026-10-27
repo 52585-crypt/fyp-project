@@ -50,6 +50,10 @@ export function ProviderVerification() {
   );
 
   function refreshProviders(nextFilter = filter) {
+    if (nextFilter !== filter) {
+      setProviders([]);
+      setSelectedId("");
+    }
     setLoading(true);
     setError("");
     setFilter(nextFilter);
@@ -197,7 +201,7 @@ export function ProviderVerification() {
               <div style={styles.actions}>
                 <button
                   type="button"
-                  disabled={actionLoading}
+                  disabled={actionLoading || loading || Boolean(error)}
                   onClick={() => updateVerification("rejected")}
                   style={{ ...styles.actionButton, ...styles.rejectButton }}
                 >
@@ -205,7 +209,7 @@ export function ProviderVerification() {
                 </button>
                 <button
                   type="button"
-                  disabled={actionLoading}
+                  disabled={actionLoading || loading || Boolean(error)}
                   onClick={() => updateVerification("pending")}
                   style={{ ...styles.actionButton, ...styles.pendingButton }}
                 >
@@ -213,7 +217,7 @@ export function ProviderVerification() {
                 </button>
                 <button
                   type="button"
-                  disabled={actionLoading}
+                  disabled={actionLoading || loading || Boolean(error)}
                   onClick={() => updateVerification("verified")}
                   style={{ ...styles.actionButton, ...styles.approveButton }}
                 >

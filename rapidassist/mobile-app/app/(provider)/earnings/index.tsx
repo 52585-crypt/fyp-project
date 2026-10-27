@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { AppShell, BottomNav, Card, IconBox, Metric, StatusPill } from "../../../src/ui/components";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { getProviderEarnings } from "../../../src/requests/requests.api";
@@ -25,14 +26,15 @@ export default function ProviderEarnings() {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppShell title="Earnings" subtitle="Track completed jobs and payout summary.">
+      <AppShell title="Earnings" subtitle="Paid totals and completed-job invoices. Tap a job to review payment.">
         <View style={styles.metrics}>
           <Metric label="Today" value={`PKR ${earnings?.today?.toLocaleString() || 0}`} icon="cash" />
           <Metric label="This week" value={`PKR ${earnings?.week?.toLocaleString() || 0}`} icon="trending-up" />
         </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {(earnings?.recent || []).map((request) => (
-          <Card key={request.id} style={styles.row}>
+          <Pressable key={request.id} onPress={() => router.push({ pathname: "/(provider)/payment/[requestId]", params: { requestId: request.id } })}>
+          <Card style={styles.row}>
             <IconBox icon="receipt" />
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>{request.category.replace("_", " ").toUpperCase()}</Text>
@@ -40,6 +42,7 @@ export default function ProviderEarnings() {
             </View>
             <StatusPill label={`PKR ${request.estimate?.total?.toLocaleString() || 0}`} tone="success" />
           </Card>
+          </Pressable>
         ))}
         {!earnings?.recent?.length ? (
           <Card style={styles.row}>

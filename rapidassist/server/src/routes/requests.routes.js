@@ -2,6 +2,8 @@ const express = require("express");
 const { requireAuth } = require("../middleware/auth.middleware");
 const {
   acceptRequest,
+  declineRequest,
+  retryDispatch,
   approveExtraWork,
   createRequest,
   getRequest,
@@ -35,6 +37,8 @@ router.patch("/provider/availability", updateProviderAvailability);
 router.patch("/provider/location", updateProviderLocation);
 router.get("/:id", getRequest);
 router.patch("/:id/accept", acceptRequest);
+router.patch("/:id/decline", declineRequest);
+router.post("/:id/dispatch/retry", retryDispatch);
 router.get("/:id/messages", getRequestMessages);
 router.post("/:id/messages", sendRequestMessage);
 router.patch("/:id/review", submitRequestReview);
@@ -43,4 +47,3 @@ router.patch("/:id/extra-work", requestExtraWork);
 router.patch("/:id/extra-work/approve", approveExtraWork);
 
 module.exports = router;
-

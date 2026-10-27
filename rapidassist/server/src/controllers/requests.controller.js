@@ -4,11 +4,22 @@ const {
   REQUEST_CATEGORIES,
   REQUEST_STATUSES,
   FUEL_TYPES,
-  MECHANIC_ISSUES
+  MECHANIC_ISSUES,
+  REQUEST_PRIORITIES
 } = require("../models/ServiceRequest");
 const { Vehicle } = require("../models/Vehicle");
 const { User } = require("../models/User");
 const { ChatMessage } = require("../models/ChatMessage");
+const { Payment } = require("../models/Payment");
+const {
+  newDispatch,
+  acceptOffer,
+  cancelDispatchOffer,
+  declineOffer
+} = require("../services/dispatch");
+const { notifyRequest, notifyUser } = require("../services/realtime");
+const { createNotificationSafely } = require("../services/notifications");
+const { ensureFinalizedInvoice } = require("../services/payments");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -37,6 +48,7 @@ function normalizeStr(v) {
 }
 
 function parseNum(v) {
+  if (v == null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -109,21 +121,8 @@ function canAccessRequestDetails(request, user) {
   return (
     request.status === "searching_provider" &&
     !request.providerId &&
-    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
-  );
-}
-
-function canCancelRequest(request, user) {
-  const userId = user?._id?.toString();
-  if (!userId) return false;
-  if (request.userId?.toString() === userId) return true;
-  if (request.providerId && request.providerId.toString() === userId) return true;
-  if (user.role !== "mechanic") return false;
-
-  return (
-    request.status === "searching_provider" &&
-    !request.providerId &&
-    providerCategoryForRequest(request.category) === user.mechanicProfile?.serviceCategory
+    request.dispatch?.state === "offered" &&
+    String(request.dispatch.offeredProviderId) === userId && request.dispatch.expiresAt > new Date()
   );
 }
 
@@ -160,7 +159,7 @@ async function refreshProviderRating(providerId) {
 function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
-  if (lat == null || lng == null) throw badRequest(`${label} lat/lng required`);
+  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest(`${label} valid lat/lng required`);
   return {
     lat,
     lng,
@@ -172,12 +171,26 @@ function optionalLocation(input) {
   if (!input) return null;
   const lat = parseNum(input.lat);
   const lng = parseNum(input.lng);
-  if (lat == null || lng == null) throw badRequest("Location lat/lng required");
+  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest("Valid location lat/lng required");
+  const now = new Date();
+  const capturedAt = input.capturedAt ? new Date(input.capturedAt) : now;
+  if (Number.isNaN(capturedAt.getTime()) || capturedAt.getTime() > now.getTime() + 5 * 60 * 1000) {
+    throw badRequest("Invalid location capture time");
+  }
+  const optionalNumber = (value) => {
+    const parsed = parseNum(value);
+    return parsed == null ? null : parsed;
+  };
   return {
     lat,
     lng,
     addressText: normalizeStr(input.addressText) || null,
-    updatedAt: new Date()
+    accuracy: optionalNumber(input.accuracy),
+    heading: optionalNumber(input.heading),
+    speed: optionalNumber(input.speed),
+    capturedAt,
+    receivedAt: now,
+    updatedAt: now
   };
 }
 
@@ -205,6 +218,11 @@ function providerLocationFromUser(provider) {
     lat,
     lng,
     addressText: normalizeStr(location?.addressText) || null,
+    accuracy: location?.accuracy ?? null,
+    heading: location?.heading ?? null,
+    speed: location?.speed ?? null,
+    capturedAt: location?.capturedAt || null,
+    receivedAt: location?.receivedAt || location?.updatedAt || null,
     updatedAt: location?.updatedAt || null
   };
 }
@@ -225,12 +243,13 @@ async function attachProviderLocations(requests) {
     }));
   }
 
-  const providers = await User.find({ _id: { $in: providerIds } }).select("providerState");
-  const providerMap = new Map(providers.map((provider) => [provider._id.toString(), providerLocationFromUser(provider)]));
+  const providers = await User.find({ _id: { $in: providerIds } }).select("name phone ratingAvg ratingCount providerState");
+  const providerMap = new Map(providers.map((provider) => [provider._id.toString(), provider]));
 
   return requests.map((request) => ({
     ...request.toJSONSafe(),
-    providerLocation: providerMap.get(request.providerId?.toString()) || null
+    providerLocation: ["completed", "cancelled"].includes(request.status) ? null : providerLocationFromUser(providerMap.get(request.providerId?.toString())),
+    provider: (() => { const p = providerMap.get(request.providerId?.toString()); return p ? { id: p.id, name: p.name, phone: p.phone, ratingAvg: p.ratingAvg, ratingCount: p.ratingCount } : null; })()
   }));
 }
 
@@ -333,11 +352,22 @@ async function buildVehicleData(req, vehicleId, vehicleInfo) {
 
 async function createRequest(req, res, next) {
   try {
+    if (req.user.role !== "user") throw forbidden("Customer account required");
     const body = req.body || {};
+    const clientRequestId = typeof body.clientRequestId === "string" ? body.clientRequestId.trim() : null;
+    if (clientRequestId && (clientRequestId.length < 12 || clientRequestId.length > 100)) throw badRequest("Invalid submission ID");
+    if (clientRequestId) {
+      const previous = await ServiceRequest.findOne({ userId: req.user._id, clientRequestId });
+      if (previous) return res.json({ ok: true, request: previous.toJSONSafe() });
+    }
     const category = normalizeCategory(body.category);
+    const priority = (normalizeStr(body.priority) || "normal").toLowerCase();
 
     if (!category || !REQUEST_CATEGORIES.includes(category)) {
       throw badRequest(`category must be one of: ${REQUEST_CATEGORIES.join(", ")}`);
+    }
+    if (!REQUEST_PRIORITIES.includes(priority)) {
+      throw badRequest(`priority must be one of: ${REQUEST_PRIORITIES.join(", ")}`);
     }
 
     const pickupLocation = normalizeLocation(body.pickupLocation || body.location, "Pickup location");
@@ -352,9 +382,11 @@ async function createRequest(req, res, next) {
 
     const request = new ServiceRequest({
       userId: req.user._id,
+      ...(clientRequestId ? { clientRequestId } : {}),
       vehicleId: vehicleData.vehicleId,
       vehicleInfo: vehicleData.vehicleInfo,
       category,
+      priority,
       pickupLocation,
       destinationLocation: category === "car_towing" ? normalizeLocation(body.destinationLocation, "Destination location") : null,
       issueType,
@@ -374,12 +406,20 @@ async function createRequest(req, res, next) {
             }
           : undefined,
       estimate,
-      status: "searching_provider"
+      status: "searching_provider",
+      dispatch: newDispatch(category)
     });
 
     request.addStatus("searching_provider", req.user._id, "Request created");
-    await request.save();
+    try { await request.save(); }
+    catch (error) {
+      if (error.code !== 11000 || !clientRequestId) throw error;
+      const previous = await ServiceRequest.findOne({ userId: req.user._id, clientRequestId });
+      if (!previous) throw error;
+      return res.json({ ok: true, request: previous.toJSONSafe() });
+    }
 
+    notifyRequest(request, "dispatch");
     res.status(201).json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
     next(err);
@@ -403,7 +443,7 @@ async function getRequest(req, res, next) {
     if (!request) throw notFound("Request not found");
     if (!canAccessRequestDetails(request, req.user)) throw forbidden("Forbidden");
 
-    res.json({ ok: true, request: request.toJSONSafe() });
+    res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
   } catch (err) {
     next(err);
   }
@@ -412,26 +452,15 @@ async function getRequest(req, res, next) {
 async function listProviderRequests(req, res, next) {
   try {
     requireProvider(req);
-    const serviceCategory = req.user?.mechanicProfile?.serviceCategory;
-    const category = REQUEST_CATEGORIES.find((item) => providerCategoryForRequest(item) === serviceCategory);
-
-    if (!category) {
-      res.json({ ok: true, requests: [] });
-      return;
+    if (req.user.verificationStatus !== "verified" || !req.user.providerState?.isOnline || req.user.providerState?.activeRequestId) {
+      return res.json({ ok: true, requests: [], serverTime: new Date() });
     }
-
     const requests = await ServiceRequest.find({
-      category,
-      status: "searching_provider",
-      providerId: null
-    })
-      .sort({ createdAt: -1 })
-      .limit(30);
-
-    res.json({ ok: true, requests: requests.map((r) => r.toJSONSafe()) });
-  } catch (err) {
-    next(err);
-  }
+      status: "searching_provider", providerId: null, "dispatch.state": "offered",
+      "dispatch.offeredProviderId": req.user._id, "dispatch.expiresAt": { $gt: new Date() }
+    }).sort({ "dispatch.expiresAt": 1 });
+    res.json({ ok: true, requests: requests.map((r) => r.toJSONSafe()), serverTime: new Date() });
+  } catch (err) { next(err); }
 }
 
 async function listNearbyProviders(req, res, next) {
@@ -499,79 +528,96 @@ async function listNearbyProviders(req, res, next) {
 async function acceptRequest(req, res, next) {
   try {
     requireProvider(req);
-    const request = await ServiceRequest.findById(req.params.id);
-    if (!request) throw notFound("Request not found");
-    if (request.providerId) throw badRequest("Request already assigned");
+    const request = await acceptOffer(req.params.id, req.user._id, req.body?.offerId);
+    res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
+  } catch (err) { next(err); }
+}
 
-    const providerCategory = req.user?.mechanicProfile?.serviceCategory;
-    if (providerCategoryForRequest(request.category) !== providerCategory) {
-      throw forbidden("Provider service category does not match this request");
-    }
+async function declineRequest(req, res, next) {
+  try {
+    requireProvider(req);
+    await declineOffer(req.params.id, req.user._id, req.body?.offerId);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+}
 
-    request.providerId = req.user._id;
-    request.acceptedAt = new Date();
-    request.addStatus("provider_assigned", req.user._id, "Provider accepted request");
-    await request.save();
-
-    await User.updateOne(
-      { _id: req.user._id },
-      {
-        $set: {
-          "providerState.activeRequestId": request._id,
-          "providerState.lastSeenAt": new Date()
-        }
-      }
-    );
-
+async function retryDispatch(req, res, next) {
+  try {
+    const existing = await ServiceRequest.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!existing) throw badRequest("Only the customer can restart a search.");
+    const request = await ServiceRequest.findOneAndUpdate({
+      _id: req.params.id, userId: req.user._id, providerId: null,
+      status: "searching_provider", "dispatch.version": existing.dispatch.version,
+      $or: [{ "dispatch.state": "unavailable" }, { "dispatch.enabled": { $ne: true } }]
+    }, { $set: { dispatch: { ...newDispatch(existing.category), version: existing.dispatch.version + 1 } } }, { new: true });
+    if (!request) throw badRequest("Only the customer can restart an exhausted search.");
+    notifyRequest(request, "dispatch");
     res.json({ ok: true, request: request.toJSONSafe() });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
 async function updateRequestStatus(req, res, next) {
   try {
     const request = await ServiceRequest.findById(req.params.id);
     if (!request) throw notFound("Request not found");
-
     const status = normalizeStr(req.body?.status);
-    if (!REQUEST_STATUSES.includes(status)) throw badRequest("Invalid status");
-
-    const isOwner = request.userId.toString() === req.user._id.toString();
-    const isProvider = request.providerId && request.providerId.toString() === req.user._id.toString();
-    const isOpenMatchingProviderCancel = status === "cancelled" && canCancelRequest(request, req.user);
-    const isOwnerCompletion = status === "completed" && isOwner;
-    if (!isOwnerCompletion && !isOwner && !isProvider && !isOpenMatchingProviderCancel) throw forbidden("Forbidden");
-
+    const isOwner = String(request.userId) === String(req.user._id);
+    const isProvider = String(request.providerId) === String(req.user._id);
+    if (!isOwner && !isProvider) throw forbidden("Only the customer or assigned provider can update this job");
+    if (request.status === status) return res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
+    if (["completed", "cancelled"].includes(request.status)) throw badRequest("This job is already closed.");
     if (status === "completed") {
-      if (!isOwner) throw forbidden("Only the customer can complete the job after provider finishes");
-      if (request.status !== "service_finished") throw badRequest("Provider must mark service finished before customer completion");
+      if (!isOwner || request.status !== "service_finished") throw forbidden("Customer confirmation is required after service finishes");
+    } else if (status !== "cancelled") {
+      if (!isProvider) throw forbidden("Only the assigned provider can advance this job");
+      const transitions = {
+        provider_assigned: ["provider_on_way"],
+        provider_on_way: ["provider_arrived"],
+        provider_arrived: request.category === "car_towing" ? ["vehicle_loaded"] : request.category === "fuel_delivery" ? ["fuel_delivered"] : ["inspection_started"],
+        vehicle_loaded: ["reached_destination"],
+        reached_destination: ["service_finished"],
+        fuel_delivered: ["service_finished"],
+        inspection_started: ["work_started"],
+        work_started: ["service_finished"],
+        in_progress: ["service_finished"]
+      };
+      if (!(transitions[request.status] || []).includes(status)) throw badRequest("Invalid job status transition.");
     }
-
-    if (["provider_on_way", "provider_arrived", "in_progress", "vehicle_loaded", "reached_destination", "fuel_delivered", "inspection_started", "extra_work_requested", "work_started", "service_finished"].includes(status) && !isProvider) {
-      throw forbidden("Only assigned provider can set this status");
+    const now = new Date();
+    const closed = ["completed", "cancelled"].includes(status);
+    const updated = await ServiceRequest.findOneAndUpdate({
+      _id: request._id, status: request.status, providerId: request.providerId,
+      ...(request.dispatch?.enabled ? { "dispatch.version": request.dispatch.version } : {})
+    }, {
+      $set: {
+        status, ...(closed ? { assignmentActive: false } : {}),
+        ...(status === "completed" ? { completedAt: now } : {}),
+        ...(status === "cancelled" ? { cancelledAt: now, "dispatch.state": "cancelled", "dispatch.expiresAt": null } : {})
+      },
+      $inc: { "dispatch.version": 1, __v: 1 },
+      $push: { statusTimeline: { status, byUserId: req.user._id, at: now, note: normalizeStr(req.body?.note) || null } }
+    }, { new: true });
+    if (!updated) throw Object.assign(new Error("Request changed. Refresh and try again."), { statusCode: 409 });
+    if (status === "cancelled") await cancelDispatchOffer(request, now);
+    if (closed && request.providerId) {
+      await User.updateOne({ _id: request.providerId, "providerState.activeRequestId": request._id }, {
+        $set: { "providerState.activeRequestId": null, "providerState.claimedAt": null },
+        ...(status === "completed" ? { $inc: { completedJobs: 1 } } : {})
+      });
     }
-
-    request.addStatus(status, req.user._id, normalizeStr(req.body?.note) || null);
-    await request.save();
-
-    if (status === "completed" || status === "cancelled") {
-      await User.updateOne(
-        { _id: request.providerId },
-        {
-          $set: {
-            "providerState.activeRequestId": null,
-            "providerState.lastSeenAt": new Date()
-          },
-          ...(status === "completed" ? { $inc: { completedJobs: 1 } } : {})
-        }
-      );
-    }
-
-    res.json({ ok: true, request: request.toJSONSafe() });
-  } catch (err) {
-    next(err);
-  }
+    if (status === "completed") await ensureFinalizedInvoice(updated);
+    notifyRequest(updated, status === "provider_arrived" ? "arrived" : "status");
+    const statusText = status.replaceAll("_", " ");
+    const recipientId = isProvider ? updated.userId : updated.providerId;
+    createNotificationSafely({
+      userId: recipientId,
+      type: status === "cancelled" ? "request_cancelled" : "status_update",
+      title: status === "provider_arrived" ? "Provider arrived" : status === "cancelled" ? "Request cancelled" : "Job status updated",
+      body: status === "provider_arrived" ? "Your provider is now at the pickup point." : `The job is now ${statusText}.`,
+      data: { requestId: updated.id, status, route: isProvider ? "/(user)/tracking" : "/(provider)/jobs" }
+    });
+    res.json({ ok: true, request: (await attachProviderLocations([updated]))[0] });
+  } catch (err) { next(err); }
 }
 
 async function submitRequestReview(req, res, next) {
@@ -611,7 +657,9 @@ async function updateProviderAvailability(req, res, next) {
   try {
     requireProvider(req);
     const isOnline = Boolean(req.body?.isOnline);
-    const location = optionalLocation(req.body?.location) || (isOnline ? locationFromMechanicProfile(req.user) : null);
+    if (isOnline && req.user.verificationStatus !== "verified") throw forbidden("Complete provider verification before going online.");
+    const location = optionalLocation(req.body?.location);
+    if (isOnline && !location) throw badRequest("A fresh GPS location is required to go online.");
 
     const $set = {
       "providerState.isOnline": isOnline,
@@ -632,8 +680,18 @@ async function updateProviderLocation(req, res, next) {
     const location = optionalLocation(req.body?.location || req.body);
     if (!location) throw badRequest("Location is required");
 
-    const provider = await User.findByIdAndUpdate(
-      req.user._id,
+    if (!req.user.providerState?.isOnline && !req.user.providerState?.activeRequestId) {
+      throw forbidden("Go online before sharing provider location");
+    }
+
+    const provider = await User.findOneAndUpdate(
+      {
+        _id: req.user._id,
+        $or: [
+          { "providerState.currentLocation.capturedAt": null },
+          { "providerState.currentLocation.capturedAt": { $lt: location.capturedAt } }
+        ]
+      },
       {
         $set: {
           "providerState.currentLocation": location,
@@ -643,6 +701,16 @@ async function updateProviderLocation(req, res, next) {
       { new: true }
     );
 
+    if (!provider) {
+      const err = new Error("Older location update ignored");
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (provider.providerState?.activeRequestId) {
+      const request = await ServiceRequest.findOne({ _id: provider.providerState.activeRequestId, providerId: provider._id, status: { $nin: ["completed", "cancelled"] } });
+      if (request) notifyRequest(request, "location");
+    }
     res.json({ ok: true, provider: provider.toSafeJSON() });
   } catch (err) {
     next(err);
@@ -657,7 +725,7 @@ async function getProviderActiveRequest(req, res, next) {
       status: { $in: activeStatuses() }
     }).sort({ updatedAt: -1 });
 
-    res.json({ ok: true, request: request ? request.toJSONSafe() : null });
+    res.json({ ok: true, request: request ? (await attachProviderLocations([request]))[0] : null });
   } catch (err) {
     next(err);
   }
@@ -682,27 +750,30 @@ async function getProviderHistory(req, res, next) {
 async function getProviderEarnings(req, res, next) {
   try {
     requireProvider(req);
-    const completed = await ServiceRequest.find({
-      providerId: req.user._id,
-      status: "completed"
-    }).sort({ completedAt: -1 });
+    const payments = await Payment.find({ providerId: req.user._id, status: "paid" })
+      .sort({ paidAt: -1 })
+      .populate("invoiceId");
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(todayStart);
     weekStart.setDate(todayStart.getDate() - 6);
 
-    const totals = completed.reduce(
-      (acc, request) => {
-        const total = request.estimate?.total || 0;
-        const completedAt = request.completedAt || request.updatedAt;
-        acc.total += total;
-        if (completedAt >= todayStart) acc.today += total;
-        if (completedAt >= weekStart) acc.week += total;
+    const totals = payments.reduce(
+      (acc, payment) => {
+        const amount = Number(payment.invoiceId?.providerEarningsMinor || 0) / 100;
+        const paidAt = payment.paidAt || payment.updatedAt;
+        acc.total += amount;
+        if (paidAt >= todayStart) acc.today += amount;
+        if (paidAt >= weekStart) acc.week += amount;
         return acc;
       },
       { today: 0, week: 0, total: 0 }
     );
+    const recentRequests = await ServiceRequest.find({ providerId: req.user._id, status: "completed" })
+      .sort({ completedAt: -1 })
+      .limit(10);
+    const completedJobs = await ServiceRequest.countDocuments({ providerId: req.user._id, status: "completed" });
 
     res.json({
       ok: true,
@@ -711,8 +782,9 @@ async function getProviderEarnings(req, res, next) {
         today: totals.today,
         week: totals.week,
         total: totals.total,
-        completedJobs: completed.length,
-        recent: completed.slice(0, 10).map((r) => r.toJSONSafe())
+        completedJobs,
+        paidJobs: payments.length,
+        recent: recentRequests.map((r) => r.toJSONSafe())
       }
     });
   } catch (err) {
@@ -727,6 +799,7 @@ async function requestExtraWork(req, res, next) {
     if (!request) throw notFound("Request not found");
     if (!request.providerId || request.providerId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
     if (request.category !== "mechanic") throw badRequest("Extra work is only available for mechanic requests");
+    if (request.status !== "inspection_started") throw badRequest("Start the inspection before requesting extra work");
 
     const partName = normalizeStr(req.body?.partName);
     const partPrice = Math.max(0, parseNum(req.body?.partPrice) || 0);
@@ -741,12 +814,22 @@ async function requestExtraWork(req, res, next) {
       laborCharge,
       estimatedTime,
       description,
-      approvedByUser: false
+      approvedByUser: false,
+      status: "pending",
+      requestedAt: new Date(),
+      decidedAt: null
     };
-    request.estimate.lines.push({ label: "Extra work estimate", amount: partPrice + laborCharge });
-    request.estimate.total += partPrice + laborCharge;
     request.addStatus("extra_work_requested", req.user._id, "Provider requested extra work approval");
     await request.save();
+
+    notifyRequest(request, "extra-work");
+    createNotificationSafely({
+      userId: request.userId,
+      type: "extra_work_requested",
+      title: "Extra work approval needed",
+      body: `${description || partName}: PKR ${(partPrice + laborCharge).toLocaleString()}`,
+      data: { requestId: request.id, route: "/(user)/tracking" }
+    });
 
     res.json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
@@ -760,10 +843,30 @@ async function approveExtraWork(req, res, next) {
     if (!request) throw notFound("Request not found");
     if (request.userId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
     if (request.category !== "mechanic") throw badRequest("Extra work is only available for mechanic requests");
+    if (request.status !== "extra_work_requested" || request.mechanicDetails?.extraWork?.status !== "pending") {
+      throw badRequest("This extra-work request was already decided or is unavailable");
+    }
 
-    request.mechanicDetails.extraWork.approvedByUser = Boolean(req.body?.approved ?? true);
-    request.addStatus(request.mechanicDetails.extraWork.approvedByUser ? "work_started" : "waiting_user_approval", req.user._id, request.mechanicDetails.extraWork.approvedByUser ? "User approved extra work" : "User rejected extra work");
+    const approved = Boolean(req.body?.approved ?? true);
+    request.mechanicDetails.extraWork.approvedByUser = approved;
+    request.mechanicDetails.extraWork.status = approved ? "approved" : "rejected";
+    request.mechanicDetails.extraWork.decidedAt = new Date();
+    if (approved) {
+      const amount = Number(request.mechanicDetails.extraWork.partPrice || 0) + Number(request.mechanicDetails.extraWork.laborCharge || 0);
+      request.estimate.lines.push({ label: "Approved extra work", amount });
+      request.estimate.total += amount;
+    }
+    request.addStatus(approved ? "work_started" : "inspection_started", req.user._id, approved ? "User approved extra work" : "User rejected extra work");
     await request.save();
+
+    notifyRequest(request, "extra-work-decision");
+    createNotificationSafely({
+      userId: request.providerId,
+      type: "extra_work_decision",
+      title: request.mechanicDetails.extraWork.approvedByUser ? "Extra work approved" : "Extra work rejected",
+      body: request.mechanicDetails.extraWork.approvedByUser ? "The customer approved the additional repair." : "The customer declined the additional repair.",
+      data: { requestId: request.id, route: "/(provider)/jobs" }
+    });
 
     res.json({ ok: true, request: request.toJSONSafe() });
   } catch (err) {
@@ -795,6 +898,7 @@ async function sendRequestMessage(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
 
     const body = normalizeStr(req.body?.body);
+    const clientMessageId = normalizeStr(req.body?.clientMessageId) || null;
     if (!body) throw badRequest("Message is required");
     if (body.length > 1000) throw badRequest("Message must be 1000 characters or less");
 
@@ -803,15 +907,32 @@ async function sendRequestMessage(req, res, next) {
     if (!canAccessRequestChat(request, req.user)) throw forbidden("Forbidden");
     if (!request.providerId) throw badRequest("Chat is available after provider assignment");
 
-    const message = await ChatMessage.create({
-      requestId: request._id,
-      senderId: req.user._id,
-      senderRole: req.user.role,
-      body
-    });
+    if (clientMessageId && (clientMessageId.length < 8 || clientMessageId.length > 100)) throw badRequest("Invalid message ID");
+    let message;
+    let createdNew = true;
+    try {
+      message = await ChatMessage.create({ requestId: request._id, senderId: req.user._id, senderRole: req.user.role, clientMessageId, body });
+    } catch (error) {
+      if (error.code !== 11000 || !clientMessageId) throw error;
+      message = await ChatMessage.findOne({ requestId: request._id, senderId: req.user._id, clientMessageId });
+      if (!message) throw error;
+      createdNew = false;
+    }
 
     await message.populate({ path: "senderId", select: "name phone role" });
-    res.status(201).json({ ok: true, message: message.toJSONSafe() });
+    const safeMessage = message.toJSONSafe();
+    const recipientId = String(request.userId) === String(req.user._id) ? request.providerId : request.userId;
+    if (createdNew) {
+      notifyUser(recipientId, { requestId: request.id, message: safeMessage }, "chat:message");
+      createNotificationSafely({
+        userId: recipientId,
+        type: "chat_message",
+        title: req.user.role === "mechanic" ? "Message from provider" : "Message from customer",
+        body: body.length > 100 ? `${body.slice(0, 97)}...` : body,
+        data: { requestId: request.id, route: req.user.role === "mechanic" ? "/(user)/chat" : "/(provider)/chat" }
+      });
+    }
+    res.status(createdNew ? 201 : 200).json({ ok: true, message: safeMessage });
   } catch (err) {
     next(err);
   }
@@ -825,6 +946,8 @@ module.exports = {
   listOpenRequests: listProviderRequests,
   listProviderRequests,
   acceptRequest,
+  declineRequest,
+  retryDispatch,
   updateRequestStatus,
   updateProviderAvailability,
   updateProviderLocation,

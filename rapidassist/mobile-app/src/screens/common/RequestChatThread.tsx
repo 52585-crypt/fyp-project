@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { getRequestMessages, sendRequestMessage } from "../../requests/requests.api";
 import type { ChatMessage } from "../../requests/requests.types";
 import { AppShell, Card, PrimaryButton } from "../../ui/components";
 import { ui } from "../../ui/system";
-
-const CHAT_REFRESH_MS = 3000;
+import { createSocket } from "../../services/socket";
 
 export function RequestChatThread({
   requestId,
@@ -23,6 +22,7 @@ export function RequestChatThread({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pendingMessage = useRef<{ requestId: string; text: string; id: string } | null>(null);
 
   const canSend = useMemo(() => Boolean(token && requestId && body.trim()), [body, requestId, token]);
 
@@ -41,14 +41,19 @@ export function RequestChatThread({
 
   async function onSend() {
     const text = body.trim();
-    if (!token || !requestId || !text) return;
+    if (!token || !requestId || !text || sending) return;
 
     try {
       setSending(true);
       setError(null);
-      const message = await sendRequestMessage(token, requestId, text);
-      setMessages((current) => [...current, message]);
+      if (pendingMessage.current?.requestId !== requestId || pendingMessage.current?.text !== text) {
+        pendingMessage.current = { requestId, text, id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 10)}` };
+      }
+      const clientMessageId = pendingMessage.current.id;
+      const message = await sendRequestMessage(token, requestId, text, clientMessageId);
+      setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
       setBody("");
+      pendingMessage.current = null;
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to send message");
     } finally {
@@ -58,8 +63,19 @@ export function RequestChatThread({
 
   useEffect(() => {
     loadMessages();
-    const timer = setInterval(loadMessages, CHAT_REFRESH_MS);
+    const timer = setInterval(loadMessages, 15000);
     return () => clearInterval(timer);
+  }, [requestId, token]);
+
+  useEffect(() => {
+    if (!token || !requestId) return;
+    const socket = createSocket(token);
+    socket.on("chat:message", (event: { requestId?: string; message?: ChatMessage }) => {
+      if (event.requestId !== requestId || !event.message) return;
+      setMessages((current) => current.some((item) => item.id === event.message!.id) ? current : [...current, event.message!]);
+    });
+    socket.connect();
+    return () => { socket.disconnect(); };
   }, [requestId, token]);
 
   return (

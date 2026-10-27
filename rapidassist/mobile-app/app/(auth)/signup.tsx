@@ -285,22 +285,27 @@ export default function Signup() {
   }
 
   async function pickImage(field: MechanicPhotoField) {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError("Photo library permission is required");
-      return;
-    }
+    try {
+      setError(null);
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError("Photo library permission is required");
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.2,
-      base64: true,
-      mediaTypes: ["images"]
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.2,
+        base64: true,
+        mediaTypes: ["images"]
+      });
 
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setDocs((current) => ({ ...current, [field]: imageAssetToDataUri(result.assets[0]) }));
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setDocs((current) => ({ ...current, [field]: imageAssetToDataUri(result.assets[0]) }));
+      }
+    } catch (error: any) {
+      setError(error?.message || "Unable to open your photo library. Please try again.");
     }
   }
 

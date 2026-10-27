@@ -23,6 +23,7 @@ const REQUEST_STATUSES = [
 
 const FUEL_TYPES = ["petrol", "diesel"];
 const MECHANIC_ISSUES = ["battery", "engine", "tyre", "brake", "overheating", "general_inspection"];
+const REQUEST_PRIORITIES = ["normal", "high", "urgent"];
 
 const locationSchema = new mongoose.Schema(
   {
@@ -64,10 +65,26 @@ const reviewSchema = new mongoose.Schema(
 const serviceRequestSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    clientRequestId: { type: String },
     providerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    assignmentActive: { type: Boolean, default: false },
+    dispatch: {
+      enabled: { type: Boolean, default: false },
+      state: { type: String, enum: ["searching", "offered", "unavailable", "assigned", "cancelled"], default: "searching" },
+      version: { type: Number, default: 0 },
+      offerId: { type: String, default: null },
+      offeredProviderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      offeredAt: { type: Date, default: null },
+      expiresAt: { type: Date, default: null },
+      deadline: { type: Date, default: null },
+      nextAttemptAt: { type: Date, default: null },
+      attemptedProviderIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      radiusKm: { type: Number, default: 5 }
+    },
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle", default: null },
 
     category: { type: String, enum: REQUEST_CATEGORIES, required: true, index: true },
+    priority: { type: String, enum: REQUEST_PRIORITIES, default: "normal", index: true },
 
     vehicleInfo: {
       type: { type: String, default: null, trim: true },
@@ -96,7 +113,10 @@ const serviceRequestSchema = new mongoose.Schema(
         laborCharge: { type: Number, default: 0, min: 0 },
         estimatedTime: { type: String, default: null, trim: true },
         description: { type: String, default: null, trim: true },
-        approvedByUser: { type: Boolean, default: false }
+        approvedByUser: { type: Boolean, default: false },
+        status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+        requestedAt: { type: Date, default: null },
+        decidedAt: { type: Date, default: null }
       }
     },
 
@@ -116,6 +136,11 @@ const serviceRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Enforce the invariant in MongoDB as well as in the provider reservation.
+serviceRequestSchema.index({ providerId: 1, assignmentActive: 1 }, { unique: true, partialFilterExpression: { assignmentActive: true } });
+serviceRequestSchema.index({ userId: 1, clientRequestId: 1 }, { unique: true, partialFilterExpression: { clientRequestId: { $type: "string" } } });
+serviceRequestSchema.index({ "dispatch.enabled": 1, status: 1, "dispatch.nextAttemptAt": 1 });
+
 serviceRequestSchema.methods.addStatus = function addStatus(status, byUserId, note) {
   this.status = status;
   this.statusTimeline.push({ status, byUserId: byUserId || null, note: note || null, at: new Date() });
@@ -128,8 +153,18 @@ serviceRequestSchema.methods.toJSONSafe = function toJSONSafe() {
     id: this._id.toString(),
     userId: this.userId?.toString(),
     providerId: this.providerId ? this.providerId.toString() : null,
+    dispatch: this.dispatch?.enabled ? {
+      state: this.dispatch.state,
+      offerId: this.dispatch.offerId,
+      expiresAt: this.dispatch.expiresAt,
+      offeredAt: this.dispatch.offeredAt,
+      deadline: this.dispatch.deadline,
+      attempts: this.dispatch.attemptedProviderIds?.length || 0,
+      radiusKm: this.dispatch.radiusKm
+    } : null,
     vehicleId: this.vehicleId ? this.vehicleId.toString() : null,
     category: this.category,
+    priority: this.priority,
     vehicleInfo: this.vehicleInfo,
     pickupLocation: this.pickupLocation,
     destinationLocation: this.destinationLocation,
@@ -164,6 +199,6 @@ module.exports = {
   REQUEST_CATEGORIES,
   REQUEST_STATUSES,
   FUEL_TYPES,
-  MECHANIC_ISSUES
+  MECHANIC_ISSUES,
+  REQUEST_PRIORITIES
 };
-

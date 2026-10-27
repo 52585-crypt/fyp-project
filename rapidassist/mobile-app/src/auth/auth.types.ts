@@ -27,7 +27,9 @@ export type SafeUser = {
   id: string;
   role: UserRole;
   name: string;
-  phone: string;
+  phone: string | null;
+  email?: string | null;
+  authProvider?: "local" | "google";
   isCertified: boolean;
   certificateUrl: string | null;
   verificationStatus: "unverified" | "pending" | "verified" | "rejected";

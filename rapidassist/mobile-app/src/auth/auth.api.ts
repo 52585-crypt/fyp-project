@@ -10,12 +10,26 @@ export async function register(params: {
   certificateUrl?: string;
   mechanicProfile?: Omit<MechanicProfile, "identityMatch">;
 }) {
-  const res = await api.post<AuthResponse>("/api/auth/register", params);
+  const res = await api.post<AuthResponse>("/api/auth/register", params, { timeout: 60000 });
   return res.data;
 }
 
 export async function login(params: { phone: string; password: string }) {
   const res = await api.post<AuthResponse>("/api/auth/login", params);
+  return res.data;
+}
+
+export async function loginWithGoogle(idToken: string) {
+  const res = await api.post<AuthResponse>("/api/auth/google", { idToken });
+  return res.data;
+}
+
+export async function completeGooglePhone(token: string, phone: string) {
+  const res = await api.patch<{ ok: boolean; user: AuthResponse["user"] }>(
+    "/api/auth/me/phone",
+    { phone },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   return res.data;
 }
 

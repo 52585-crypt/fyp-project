@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -9,9 +9,21 @@ import { ui } from "../../../src/ui/system";
 export default function ProviderProfile() {
   const { user, logout } = useAuth();
 
+  const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
   async function onLogout() {
-    await logout();
-    router.replace("/(auth)/welcome");
+    if (signingOut) return;
+    try {
+      setSigningOut(true);
+      setError(null);
+      await logout();
+      router.replace("/(auth)/welcome");
+    } catch (error: any) {
+      setError(error?.message || "Unable to sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -32,7 +44,8 @@ export default function ProviderProfile() {
           </Card>
         ))}
 
-        <PrimaryButton title="Logout" icon="log-out" variant="outline" onPress={onLogout} />
+        {error ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, marginBottom: 12 }}>{error}</Text> : null}
+        <PrimaryButton title={signingOut ? "Signing out…" : "Logout"} disabled={signingOut} icon="log-out" variant="outline" onPress={onLogout} />
       </AppShell>
       <BottomNav role="provider" active="Profile" />
     </View>

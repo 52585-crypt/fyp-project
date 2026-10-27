@@ -2,9 +2,14 @@ const express = require("express");
 const { ServiceRequest } = require("../models/ServiceRequest");
 const { User } = require("../models/User");
 const { Vehicle } = require("../models/Vehicle");
+const { Payment } = require("../models/Payment");
+const { DispatchOffer } = require("../models/DispatchOffer");
+const { requireAdmin } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 const PROVIDER_VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
+
+router.use(...requireAdmin);
 
 function startOfToday() {
   const now = new Date();
@@ -115,9 +120,11 @@ router.get("/dashboard", async (req, res, next) => {
       User.countDocuments({ role: "mechanic", "providerState.isOnline": true })
     ]);
 
-    const totalRevenueResult = await ServiceRequest.aggregate([
-      { $match: { status: "completed" } },
-      { $group: { _id: null, total: { $sum: "$estimate.total" } } }
+    const totalRevenueResult = await Payment.aggregate([
+      { $match: { status: "paid" } },
+      { $lookup: { from: "invoices", localField: "invoiceId", foreignField: "_id", as: "invoice" } },
+      { $unwind: "$invoice" },
+      { $group: { _id: null, grossMinor: { $sum: "$amountMinor" }, serviceFeeMinor: { $sum: "$invoice.serviceFeeMinor" }, providerEarningsMinor: { $sum: "$invoice.providerEarningsMinor" } } }
     ]);
     const ratingSummaryResult = await ServiceRequest.aggregate([
       { $match: { "review.rating": { $gte: 1, $lte: 5 } } },
@@ -144,7 +151,9 @@ router.get("/dashboard", async (req, res, next) => {
         todayRequests,
         complaints: 0,
         onlineProviders,
-        revenue: totalRevenueResult[0]?.total || 0,
+        revenue: (totalRevenueResult[0]?.grossMinor || 0) / 100,
+        serviceFeeRevenue: (totalRevenueResult[0]?.serviceFeeMinor || 0) / 100,
+        providerEarnings: (totalRevenueResult[0]?.providerEarningsMinor || 0) / 100,
         reviewedRequests: ratingSummary.reviewedRequests || 0,
         averageRating: ratingSummary.averageRating ? Math.round(ratingSummary.averageRating * 10) / 10 : 0
       },
@@ -191,6 +200,80 @@ router.get("/providers", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+router.get("/active-jobs", async (req, res, next) => {
+  try {
+    const requests = await ServiceRequest.find({ status: { $nin: ["completed", "cancelled"] } })
+      .sort({ updatedAt: -1 })
+      .limit(200)
+      .populate({ path: "userId", select: "name phone" })
+      .populate({ path: "providerId", select: "name phone ratingAvg providerState" });
+    const offers = await DispatchOffer.find({ requestId: { $in: requests.map((request) => request._id) } }).sort({ offeredAt: -1 });
+    const [matchingSummary] = await DispatchOffer.aggregate([
+      { $group: {
+        _id: "$algorithmVersion",
+        offers: { $sum: 1 },
+        accepted: { $sum: { $cond: [{ $eq: ["$outcome", "accepted"] }, 1, 0] } },
+        latestOfferAt: { $max: "$offeredAt" },
+        averageSelectedDistanceKm: { $avg: "$distanceKm" },
+        averageNearestBaselineKm: { $avg: "$baselineNearestDistanceKm" },
+        averageTravelDurationSeconds: { $avg: "$travelDurationSeconds" },
+        averageAcceptedResponseSeconds: { $avg: { $cond: [{ $eq: ["$outcome", "accepted"] }, "$responseSeconds", null] } }
+      } },
+      { $sort: { latestOfferAt: -1 } }
+    ]);
+    const latestOffer = new Map();
+    offers.forEach((offer) => { if (!latestOffer.has(String(offer.requestId))) latestOffer.set(String(offer.requestId), offer); });
+
+    const jobs = requests.map((request) => {
+      const offer = latestOffer.get(request.id);
+      const provider = request.providerId?._id ? request.providerId : null;
+      const customer = request.userId?._id ? request.userId : null;
+      return {
+        ...request.toJSONSafe(),
+        userId: customer?.id || null,
+        providerId: provider?.id || null,
+        customer: customer ? { id: customer.id, name: customer.name, phone: customer.phone } : null,
+        provider: provider ? {
+          id: provider.id, name: provider.name, phone: provider.phone, ratingAvg: provider.ratingAvg,
+          location: provider.providerState?.currentLocation || null
+        } : null,
+        matchingDecision: offer ? {
+          algorithmVersion: offer.algorithmVersion,
+          score: Math.round(offer.score * 10) / 10,
+          priority: offer.priority,
+          distanceKm: Math.round(offer.distanceKm * 10) / 10,
+          routeDistanceKm: offer.routeDistanceKm == null ? null : Math.round(offer.routeDistanceKm * 10) / 10,
+          travelDurationMinutes: offer.travelDurationSeconds == null ? null : Math.max(1, Math.round(offer.travelDurationSeconds / 60)),
+          routeSource: offer.routeSource,
+          assignmentCost: offer.assignmentCost,
+          baselineNearestDistanceKm: Math.round((offer.baselineNearestDistanceKm ?? offer.distanceKm) * 10) / 10,
+          components: offer.components,
+          outcome: offer.outcome,
+          responseSeconds: offer.responseSeconds,
+          explanation: offer.algorithmVersion === "batch-mincost-v1"
+            ? `Selected by the batch optimizer using ${offer.priority} priority and ${Math.max(1, Math.round((offer.travelDurationSeconds || 0) / 60))}-minute travel time (${offer.routeSource}).`
+            : `Selected using proximity ${Math.round(offer.components.proximity * 100)}%, adjusted rating ${Math.round(offer.components.rating * 100)}%, experience ${Math.round(offer.components.experience * 100)}%, and response speed ${Math.round(offer.components.responseSpeed * 100)}%.`
+        } : null
+      };
+    });
+    res.json({
+      ok: true,
+      serverTime: new Date(),
+      matchingAnalytics: matchingSummary ? {
+        algorithmVersion: matchingSummary._id,
+        offers: matchingSummary.offers,
+        accepted: matchingSummary.accepted,
+        acceptanceRate: matchingSummary.offers ? Math.round(matchingSummary.accepted / matchingSummary.offers * 1000) / 10 : 0,
+        averageSelectedDistanceKm: Math.round((matchingSummary.averageSelectedDistanceKm || 0) * 10) / 10,
+        averageNearestBaselineKm: Math.round((matchingSummary.averageNearestBaselineKm || 0) * 10) / 10,
+        averageTravelDurationMinutes: Math.round((matchingSummary.averageTravelDurationSeconds || 0) / 6) / 10,
+        averageAcceptedResponseSeconds: Math.round((matchingSummary.averageAcceptedResponseSeconds || 0) * 10) / 10
+      } : null,
+      jobs
+    });
+  } catch (err) { next(err); }
 });
 
 router.patch("/providers/:id/verification", async (req, res, next) => {

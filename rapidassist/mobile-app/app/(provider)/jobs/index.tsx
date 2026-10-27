@@ -1,18 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
+import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
+import { getDrivingRouteMetrics } from "../../../src/services/routing";
+import type { Coordinate } from "../../../src/utils/distance";
 import { StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
-import { getProviderActiveRequest, requestExtraWork, updateProviderLocation, updateRequestStatus } from "../../../src/requests/requests.api";
+import { getRequest, getProviderActiveRequest, requestExtraWork, updateRequestStatus } from "../../../src/requests/requests.api";
 import { getServiceIcon, getServiceTitle, providerJobFlows, providerServiceFromRequestCategory } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 import { canNavigateTo, openExternalNavigation } from "../../../src/utils/navigation";
 
-const LOCATION_SYNC_MS = 10000;
 
 function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
@@ -21,11 +22,14 @@ function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
 
 export default function ProviderJobs() {
   const { token, user } = useAuth();
+  const { activeJob, refresh, error: syncError } = useDispatchUpdates();
+  const [route, setRoute] = useState<Coordinate[]>([]);
+  const [eta, setEta] = useState<number | null>(null);
   const params = useLocalSearchParams<{ requestId?: string; category?: string }>();
   const [requestId, setRequestId] = useState(params.requestId || "");
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [locationStatus, setLocationStatus] = useState<string | null>(null);
+
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -66,43 +70,27 @@ export default function ProviderJobs() {
   }, [token]);
 
   useEffect(() => {
-    const shouldSyncLocation = Boolean(token && activeRequest && activeRequest.status !== "completed" && activeRequest.status !== "cancelled");
-    if (!shouldSyncLocation) return;
-
-    let stopped = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    async function syncLocation() {
-      if (!token || stopped) return;
-
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (!permission.granted) {
-          setLocationStatus("Location permission is required for live tracking.");
-          return;
-        }
-
-        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        await updateProviderLocation(token, {
-          lat: current.coords.latitude,
-          lng: current.coords.longitude,
-          addressText: "Provider live location"
-        });
-
-        setLocationStatus(`Live location synced at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
-      } catch (e: any) {
-        setLocationStatus(e?.message || "Failed to sync live location.");
-      }
+    if (activeJob) { setActiveRequest(activeJob); setRequestId(activeJob.id); }
+    else if (activeRequest && !isClosed) {
+      // Fetch the terminal state after cancellation/completion on another device.
+      getRequest(token!, activeRequest.id).then(setActiveRequest).catch((error) => {
+        setError(error?.message || "Unable to refresh job status. Check your connection.");
+      });
     }
+  }, [activeJob]);
 
-    syncLocation();
-    timer = setInterval(syncLocation, LOCATION_SYNC_MS);
-
-    return () => {
-      stopped = true;
-      if (timer) clearInterval(timer);
-    };
-  }, [activeRequest?.id, activeRequest?.status, token]);
+  const providerCoordinate = requestCoordinate(activeRequest?.providerLocation);
+  const goingToDestination = activeRequest?.category === "car_towing" && ["vehicle_loaded", "reached_destination"].includes(activeRequest.status);
+  const targetCoordinate = requestCoordinate(goingToDestination ? activeRequest?.destinationLocation : activeRequest?.pickupLocation);
+  useEffect(() => {
+    let cancelled = false;
+    setRoute([]); setEta(null);
+    if (!providerCoordinate || !targetCoordinate || isClosed) return;
+    getDrivingRouteMetrics(providerCoordinate, targetCoordinate).then((metrics) => {
+      if (!cancelled) { setRoute(metrics.coordinates); setEta(metrics.durationMinutes); }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [providerCoordinate?.latitude, providerCoordinate?.longitude, targetCoordinate?.latitude, targetCoordinate?.longitude, isClosed]);
 
   async function markNext() {
     const next = steps[nextStepIndex];
@@ -116,6 +104,7 @@ export default function ProviderJobs() {
       setError(null);
       const updated = await updateRequestStatus(token, requestId.trim(), next.status);
       setActiveRequest(updated);
+      await refresh();
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to update status");
     } finally {
@@ -158,8 +147,12 @@ export default function ProviderJobs() {
       <AppShell title="Active Job" subtitle="Update request status as work progresses.">
         {requestCoordinate(activeRequest?.pickupLocation) ? (
           <LocationMapPreview
-            pickup={requestCoordinate(activeRequest?.pickupLocation)!}
-            destination={requestCoordinate(activeRequest?.destinationLocation)}
+            pickup={providerCoordinate || requestCoordinate(activeRequest?.pickupLocation)!}
+            destination={providerCoordinate ? targetCoordinate : requestCoordinate(activeRequest?.destinationLocation)}
+            route={route}
+            pickupLabel={providerCoordinate ? "You" : "Pickup"}
+            destinationLabel={goingToDestination ? "Drop-off" : "Customer"}
+            title={eta ? `${eta} min to ${goingToDestination ? "drop-off" : "pickup"}` : "Waiting for live route"}
           />
         ) : (
           <View style={styles.map}>
@@ -185,7 +178,7 @@ export default function ProviderJobs() {
           </View>
           <Field label="Request ID" icon="reader" placeholder="Paste assigned request ID" value={requestId} onChangeText={setRequestId} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {locationStatus && !isClosed ? <Text style={styles.locationText}>{locationStatus}</Text> : null}
+          {syncError && !isClosed ? <Text style={styles.locationText}>{syncError}</Text> : null}
           {isCompleted ? <Text style={styles.doneText}>This job is completed and moved to your earnings/history.</Text> : null}
           {waitingCustomerConfirmation ? <Text style={styles.waitText}>Service finished. Waiting for customer to tap Complete Job.</Text> : null}
           {isCancelled ? <Text style={styles.cancelledText}>This job was cancelled and removed from active work.</Text> : null}
@@ -231,7 +224,10 @@ export default function ProviderJobs() {
         </Card>
 
         {isClosed ? (
-          <PrimaryButton title="Back to Dashboard" icon="speedometer" variant="success" onPress={() => router.replace("/(provider)/dashboard")} />
+          <View style={styles.navActions}>
+            {isCompleted && activeRequest ? <PrimaryButton title="Invoice & Payment" icon="receipt" variant="outline" style={{ flex: 1 }} onPress={() => router.push({ pathname: "/(provider)/payment/[requestId]", params: { requestId: activeRequest.id } })} /> : null}
+            <PrimaryButton title="Back to Dashboard" icon="speedometer" variant="success" style={{ flex: 1 }} onPress={() => router.replace("/(provider)/dashboard")} />
+          </View>
         ) : waitingCustomerConfirmation ? (
           <PrimaryButton title="Waiting Customer Confirmation" icon="time" variant="outline" disabled />
         ) : (
@@ -243,7 +239,7 @@ export default function ProviderJobs() {
             onPress={markNext}
           />
         )}
-        {activeRequest?.category === "mechanic" && !isClosed ? (
+        {activeRequest?.category === "mechanic" && activeRequest.status === "inspection_started" ? (
           <PrimaryButton
             title="Request Extra Work Approval"
             icon="construct"
