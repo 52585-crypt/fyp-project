@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
+import { successFeedback } from "../../design/haptics";
 import { providerRoutes } from "../../navigation/routes";
 import { useVerification } from "../../verification/VerificationProvider";
 import { canAcceptServiceRequests } from "../../verification/verification";
@@ -33,6 +34,7 @@ export function useIncomingOffer(requestId: string | null, initial?: ServiceRequ
     setError(null);
     try {
       const accepted = await acceptRequest(token, request.id, request.dispatch?.offerId);
+      successFeedback();
       await refresh();
       router.replace(providerRoutes.job(accepted.id));
     } catch (e) { setError(message(e, "Failed to accept request")); } finally { setBusy(null); }

@@ -36,7 +36,7 @@ export function Select<T extends string>({ label, optional, value, options, onCh
         <Icon name="chevron-down" color="muted" size={tokens.sizes.iconSmall} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close list" />
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Close list" />
         <View style={styles.sheet}>
           {label ? <Text variant="headline" style={styles.sheetTitle}>{label}</Text> : null}
           <FlatList

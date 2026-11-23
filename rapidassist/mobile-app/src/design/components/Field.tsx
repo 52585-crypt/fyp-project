@@ -25,15 +25,15 @@ export const fieldStyles = StyleSheet.create({
   box: {
     minHeight: tokens.sizes.input, borderRadius: tokens.radius.md, borderWidth: tokens.sizes.hairline,
     borderColor: tokens.color.border, backgroundColor: tokens.color.surface, paddingHorizontal: tokens.space.md,
-    flexDirection: "row", alignItems: "center", gap: tokens.space.sm
+    flexDirection: "row", alignItems: "center", gap: tokens.space.sm, minWidth: 0
   },
   focused: { borderColor: tokens.color.primary, borderWidth: tokens.sizes.border },
   invalid: { borderColor: tokens.color.danger },
   input: {
-    flex: 1, ...tokens.text.body, color: tokens.color.text, paddingVertical: tokens.space.md,
+    flex: 1, minWidth: 0, ...tokens.text.body, color: tokens.color.text, paddingVertical: tokens.space.md,
     // The box border already shows focus; drop the browser's default outline on web.
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null)
   }
 });
 
-const styles = StyleSheet.create({ wrap: { gap: tokens.space.xs + tokens.space.xxs } });
+const styles = StyleSheet.create({ wrap: { gap: tokens.space.xs + tokens.space.xxs, minWidth: 0 } });

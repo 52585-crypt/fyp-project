@@ -22,7 +22,8 @@ export default function ProviderJob() {
   if (request && stage === "incoming") return <Redirect href={providerRoutes.incoming(request.id)} />;
 
   return (
-    <Screen header={<Header title={stage ? titles[stage] : "Job"} back={() => router.dismissTo(providerRoutes.dashboard)} />}>
+    <Screen header={<Header title={stage ? titles[stage] : "Job"} back={() => router.dismissTo(providerRoutes.dashboard)} />}
+      refreshing={false} onRefresh={job.reload}>
       {job.error ? <Banner tone="danger" message={job.error} /> : null}
       {!request && !job.loadError ? <><SkeletonCard /><SkeletonCard lines={4} /></> : null}
       {!request && job.loadError ? <ErrorState title="Job unavailable" message={job.loadError} onRetry={job.reload} /> : null}

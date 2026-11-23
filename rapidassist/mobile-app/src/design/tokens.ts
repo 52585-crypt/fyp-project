@@ -135,6 +135,8 @@ const sizes = {
   successBadge: 72,
   pulse: 168,
   maxContent: 560,
+  /** Below this window width, components switch to their compact layout. */
+  compactWidth: 380,
   hairline: 1,
   border: 1.5
 } as const;

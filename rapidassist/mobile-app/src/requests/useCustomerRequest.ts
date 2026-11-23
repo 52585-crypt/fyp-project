@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { successFeedback } from "../design/haptics";
 import { verifiedCustomerRequest } from "./customerTrackingSelection";
 import { useDispatchUpdates } from "./DispatchProvider";
 import { approveExtraWork, getRequest, retryDispatch, updateRequestStatus } from "./requests.api";
@@ -68,6 +69,7 @@ export function useCustomerRequest(requestId: string | null) {
       const updated = await action(token, request);
       sequence.current += 1;
       setRequest(updated);
+      if (updated.status === "completed") successFeedback();
       return true;
     } catch (e) { setError(message(e, fallback)); return false; } finally { setUpdating(false); }
   }

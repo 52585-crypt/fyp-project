@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { tokens, type ColorToken } from "../tokens";
 import { Icon, type IconName } from "./Icon";
 import { Text } from "./Text";
@@ -7,9 +7,11 @@ import { Text } from "./Text";
 export function StatTile({ label, value, caption, icon, iconColor = "primary" }: {
   label: string; value: string; caption?: string; icon?: IconName; iconColor?: ColorToken;
 }) {
+  // On narrow phones (≈360dp) drop the icon so values like "Rs. 32,100" fit.
+  const compact = useWindowDimensions().width < tokens.sizes.compactWidth;
   return (
     <View style={styles.tile} accessible accessibilityLabel={`${label}: ${value}${caption ? `, ${caption}` : ""}`}>
-      {icon ? <View style={styles.icon}><Icon name={icon} color={iconColor} /></View> : null}
+      {icon && !compact ? <View style={styles.icon}><Icon name={icon} color={iconColor} /></View> : null}
       <View style={styles.copy}>
         <Text variant="caption" color="muted" numberOfLines={1}>{label}</Text>
         <Text variant="headline" numberOfLines={1}>{value}</Text>

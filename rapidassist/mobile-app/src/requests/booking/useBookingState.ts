@@ -2,6 +2,7 @@ import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
+import { successFeedback } from "../../design/haptics";
 import { customerRoutes } from "../../navigation/routes";
 import { getCurrentForegroundLocation } from "../../services/currentLocation";
 import { manualMapLocation, normalizeLocation, selectedRequestLocations, type NormalizedLocation } from "../../services/normalizedLocation";
@@ -144,6 +145,7 @@ export function useBookingState() {
         submission.current = { fingerprint, id: `dispatch-${Date.now()}-${Math.random().toString(36).slice(2)}` };
       }
       const request = await createRequest(token, { ...input, clientRequestId: submission.current.id });
+      successFeedback();
       router.replace(customerRoutes.request(request.id));
     } catch (e) { setError(message(e, "Failed to create request")); } finally { setSubmitting(false); }
   }

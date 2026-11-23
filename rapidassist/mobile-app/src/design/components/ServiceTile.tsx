@@ -27,7 +27,7 @@ export function ServiceTile({ title, subtitle, icon, onPress, selected, comingSo
       style={({ pressed }) => [styles.tile, selected && styles.selected, pressed && { opacity: tokens.opacity.pressed }]}
     >
       <View style={[styles.icon, comingSoon && styles.iconMuted]}><Icon name={icon} color={comingSoon ? "subtle" : "primary"} size={tokens.sizes.iconLarge - 4} /></View>
-      <Text variant="captionStrong" align="center" numberOfLines={1} color={comingSoon ? "muted" : "text"}>{title}</Text>
+      <Text variant="captionStrong" align="center" numberOfLines={2} color={comingSoon ? "muted" : "text"}>{title}</Text>
       {comingSoon ? <Badge label="Soon" tone="neutral" /> : subtitle ? <Text variant="micro" color="muted" align="center" numberOfLines={2}>{subtitle}</Text> : null}
     </Pressable>
   );

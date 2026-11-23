@@ -19,7 +19,7 @@ rider, tow driver workflows).
 | 4. Auth redesign | done |
 | 5. Customer flow | done |
 | 6. Provider flow | done |
-| 7. Polish | todo |
+| 7. Polish | done |
 | 8. Final cleanup | todo |
 
 ## Current problems (measured 2026-11-23)

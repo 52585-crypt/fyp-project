@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
+import { successFeedback } from "../../design/haptics";
 import { hasOperationalCoordinates } from "../../services/locationMapPolicy";
 import { getDrivingRouteMetrics } from "../../services/routing";
 import type { Coordinate } from "../../utils/distance";
@@ -64,6 +65,7 @@ export function useProviderJob(requestId: string | null) {
       const updated = await action(token, request);
       sequence.current += 1;
       setRequest(updated);
+      if (updated.status === "service_finished") successFeedback();
       void refreshDispatch();
       return true;
     } catch (e) { setError(message(e, fallback)); return false; } finally { setUpdating(false); }
