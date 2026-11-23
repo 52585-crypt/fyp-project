@@ -1,5 +1,6 @@
 export function formatCurrency(amount: number) {
-  return `Rs. ${amount.toLocaleString("en-PK")}`;
+  const whole = Number.isInteger(amount);
+  return `Rs. ${amount.toLocaleString("en-PK", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`;
 }
 
 export function compactAddress(address?: string | null) {

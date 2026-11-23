@@ -1,6 +1,6 @@
 import { customerRoutes, providerRoutes } from "../navigation/routes";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, usePathname } from "expo-router";
 import * as Location from "expo-location";
@@ -8,7 +8,9 @@ import { useAuth } from "../auth/AuthProvider";
 import { createSocket } from "../services/socket";
 import { getDispatchOffers, getProviderActiveRequest, updateProviderLocation } from "./requests.api";
 import type { ServiceRequest } from "./requests.types";
-import { ui } from "../ui/system";
+import { Icon, Text as DSText } from "../design/components";
+import { tokens } from "../design/tokens";
+import { formatCurrency } from "../utils/format";
 import { startProviderBackgroundLocation, stopProviderBackgroundLocation } from "../services/backgroundLocation";
 import { cleanGoogleRequestCaches, readCachedRequest, removeCachedRequest, writeCachedRequest } from "../services/requestCache";
 import { useActiveLocationRefresh } from "./useActiveLocationRefresh";
@@ -197,9 +199,13 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
 
   return <Context.Provider value={{ offers, activeJob, online, setOnline, revision, connected, serverOffset, error, refresh, locationRefreshError, retryLocationRefresh, subscribeToPaymentUpdates }}>
     {children}
-    {notice ? <View style={[styles.notice, { top: insets.top + 8 }]} accessibilityLiveRegion="polite">
-      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push(customerRoutes.request(notice.requestId)); }}><Text style={styles.noticeText}>{notice.message}</Text></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" hitSlop={12} onPress={() => setNotice(null)}><Text style={styles.noticeText}>×</Text></Pressable>
+    {notice ? <View style={[styles.notice, { top: insets.top + tokens.space.sm }]} accessibilityLiveRegion="polite">
+      <Pressable style={styles.flex} accessibilityRole="button" onPress={() => { setNotice(null); router.push(customerRoutes.request(notice.requestId)); }}>
+        <DSText variant="bodySmallStrong" color="onPrimary">{notice.message}</DSText>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" hitSlop={tokens.space.md} onPress={() => setNotice(null)}>
+        <Icon name="close" color="onPrimary" />
+      </Pressable>
     </View> : null}
     {provider ? <OfferBanner /> : null}
   </Context.Provider>;
@@ -210,15 +216,22 @@ function OfferBanner() {
   const offer = offers[0];
   const seconds = useOfferSeconds(offer?.dispatch?.expiresAt);
   const insets = useSafeAreaInsets();
-  if (!offer || !seconds || pathname.includes("/requests/") || pathname.endsWith("/dashboard")) return null;
-  return <Pressable accessibilityRole="button" style={[styles.offer, { bottom: insets.bottom + 82 }]} onPress={() => router.push(providerRoutes.incoming(offer.id))}>
-    <Text style={styles.noticeText}>New roadside job · {seconds}s to respond</Text>
-    <Text style={styles.offerDetail}>PKR {offer.estimate.total.toLocaleString()} · Tap to review offer</Text>
+  // Only on tab screens (the dashboard shows offers inline; job/incoming screens have their own actions).
+  if (!offer || !seconds || !["/jobs", "/earnings", "/inbox", "/profile"].includes(pathname)) return null;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`New job, ${seconds} seconds to respond. Tap to review.`}
+    style={[styles.offer, { bottom: insets.bottom + tokens.sizes.tabBar + tokens.space.lg }]} onPress={() => router.push(providerRoutes.incoming(offer.id))}>
+    <DSText variant="bodySmallStrong" color="onPrimary">New roadside job · {seconds}s to respond</DSText>
+    <DSText variant="caption" color="onPrimaryMuted">{formatCurrency(offer.estimate.total)} · Tap to review offer</DSText>
   </Pressable>;
 }
 const styles = StyleSheet.create({
-  notice: { position: "absolute", left: 16, right: 16, padding: 16, borderRadius: 16, backgroundColor: ui.colors.dark, flexDirection: "row", gap: 16, zIndex: 100 },
-  offer: { position: "absolute", left: 16, right: 16, padding: 14, borderRadius: 16, backgroundColor: ui.colors.dark, zIndex: 90 },
-  noticeText: { color: "white", fontSize: 14, fontWeight: "700" },
-  offerDetail: { color: "#B9E6CF", marginTop: 5, fontSize: 12 }
+  notice: {
+    position: "absolute", left: tokens.space.lg, right: tokens.space.lg, padding: tokens.space.lg, borderRadius: tokens.radius.card,
+    backgroundColor: tokens.color.primaryDark, flexDirection: "row", alignItems: "center", gap: tokens.space.lg, zIndex: 100, ...tokens.shadow.raised
+  },
+  offer: {
+    position: "absolute", left: tokens.space.lg, right: tokens.space.lg, padding: tokens.space.lg, gap: tokens.space.xs,
+    borderRadius: tokens.radius.card, backgroundColor: tokens.color.primary, zIndex: 90, ...tokens.shadow.raised
+  },
+  flex: { flex: 1 }
 });

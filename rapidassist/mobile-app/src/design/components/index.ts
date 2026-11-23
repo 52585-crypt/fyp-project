@@ -33,3 +33,4 @@ export { StatusTimeline, type TimelineItem, type TimelineState } from "./StatusT
 export { SuccessHero } from "./SuccessHero";
 export { Text } from "./Text";
 export { TextArea } from "./TextArea";
+export { Toggle } from "./Toggle";

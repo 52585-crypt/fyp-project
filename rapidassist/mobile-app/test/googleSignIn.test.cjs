@@ -315,71 +315,57 @@ test("account mode switching replaces the session and routes pending providers t
 
 test("provider onboarding resumes at identity, requires consent and both photos, then reviews and retries the same submission", async () => {
   const hooks = mockHooks();
-  const PrimaryButton = () => null;
-  const AppShell = () => null;
-  const Progress = () => null;
-  const SummaryPhotoUri = "data:image/jpeg;base64,workshop-fixture";
   const picked = [], uploads = [], routes = [];
   let status = { reviewState: null, verificationStatus: "pending", submissionId: null };
-  const ProviderVerification = load("app/(provider)/verification/index.tsx", {
+  const { useVerificationFlow } = load("src/verification/useVerificationFlow.ts", {
     react: { ...hooks.react, useEffect: () => {} },
-    "expo-router": { Redirect: "Redirect", useLocalSearchParams: () => ({ onboarding: "1" }),
-      router: { dismissTo: (route) => routes.push(route) } },
-    "react-native": { Platform: { OS: "android" }, StyleSheet: { create: (s) => s }, ActivityIndicator: "ActivityIndicator",
-      Image: "Image", Pressable: "Pressable", Text: "Text", View: "View" },
-    "@expo/vector-icons": { Ionicons: "Ionicons" },
-    "../../../src/theme/tokens": { tokens: { spacing: {}, colors: {}, radii: {}, typography: { sizes: {}, lineHeights: {} } } },
-    "../../../src/ui/components": { AppShell, Card: "Card", IconBox: "IconBox", NoticeBanner: "NoticeBanner", PrimaryButton, StatusStamp: "StatusStamp" },
-    "../../../src/auth/AuthProvider": { useAuth: () => ({ token: "provider-token", user: {
-      role: "mechanic", name: "Existing Provider", email: "provider@example.com", phone: "03001112222",
-      profilePictureUrl: "https://example.test/avatar", mechanicProfile: { workshopPhotoUrl: SummaryPhotoUri }
-    } }) },
-    "../../../src/requests/serviceCatalog": { getProviderServiceTitle: () => "Car Mechanic" },
-    "../../../src/verification/ProviderRegistrationProgress": { ProviderRegistrationProgress: Progress },
-    "../../../src/verification/verification": {
+    "expo-router": { useLocalSearchParams: () => ({ onboarding: "1" }), router: { dismissTo: (route) => routes.push(route) } },
+    "react-native": { Platform: { OS: "android" } },
+    "./verification": {
       canSubmitVerification: (current) => !current.submissionId,
       verificationPresentation: () => ({ title: "Pending review", tone: "accent", message: "Pending review" })
     },
-    "../../../src/verification/VerificationProvider": { useVerification: () => ({ status, submit: async (draft) => {
+    "./VerificationProvider": { useVerification: () => ({ status, loading: false, error: null, submitting: false, refresh() {}, submit: async (draft) => {
       uploads.push(draft);
       if (uploads.length === 1) throw new Error("Network unavailable");
       status = { ...status, submissionId: "saved", reviewState: "awaiting_review", matchResult: "mismatch" };
       return true;
     } }) },
-    "../../../src/verification/verificationImage": { selectVerificationImage: async (source, kind) => {
+    "./verificationImage": { selectVerificationImage: async (source, kind) => {
       picked.push([source, kind]);
       return `${kind}-photo-${picked.length}`;
     } }
-  }).default;
-  const find = (predicate) => { hooks.reset(); return findElement(ProviderVerification(), predicate); };
-  const button = (title) => find((el) => el.type === PrimaryButton && el.props.title === title);
-  assert.equal(find((el) => el.type === AppShell).props.title, "Identity verification");
-  assert.equal(find((el) => el.type === Progress).props.currentStep, 3);
-  assert.equal(button("Review & submit").props.disabled, true);
-  const consent = find((el) => el.props.accessibilityRole === "checkbox");
-  assert.equal(button("Take selfie").props.disabled, true);
-  await button("Take selfie").props.onPress();
+  });
+  const flow = () => { hooks.reset(); return useVerificationFlow(); };
+  assert.equal(flow().step, "identity");
+  assert.equal(flow().editing, true);
+  assert.equal(flow().progressStep, 3);
+  assert.equal(flow().ready, false);
+  // Photos are blocked until biometric consent is given.
+  await flow().choosePhoto("camera", "profile");
   assert.deepEqual(picked, []);
-  consent.props.onPress();
-  await button("Take selfie").props.onPress();
-  assert.equal(button("Review & submit").props.disabled, true);
-  await button("Choose CNIC photo").props.onPress();
-  button("Review & submit").props.onPress();
-  assert.equal(find((el) => el.type === Progress).props.currentStep, 4);
-  assert.ok(find((el) => el.props.user?.mechanicProfile?.workshopPhotoUrl === SummaryPhotoUri));
-  assert.ok(find((el) => el.props.title === "Consent confirmed"));
-  button("Back to identity verification").props.onPress();
-  await button("Replace selfie").props.onPress();
-  button("Review & submit").props.onPress();
-  await button("Submit for review").props.onPress();
-  assert.ok(find((el) => el.props.message === "Network unavailable"));
-  await button("Submit for review").props.onPress();
+  flow().toggleConsent();
+  await flow().choosePhoto("camera", "profile");
+  assert.equal(flow().ready, false);
+  await flow().choosePhoto("library", "cnic");
+  assert.equal(flow().ready, true);
+  flow().review();
+  assert.equal(flow().reviewing, true);
+  assert.equal(flow().progressStep, 4);
+  assert.equal(flow().inOnboarding, true);
+  flow().backToIdentity();
+  await flow().choosePhoto("library", "profile");
+  flow().review();
+  await flow().submit();
+  assert.equal(flow().actionError, "Network unavailable");
+  await flow().submit();
   assert.equal(uploads.length, 2);
   assert.equal(uploads[1].profilePhoto, "profile-photo-3");
   assert.equal(uploads[1].cnicFront, "cnic-photo-2");
   assert.equal(uploads[1].biometricConsent, true);
-  assert.ok(find((el) => el.props.label === "Pending admin review"));
-  assert.ok(find((el) => el.props.title === "AI comparison did not find a match"));
-  button("Back to dashboard").props.onPress();
+  assert.equal(flow().awaitingReview, true);
+  assert.equal(flow().status.matchResult, "mismatch");
+  assert.equal(flow().editing, false);
+  flow().toDashboard();
   assert.deepEqual(routes, ["/dashboard"]);
 });

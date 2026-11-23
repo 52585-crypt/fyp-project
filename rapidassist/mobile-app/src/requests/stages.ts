@@ -120,3 +120,97 @@ export function requestTimeline(request: Pick<ServiceRequest, "status" | "catego
     return { key: step.key, label: step.label, at: state === "todo" ? null : at, state };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Provider
+
+export type ProviderStage =
+  | "incoming"
+  | "job_details"
+  | "on_the_way"
+  | "arrived"
+  | "inspection"
+  | "awaiting_approval"
+  | "in_progress"
+  | "payment_completion"
+  | "awaiting_customer"
+  | "job_completed"
+  | "cancelled";
+
+const providerByStatus: Record<RequestStatus, ProviderStage> = {
+  pending: "incoming",
+  searching_provider: "incoming",
+  provider_assigned: "job_details",
+  provider_on_way: "on_the_way",
+  provider_arrived: "arrived",
+  inspection_started: "inspection",
+  extra_work_requested: "awaiting_approval",
+  waiting_user_approval: "in_progress",
+  vehicle_loaded: "in_progress",
+  work_started: "in_progress",
+  in_progress: "in_progress",
+  reached_destination: "payment_completion",
+  fuel_delivered: "payment_completion",
+  service_finished: "awaiting_customer",
+  completed: "job_completed",
+  cancelled: "cancelled"
+};
+
+export function getProviderStage(request: StageInput): ProviderStage {
+  if (request.status === "waiting_user_approval" && request.mechanicDetails?.extraWork?.status === "pending") return "awaiting_approval";
+  return providerByStatus[request.status] ?? "incoming";
+}
+
+/**
+ * The single status the provider may move the job to next (mirrors the server's transition table),
+ * or null when the provider has nothing to advance (waiting on the customer, closed, etc.).
+ */
+export function providerNextStatus(request: Pick<ServiceRequest, "status" | "category">): RequestStatus | null {
+  switch (request.status) {
+    case "provider_assigned": return "provider_on_way";
+    case "provider_on_way": return "provider_arrived";
+    case "provider_arrived":
+      return request.category === "car_towing" ? "vehicle_loaded" : request.category === "fuel_delivery" ? "fuel_delivered" : "inspection_started";
+    case "vehicle_loaded": return "reached_destination";
+    case "inspection_started": return "work_started";
+    case "reached_destination":
+    case "fuel_delivered":
+    case "work_started":
+    case "in_progress": return "service_finished";
+    default: return null;
+  }
+}
+
+/** Provider may cancel until work has started on site. */
+export function providerCanCancel(stage: ProviderStage) {
+  return stage === "job_details" || stage === "on_the_way" || stage === "arrived";
+}
+
+const providerSteps: Record<RequestCategory, Array<{ label: string; statuses: RequestStatus[] }>> = {
+  car_towing: [
+    { label: "Accepted", statuses: ["provider_assigned"] },
+    { label: "On The Way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Vehicle Loaded", statuses: ["vehicle_loaded", "reached_destination"] },
+    { label: "Completed", statuses: ["service_finished", "completed"] }
+  ],
+  fuel_delivery: [
+    { label: "Accepted", statuses: ["provider_assigned"] },
+    { label: "On The Way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived", "fuel_delivered"] },
+    { label: "Delivered", statuses: ["service_finished", "completed"] }
+  ],
+  mechanic: [
+    { label: "Accepted", statuses: ["provider_assigned"] },
+    { label: "On The Way", statuses: ["provider_on_way"] },
+    { label: "Arrived", statuses: ["provider_arrived", "inspection_started", "extra_work_requested", "waiting_user_approval", "work_started", "in_progress"] },
+    { label: "Completed", statuses: ["service_finished", "completed"] }
+  ]
+};
+
+/** Horizontal job-progress stepper data for the provider. */
+export function providerProgress(request: Pick<ServiceRequest, "status" | "category">) {
+  const steps = providerSteps[request.category];
+  const current = Math.max(0, steps.findIndex((s) => s.statuses.includes(request.status)));
+  return { steps: steps.map((s) => s.label), current };
+}

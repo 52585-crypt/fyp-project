@@ -1,2 +1,5 @@
 import { NotificationInbox } from "../../../src/notifications/NotificationInbox";
-export default function ProviderNotifications() { return <NotificationInbox role="provider" />; }
+
+export default function ProviderInbox() {
+  return <NotificationInbox role="provider" />;
+}
