@@ -1,11 +1,13 @@
 import { Linking, Platform } from "react-native";
 import type { RequestLocation } from "../requests/requests.types";
+import { hasOperationalCoordinates } from "../services/locationMapPolicy";
 
 export function canNavigateTo(location?: RequestLocation | null) {
-  return Boolean(location && Number.isFinite(location.lat) && Number.isFinite(location.lng));
+  return hasOperationalCoordinates(location);
 }
 
 export async function openExternalNavigation(location: RequestLocation, label = "Destination") {
+  if (!hasOperationalCoordinates(location)) throw new Error("This location is unavailable. Refresh it and try again.");
   const destination = `${location.lat},${location.lng}`;
   const encodedLabel = encodeURIComponent(location.addressText || label);
   const url =

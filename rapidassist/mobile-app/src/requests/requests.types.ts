@@ -4,15 +4,24 @@ export type FuelType = "petrol" | "diesel";
 export type MechanicIssueCategory = "battery" | "engine" | "tyre" | "brake" | "overheating" | "general_inspection";
 
 export type RequestLocation = {
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   addressText?: string | null;
+  source?: "gps" | "manual_map" | "google_places" | "photon" | null;
+  placeId?: string | null;
+  googleContentCachedAt?: string | null;
+  googleContentExpired?: boolean;
   accuracy?: number | null;
   heading?: number | null;
   speed?: number | null;
   capturedAt?: string | null;
   receivedAt?: string | null;
   updatedAt?: string | null;
+};
+
+export type AvailableRequestLocation = Omit<RequestLocation, "lat" | "lng"> & {
+  lat: number;
+  lng: number;
 };
 
 export type RequestStatus =
@@ -127,11 +136,6 @@ export type NearbyProvider = {
   ratingAvg: number;
   ratingCount: number;
   completedJobs: number;
-  paidJobs?: number;
-  distanceKm: number;
-  etaMinutes: number;
-  score: number;
-  location: RequestLocation;
 };
 
 export type CreateRequestInput = {
@@ -145,8 +149,8 @@ export type CreateRequestInput = {
     model?: string | null;
     registrationNumber?: string | null;
   };
-  pickupLocation: RequestLocation;
-  destinationLocation?: RequestLocation | null;
+  pickupLocation: AvailableRequestLocation;
+  destinationLocation?: AvailableRequestLocation | null;
   distanceKm?: number | null;
   issueType?: string | null;
   description?: string | null;

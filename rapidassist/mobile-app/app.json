@@ -42,7 +42,6 @@
         "FOREGROUND_SERVICE_LOCATION",
         "READ_MEDIA_IMAGES"
       ],
-      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -50,7 +49,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/with-release-api-inputs",
       "expo-router",
+      ["@stripe/stripe-react-native", { "enableGooglePay": false }],
       [
         "expo-image-picker",
         {
@@ -68,7 +69,8 @@
         }
       ],
       "expo-notifications",
-      "expo-font"
+      "expo-font",
+      "@maplibre/maplibre-react-native"
     ]
   }
 }

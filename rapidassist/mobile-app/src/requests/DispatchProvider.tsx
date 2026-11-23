@@ -9,7 +9,10 @@ import { getDispatchOffers, getProviderActiveRequest, updateProviderLocation } f
 import type { ServiceRequest } from "./requests.types";
 import { ui } from "../ui/system";
 import { startProviderBackgroundLocation, stopProviderBackgroundLocation } from "../services/backgroundLocation";
-import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../services/requestCache";
+import { cleanGoogleRequestCaches, readCachedRequest, removeCachedRequest, writeCachedRequest } from "../services/requestCache";
+import { useActiveLocationRefresh } from "./useActiveLocationRefresh";
+import { parseRequestId } from "./requestId";
+import { onReconnected } from "../services/networkManager";
 
 type DispatchState = {
   offers: ServiceRequest[];
@@ -20,7 +23,10 @@ type DispatchState = {
   connected: boolean;
   serverOffset: number;
   error: string | null;
+  locationRefreshError: string | null;
+  retryLocationRefresh: () => void;
   refresh: () => Promise<void>;
+  subscribeToPaymentUpdates: (listener: (requestId: string, eventId?: string) => void) => () => void;
 };
 const Context = createContext<DispatchState | null>(null);
 export function useDispatchUpdates() {
@@ -40,19 +46,29 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const [offers, setOffers] = useState<ServiceRequest[]>([]);
   const [activeJob, setActiveJob] = useState<ServiceRequest | null>(null);
+  const { locationRefreshError, retryLocationRefresh } = useActiveLocationRefresh(token, activeJob, setActiveJob);
   const [online, setOnline] = useState(false);
   const [revision, setRevision] = useState(0);
   const [connected, setConnected] = useState(false);
   const [serverOffset, setServerOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ message: string; requestId: string } | null>(null);
   const [foreground, setForeground] = useState(AppState.currentState !== "background");
   const sessionRef = useRef(token);
   sessionRef.current = token;
+  const paymentListeners = useRef(new Set<(requestId: string, eventId?: string) => void>());
+  const subscribeToPaymentUpdates = useCallback((listener: (requestId: string, eventId?: string) => void) => {
+    paymentListeners.current.add(listener);
+    return () => { paymentListeners.current.delete(listener); };
+  }, []);
   const fetching = useRef(false);
   const freshJob = useRef(false);
   const provider = user?.role === "mechanic";
   const cacheKey = user?.id ? `rapidassist.activeJob.${user.id}` : null;
+
+  useEffect(() => {
+    void cleanGoogleRequestCaches();
+  }, []);
 
   useEffect(() => {
     setOffers([]); setActiveJob(null); setNotice(null); setError(null);
@@ -103,16 +119,29 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
   }, [refresh, foreground]);
 
   useEffect(() => {
+    return onReconnected(() => {
+      void refresh();
+    });
+  }, [refresh]);
+
+  useEffect(() => {
     if (!token || !foreground) return;
     const socket = createSocket(token);
     socket.on("connect", () => { setConnected(true); setRevision((n) => n + 1); void refresh(); });
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
-    socket.on("request:changed", (event: { kind: string }) => {
+    socket.on("request:changed", (event: { kind: string; requestId?: string; eventId?: string }) => {
+      if (sessionRef.current !== token) return;
+      const requestId = parseRequestId(event.requestId);
+      if (event.kind === "payment" && requestId) {
+        paymentListeners.current.forEach((listener) => listener(requestId, event.eventId));
+      }
       setRevision((n) => n + 1);
       if (provider) void refresh();
-      else if (event.kind === "arrived") setNotice("Your provider has arrived at the pickup point.");
-      else if (event.kind === "assigned") setNotice("Provider confirmed! Follow their arrival live.");
+      else {
+        if (event.kind === "arrived") setNotice({ requestId: requestId ?? "invalid", message: "Your provider has arrived at the pickup point." });
+        if (event.kind === "assigned") setNotice({ requestId: requestId ?? "invalid", message: "Provider confirmed! Follow their arrival live." });
+      }
     });
     socket.connect();
     return () => { socket.disconnect(); setConnected(false); };
@@ -165,10 +194,10 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  return <Context.Provider value={{ offers, activeJob, online, setOnline, revision, connected, serverOffset, error, refresh }}>
+  return <Context.Provider value={{ offers, activeJob, online, setOnline, revision, connected, serverOffset, error, refresh, locationRefreshError, retryLocationRefresh, subscribeToPaymentUpdates }}>
     {children}
     {notice ? <View style={[styles.notice, { top: insets.top + 8 }]} accessibilityLiveRegion="polite">
-      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push("/(user)/tracking"); }}><Text style={styles.noticeText}>{notice}</Text></Pressable>
+      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push({ pathname: "/(user)/tracking", params: { requestId: notice.requestId } }); }}><Text style={styles.noticeText}>{notice.message}</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" hitSlop={12} onPress={() => setNotice(null)}><Text style={styles.noticeText}>×</Text></Pressable>
     </View> : null}
     {provider ? <OfferBanner /> : null}

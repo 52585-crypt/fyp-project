@@ -1,10 +1,12 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { router, useRootNavigationState } from "expo-router";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../auth/AuthProvider";
 import { createSocket } from "../services/socket";
+import { onReconnected } from "../services/networkManager";
+import { notificationDestination } from "./notificationDestination";
 import { listNotifications, registerDeviceToken } from "./notifications.api";
 
 Notifications.setNotificationHandler({
@@ -18,21 +20,15 @@ Notifications.setNotificationHandler({
 
 const NotificationContext = createContext({ unread: 0, refreshUnread: async () => {} });
 
-export function openNotification(data: Record<string, any>) {
-  const requestId = typeof data?.requestId === "string" ? data.requestId : undefined;
-  const route = String(data?.route || "");
-  if (route.includes("/(provider)/requests") && requestId) router.push({ pathname: "/(provider)/requests/[requestId]", params: { requestId } });
-  else if (route.includes("/(provider)/chat") && requestId) router.push({ pathname: "/(provider)/chat/[requestId]", params: { requestId } });
-  else if (route.includes("/(user)/chat") && requestId) router.push({ pathname: "/(user)/chat/[requestId]", params: { requestId } });
-  else if (route.includes("/(provider)/payment") && requestId) router.push({ pathname: "/(provider)/payment/[requestId]", params: { requestId } });
-  else if (route.includes("/(user)/payment") && requestId) router.push({ pathname: "/(user)/payment/[requestId]", params: { requestId } });
-  else if (route.includes("/(provider)")) router.push("/(provider)/jobs");
-  else router.push("/(user)/tracking");
+export function openNotification(data: Record<string, unknown>) {
+  router.push(notificationDestination(data));
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const [unread, setUnread] = useState(0);
+  const navigationKey = useRootNavigationState()?.key;
+  const handledResponse = useRef<string | null>(null);
 
   const refreshUnread = useCallback(async () => {
     if (!token) return setUnread(0);
@@ -41,6 +37,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [token]);
 
   useEffect(() => { void refreshUnread(); }, [refreshUnread]);
+
+  useEffect(() => {
+    return onReconnected(() => {
+      void refreshUnread();
+    });
+  }, [refreshUnread]);
 
   useEffect(() => {
     if (!token) return;
@@ -75,12 +77,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const received = Notifications.addNotificationReceivedListener(() => void refreshUnread());
-    const response = Notifications.addNotificationResponseReceivedListener((event) => {
-      openNotification(event.notification.request.content.data as Record<string, any>);
-      void refreshUnread();
-    });
-    return () => { received.remove(); response.remove(); };
+    return () => received.remove();
   }, [refreshUnread]);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !navigationKey) return;
+    let active = true;
+    function handleResponse(response: Notifications.NotificationResponse | null) {
+      if (!active || !response) return;
+      const request = response.notification.request;
+      if (handledResponse.current === request.identifier) return;
+      handledResponse.current = request.identifier;
+      openNotification(request.content.data);
+      void Notifications.clearLastNotificationResponseAsync().catch(() => {});
+      void refreshUnread();
+    }
+    const listener = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    void Notifications.getLastNotificationResponseAsync().then(handleResponse).catch(() => {});
+    return () => { active = false; listener.remove(); };
+  }, [navigationKey, refreshUnread]);
 
   const value = useMemo(() => ({ unread, refreshUnread }), [unread, refreshUnread]);
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

@@ -7,6 +7,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
+import { hasOperationalCoordinates, requiresGoogleMap } from "../../../src/services/locationMapPolicy";
 import { getRequest, getProviderActiveRequest, requestExtraWork, updateRequestStatus } from "../../../src/requests/requests.api";
 import { getServiceIcon, getServiceTitle, providerJobFlows, providerServiceFromRequestCategory } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
@@ -16,13 +17,13 @@ import { canNavigateTo, openExternalNavigation } from "../../../src/utils/naviga
 
 
 function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
-  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
+  if (!hasOperationalCoordinates(location)) return null;
   return { latitude: location.lat, longitude: location.lng };
 }
 
 export default function ProviderJobs() {
   const { token, user } = useAuth();
-  const { activeJob, refresh, error: syncError } = useDispatchUpdates();
+  const { activeJob, refresh, error: syncError, locationRefreshError, retryLocationRefresh } = useDispatchUpdates();
   const [route, setRoute] = useState<Coordinate[]>([]);
   const [eta, setEta] = useState<number | null>(null);
   const params = useLocalSearchParams<{ requestId?: string; category?: string }>();
@@ -147,6 +148,7 @@ export default function ProviderJobs() {
       <AppShell title="Active Job" subtitle="Update request status as work progresses.">
         {requestCoordinate(activeRequest?.pickupLocation) ? (
           <LocationMapPreview
+            requiresGoogleMap={requiresGoogleMap(activeRequest?.pickupLocation, activeRequest?.destinationLocation)}
             pickup={providerCoordinate || requestCoordinate(activeRequest?.pickupLocation)!}
             destination={providerCoordinate ? targetCoordinate : requestCoordinate(activeRequest?.destinationLocation)}
             route={route}
@@ -177,6 +179,7 @@ export default function ProviderJobs() {
             />
           </View>
           <Field label="Request ID" icon="reader" placeholder="Paste assigned request ID" value={requestId} onChangeText={setRequestId} />
+          {locationRefreshError ? <><Text style={styles.error}>{locationRefreshError}</Text><PrimaryButton title="Retry location" onPress={retryLocationRefresh} /></> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {syncError && !isClosed ? <Text style={styles.locationText}>{syncError}</Text> : null}
           {isCompleted ? <Text style={styles.doneText}>This job is completed and moved to your earnings/history.</Text> : null}

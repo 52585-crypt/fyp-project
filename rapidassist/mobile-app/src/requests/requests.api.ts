@@ -24,7 +24,7 @@ export async function listOpenRequests(token: string) {
 
 export async function listNearbyProviders(
   token: string,
-  input: { category: RequestCategory; lat: number; lng: number; radiusKm?: number }
+  input: { category: RequestCategory; lat: number; lng: number }
 ) {
   const res = await api.get<{ ok: boolean; radiusKm: number; providers: NearbyProvider[] }>(
     "/api/requests/nearby-providers",
@@ -38,6 +38,13 @@ export async function listNearbyProviders(
 
 export async function getRequest(token: string, id: string) {
   const res = await api.get<{ ok: boolean; request: ServiceRequest }>(`/api/requests/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data.request;
+}
+
+export async function refreshRequestLocation(token: string, id: string, field: "pickup" | "destination") {
+  const res = await api.post<{ ok: boolean; request: ServiceRequest }>(`/api/requests/${encodeURIComponent(id)}/location/${field}/refresh`, {}, {
     headers: { Authorization: `Bearer ${token}` }
   });
   return res.data.request;

@@ -1,33 +1,39 @@
+import { tokens } from "../theme/tokens";
+
+export { tokens };
+
 export const ui = {
+  tokens,
   colors: {
-    bg: "#F5F7F6",
-    surface: "#FFFFFF",
-    surfaceAlt: "#F0F6F3",
-    text: "#182E28",
-    muted: "#64756E",
-    border: "#E2E9E5",
-    primary: "#087F5B",
-    primaryDark: "#066448",
-    primarySoft: "#E4F4EC",
-    success: "#15803D",
-    successSoft: "#DCFCE7",
-    warning: "#A86408",
-    warningSoft: "#FEF3C7",
-    danger: "#DC2626",
-    dangerSoft: "#FEE2E2",
-    dark: "#123C30"
+    bg: tokens.colors.canvas,
+    surface: tokens.colors.surface,
+    surfaceAlt: tokens.colors.surfaceAlt,
+    text: tokens.colors.ink,
+    muted: tokens.colors.inkMuted,
+    border: tokens.colors.border,
+    primary: tokens.colors.brand,
+    primaryDark: tokens.colors.brandPressed,
+    primarySoft: tokens.colors.brandSoft,
+    success: tokens.colors.statusSuccess,
+    successSoft: tokens.colors.statusSuccessSoft,
+    warning: tokens.colors.accent,
+    warningSoft: tokens.colors.accentSoft,
+    danger: tokens.colors.statusDanger,
+    dangerSoft: tokens.colors.statusDangerSoft,
+    dark: tokens.colors.dark
   },
   radius: {
-    sm: 10,
-    md: 14,
-    lg: 20,
-    xl: 28
+    tag: tokens.radii.tag,
+    sm: tokens.radii.sm,
+    md: tokens.radii.md,
+    lg: tokens.radii.button,
+    xl: tokens.radii.pill
   },
   shadow: {
-    shadowColor: "#182E28",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
+    shadowColor: tokens.colors.ink,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2
   }
 } as const;

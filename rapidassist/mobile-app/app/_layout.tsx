@@ -9,10 +9,13 @@ import "../src/services/backgroundLocation";
 import { ConnectivityProvider } from "../src/services/ConnectivityProvider";
 import { NotificationProvider } from "../src/notifications/NotificationProvider";
 import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
+import { GoogleOAuthRoot } from "../src/auth/GoogleOAuthRoot";
+
+import { StripeRoot } from "../src/payments/StripeRoot";
 
 export default function RootLayout() {
   return (
-    <AppErrorBoundary><ReduxProvider store={store}>
+    <AppErrorBoundary><StripeRoot><GoogleOAuthRoot><ReduxProvider store={store}>
       <PaperProvider theme={paperTheme}>
         <ConnectivityProvider><AuthProvider><NotificationProvider>
           <DispatchProvider>
@@ -26,6 +29,6 @@ export default function RootLayout() {
           </DispatchProvider>
         </NotificationProvider></AuthProvider></ConnectivityProvider>
       </PaperProvider>
-    </ReduxProvider></AppErrorBoundary>
+    </ReduxProvider></GoogleOAuthRoot></StripeRoot></AppErrorBoundary>
   );
 }

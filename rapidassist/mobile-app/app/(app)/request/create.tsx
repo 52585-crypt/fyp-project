@@ -7,26 +7,28 @@ import { colors } from "../../../src/theme/colors";
 import { RAButton } from "../../../src/components/RAButton";
 import { RATextInput } from "../../../src/components/RATextInput";
 import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
+import { CoordinateField } from "../../../src/components/CoordinateField";
+import { LocationAutocompleteField } from "../../../src/components/LocationAutocompleteField";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
 import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
 import type { ServiceSuggestion } from "../../../src/ai/serviceSuggestion.types";
 import type { Vehicle } from "../../../src/vehicles/vehicles.types";
 import { listMyVehicles } from "../../../src/vehicles/vehicles.api";
-import type { FuelType, MechanicIssueCategory, NearbyProvider, PriceLine, RequestCategory } from "../../../src/requests/requests.types";
+import { buildEstimate, TOWING_RATE_PER_KM } from "../../../src/requests/requestEstimate";
+import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory } from "../../../src/requests/requests.types";
 import { createRequest, listNearbyProviders } from "../../../src/requests/requests.api";
-import {
-  deleteFavoriteLocation,
-  getFavoriteLocations,
-  saveFavoriteLocation,
-  type FavoriteLocation
-} from "../../../src/services/favoriteLocations.storage";
+import type { FavoriteLocation } from "../../../src/services/favoriteLocations.storage";
+import { useFavoriteLocations } from "../../../src/services/useFavoriteLocations";
 import { searchPlaces, type GeocodingResult } from "../../../src/services/geocoding";
-import { getDrivingDistanceKm } from "../../../src/services/routing";
-import { distanceKm as calculateDistanceKm, type Coordinate } from "../../../src/utils/distance";
+import { applyNormalizedLocationTarget, normalizeLocation, selectedRequestLocations, type NormalizedLocation } from "../../../src/services/normalizedLocation";
+import { requiresGoogleMap } from "../../../src/services/locationMapPolicy";
+import { useBookingRoute } from "../../../src/requests/useBookingRoute";
+import { customerServices, normalizeBookingCategory } from "../../../src/ui/customer/services";
+import { distanceKm, type Coordinate } from "../../../src/utils/distance";
 
 type ServiceOption = {
-  id: string;
+  id: RequestCategory;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -35,18 +37,15 @@ type ServiceOption = {
   unknownIssue?: boolean;
 };
 
-const serviceOptions: ServiceOption[] = [
-  { id: "towing", title: "Car Towing", subtitle: "Move vehicle", icon: "car", category: "car_towing", issueType: "breakdown" },
-  { id: "fuel", title: "Fuel Delivery", subtitle: "Petrol or diesel", icon: "water", category: "fuel_delivery", issueType: "fuel_delivery" },
-  { id: "mechanic", title: "Mechanic", subtitle: "Inspection and repair", icon: "construct", category: "mechanic", issueType: "battery" }
-];
+const serviceDetails: Record<RequestCategory, Pick<ServiceOption, "subtitle" | "icon" | "issueType">> = {
+  car_towing: { subtitle: "Move vehicle", icon: "car", issueType: "breakdown" },
+  fuel_delivery: { subtitle: "Petrol or diesel", icon: "water", issueType: "fuel_delivery" },
+  mechanic: { subtitle: "Inspection and repair", icon: "construct", issueType: "battery" }
+};
 
-function serviceIdForCategory(value: unknown) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === "fuel_delivery") return "fuel";
-  if (raw === "mechanic") return "mechanic";
-  return "towing";
-}
+const serviceOptions: ServiceOption[] = customerServices.map(({ label, value }) => ({
+  id: value, title: label, category: value, ...serviceDetails[value]
+}));
 
 const fuelOptions: Array<{ label: string; value: FuelType }> = [
   { label: "Petrol", value: "petrol" },
@@ -62,68 +61,20 @@ const mechanicIssues: Array<{ label: string; value: MechanicIssueCategory }> = [
   { label: "Inspection", value: "general_inspection" }
 ];
 
-const DEFAULT_PICKUP = { latitude: 31.5204, longitude: 74.3587 };
-const DEFAULT_DESTINATION = { latitude: 31.4697, longitude: 74.2728 };
-const TOWING_RATE_PER_KM = 180;
-
-function parsePositiveNumber(value: string, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function parseCoordinate(lat: string, lng: string, fallback: Coordinate) {
+function parseCoordinate(lat: string, lng: string) {
   const parsedLat = Number(lat);
   const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return fallback;
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng) || Math.abs(parsedLat) > 90 || Math.abs(parsedLng) > 180) return null;
   return { latitude: parsedLat, longitude: parsedLng };
-}
-
-function formatDistanceKm(value: number) {
-  return value >= 10 ? value.toFixed(0) : value.toFixed(1);
 }
 
 function coordinateLabel(prefix: string, coordinate: Coordinate) {
   return `${prefix}: ${coordinate.latitude.toFixed(5)}, ${coordinate.longitude.toFixed(5)}`;
 }
 
-function nearbyRadiusFor(category: RequestCategory) {
-  if (category === "car_towing") return 15;
-  if (category === "fuel_delivery") return 8;
-  return 5;
-}
-
 function ratingText(provider: NearbyProvider) {
   if (!provider.ratingCount) return "New provider";
   return `${Number(provider.ratingAvg || 0).toFixed(1)} rating (${provider.ratingCount})`;
-}
-
-function buildEstimate(category: RequestCategory, distanceKm: number, fuelType: FuelType, liters: number) {
-  let lines: PriceLine[];
-
-  if (category === "car_towing") {
-    lines = [
-      { label: "Base towing fee", amount: 1200 },
-      { label: `Distance charge (${distanceKm} km)`, amount: Math.round(distanceKm * TOWING_RATE_PER_KM) },
-      { label: "Service fee", amount: 250 }
-    ];
-  } else if (category === "fuel_delivery") {
-    const perLiter = fuelType === "diesel" ? 290 : 275;
-    lines = [
-      { label: `${fuelType === "diesel" ? "Diesel" : "Petrol"} (${liters}L)`, amount: Math.round(perLiter * liters) },
-      { label: "Delivery fee", amount: 450 },
-      { label: "Service fee", amount: 150 }
-    ];
-  } else {
-    lines = [
-      { label: "Inspection fee", amount: 900 },
-      { label: "Visit fee", amount: 350 }
-    ];
-  }
-
-  return {
-    lines,
-    total: lines.reduce((sum, line) => sum + line.amount, 0)
-  };
 }
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
@@ -167,16 +118,47 @@ export default function CreateRequest() {
   const params = useLocalSearchParams<{ category?: string }>();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState(() => serviceIdForCategory(params.category));
+  const [selectedServiceId, setSelectedServiceId] = useState(() => normalizeBookingCategory(params.category));
   const [description, setDescription] = useState("");
   const [manualSelectionVersion, setManualSelectionVersion] = useState(0);
-  const [lat, setLat] = useState("31.5204");
-  const [lng, setLng] = useState("74.3587");
-  const [addressText, setAddressText] = useState("Gulberg, Lahore");
-  const [destinationLat, setDestinationLat] = useState("31.4697");
-  const [destinationLng, setDestinationLng] = useState("74.2728");
-  const [destinationAddress, setDestinationAddress] = useState("Johar Town, Lahore");
-  const [distanceKm, setDistanceKm] = useState("8");
+  const [pickupLocation, setPickupLocation] = useState<NormalizedLocation | null>(null);
+  const [destinationLocation, setDestinationLocation] = useState<NormalizedLocation | null>(null);
+  const [pickupSearch, setPickupSearch] = useState("");
+  const [destinationSearch, setDestinationSearch] = useState("");
+  const [coordinateDrafts, setCoordinateDrafts] = useState<Partial<Record<LocationTarget, { latitude: string; longitude: string }>>>({});
+  const coordinateInputs = (target: LocationTarget, location: NormalizedLocation | null) => ({
+    latitude: location ? String(location.latitude) : coordinateDrafts[target]?.latitude || "",
+    longitude: location ? String(location.longitude) : coordinateDrafts[target]?.longitude || ""
+  });
+  const { latitude: lat, longitude: lng } = coordinateInputs("pickup", pickupLocation);
+  const { latitude: destinationLat, longitude: destinationLng } = coordinateInputs("destination", destinationLocation);
+  const addressText = pickupLocation?.address || pickupSearch;
+  const destinationAddress = destinationLocation?.address || destinationSearch;
+  const editLocationSearch = (target: LocationTarget, address: string) => {
+    setCoordinateDrafts((value) => ({ ...value, [target]: undefined }));
+    if (target === "pickup") { setPickupSearch(address); setPickupLocation(null); }
+    else { setDestinationSearch(address); setDestinationLocation(null); }
+  };
+  const setAddressText = (address: string) => editLocationSearch("pickup", address);
+  const setDestinationAddress = (address: string) => editLocationSearch("destination", address);
+  const updateCoordinate = (target: "pickup" | "destination", field: "latitude" | "longitude", text: string) => {
+    const location = target === "pickup" ? pickupLocation : destinationLocation;
+    const draft = coordinateInputs(target, location);
+    if (draft[field] === text.trim()) return;
+    draft[field] = text.trim();
+    const setter = target === "pickup" ? setPickupLocation : setDestinationLocation;
+    const searchSetter = target === "pickup" ? setPickupSearch : setDestinationSearch;
+    const coordinate = draft.latitude && draft.longitude ? parseCoordinate(draft.latitude, draft.longitude) : null;
+    setCoordinateDrafts((value) => ({ ...value, [target]: draft }));
+    searchSetter("");
+    setter(coordinate ? normalizeLocation({
+      ...coordinate, source: "manual_map", address: coordinateLabel(target === "pickup" ? "Pinned pickup" : "Pinned destination", coordinate)
+    }) : null);
+  };
+  const setLat = (value: string) => updateCoordinate("pickup", "latitude", value);
+  const setLng = (value: string) => updateCoordinate("pickup", "longitude", value);
+  const setDestinationLat = (value: string) => updateCoordinate("destination", "latitude", value);
+  const setDestinationLng = (value: string) => updateCoordinate("destination", "longitude", value);
   const [activeLocationTarget, setActiveLocationTarget] = useState<LocationTarget>("pickup");
   const [fuelType, setFuelType] = useState<FuelType>("petrol");
   const [liters, setLiters] = useState("5");
@@ -184,14 +166,12 @@ export default function CreateRequest() {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationSearchLoading, setLocationSearchLoading] = useState<"pickup" | "destination" | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [favoriteLocations, setFavoriteLocations] = useState<FavoriteLocation[]>([]);
-  const [favoriteSaving, setFavoriteSaving] = useState(false);
   const [nearbyProviders, setNearbyProviders] = useState<NearbyProvider[]>([]);
-  const [nearbyRadiusKm, setNearbyRadiusKm] = useState(nearbyRadiusFor("car_towing"));
+  const [nearbyRadiusKm, setNearbyRadiusKm] = useState<number | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { favoriteLocations, favoriteSaving, saveFavorite, removeFavorite } = useFavoriteLocations(setError);
   const submission = useRef<{ fingerprint: string; id: string } | null>(null);
   const submitting = useRef(false);
 
@@ -217,102 +197,33 @@ export default function CreateRequest() {
   }, [loadVehicles]);
 
   useEffect(() => {
-    setSelectedServiceId(serviceIdForCategory(params.category));
+    setSelectedServiceId(normalizeBookingCategory(params.category));
   }, [params.category]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadFavoriteLocations() {
-      try {
-        const saved = await getFavoriteLocations();
-        if (mounted) setFavoriteLocations(saved);
-      } catch {
-        if (mounted) setFavoriteLocations([]);
-      }
-    }
-
-    loadFavoriteLocations();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const selectedVehicle = useMemo(() => vehicles.find((vehicle) => vehicle.id === vehicleId) || null, [vehicleId, vehicles]);
 
-  const locationReady = useMemo(() => {
-    const parsedLat = Number(lat);
-    const parsedLng = Number(lng);
-    return Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
-  }, [lat, lng]);
-
-  const destinationReady = useMemo(() => {
-    const parsedLat = Number(destinationLat);
-    const parsedLng = Number(destinationLng);
-    return Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
-  }, [destinationLat, destinationLng]);
-
-  const pickupCoordinate = useMemo(() => parseCoordinate(lat, lng, DEFAULT_PICKUP), [lat, lng]);
-  const destinationCoordinate = useMemo(
-    () => parseCoordinate(destinationLat, destinationLng, DEFAULT_DESTINATION),
-    [destinationLat, destinationLng]
-  );
-  const calculatedDistanceKm = useMemo(
-    () => calculateDistanceKm(pickupCoordinate, destinationCoordinate),
-    [destinationCoordinate, pickupCoordinate]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRouteDistance() {
-      if (selectedService.category !== "car_towing" || !locationReady || !destinationReady) return;
-
-      try {
-        setRouteLoading(true);
-        const km = await getDrivingDistanceKm(pickupCoordinate, destinationCoordinate);
-        if (!cancelled) {
-          const nextDistance = formatDistanceKm(km);
-          setDistanceKm((current) => (current === nextDistance ? current : nextDistance));
-        }
-      } catch {
-        if (!cancelled) {
-          const fallbackDistance = formatDistanceKm(calculatedDistanceKm);
-          setDistanceKm((current) => (current === fallbackDistance ? current : fallbackDistance));
-        }
-      } finally {
-        if (!cancelled) setRouteLoading(false);
-      }
-    }
-
-    loadRouteDistance();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    calculatedDistanceKm,
-    destinationCoordinate,
-    destinationReady,
-    locationReady,
-    pickupCoordinate,
-    selectedService.category
-  ]);
+  const locationReady = Boolean(pickupLocation);
+  const destinationReady = Boolean(destinationLocation);
+  const { route, loading: routeLoading, error: routeError, retry: retryRoute } =
+    useBookingRoute(pickupLocation, selectedService.category === "car_towing" ? destinationLocation : null);
 
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(async () => {
-      if (!token || !locationReady) return;
+      if (!token || !pickupLocation) {
+        setNearbyProviders([]);
+        setNearbyRadiusKm(null);
+        setNearbyLoading(false);
+        return;
+      }
       try {
-        const radiusKm = nearbyRadiusFor(selectedService.category);
         setNearbyLoading(true);
         setNearbyError(null);
         const result = await listNearbyProviders(token, {
           category: selectedService.category,
-          lat: pickupCoordinate.latitude,
-          lng: pickupCoordinate.longitude,
-          radiusKm
+          lat: pickupLocation.latitude,
+          lng: pickupLocation.longitude
         });
         if (!cancelled) {
           setNearbyProviders(result.providers);
@@ -321,6 +232,7 @@ export default function CreateRequest() {
       } catch (e: any) {
         if (!cancelled) {
           setNearbyProviders([]);
+          setNearbyRadiusKm(null);
           setNearbyError(e?.response?.data?.message || e?.message || "Failed to load nearby providers");
         }
       } finally {
@@ -332,27 +244,13 @@ export default function CreateRequest() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [locationReady, pickupCoordinate, selectedService.category, token]);
+  }, [pickupLocation, selectedService.category, token]);
 
-  const litersNumber = useMemo(() => Math.min(50, Math.max(1, Math.round(parsePositiveNumber(liters, 5)))), [liters]);
-  const distanceNumber = useMemo(() => Math.max(1, parsePositiveNumber(distanceKm, 8)), [distanceKm]);
-  const estimate = useMemo(
-    () => buildEstimate(selectedService.category, distanceNumber, fuelType, litersNumber),
-    [distanceNumber, fuelType, litersNumber, selectedService.category]
-  );
-  const providerPins = useMemo(
-    () =>
-      nearbyProviders.map((provider) => ({
-        id: provider.id,
-        name: provider.name,
-        distanceKm: provider.distanceKm,
-        location: {
-          latitude: provider.location.lat,
-          longitude: provider.location.lng
-        }
-      })),
-    [nearbyProviders]
-  );
+  const quantity = Number(liters);
+  const litersNumber = quantity >= 1 && quantity <= 50 ? Math.round(quantity) : NaN;
+  const estimate = buildEstimate(selectedService.category, route?.distanceKm ?? null, fuelType, litersNumber);
+  const approximateDistance = routeError && pickupLocation && destinationLocation
+    ? distanceKm(pickupLocation, destinationLocation) : null;
 
   const canSubmit = Boolean(
     vehicleId &&
@@ -373,8 +271,8 @@ export default function CreateRequest() {
       }
 
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLat(String(current.coords.latitude));
-      setLng(String(current.coords.longitude));
+      const location = normalizeLocation({ latitude: current.coords.latitude, longitude: current.coords.longitude, source: "gps" });
+      setPickupLocation({ ...location, address: "Current location" });
       setActiveLocationTarget("pickup");
 
       try {
@@ -384,10 +282,10 @@ export default function CreateRequest() {
         });
         if (address) {
           const readable = [address.name, address.street, address.city, address.region].filter(Boolean).join(", ");
-          setAddressText(readable || "Current location");
+          setPickupLocation((value) => value?.source === "gps" && value.latitude === location.latitude && value.longitude === location.longitude ? { ...value, address: readable || "Current location" } : value);
         }
       } catch {
-        setAddressText("Current location");
+        // Coordinates remain usable when reverse geocoding fails.
       }
     } catch (e: any) {
       setError(e?.message || "Failed to fetch current location");
@@ -397,35 +295,38 @@ export default function CreateRequest() {
   }
 
   function updatePickupFromMap(coordinate: Coordinate) {
-    setLat(String(coordinate.latitude));
-    setLng(String(coordinate.longitude));
-    setAddressText(coordinateLabel("Pinned pickup", coordinate));
+    const location = normalizeLocation({ ...coordinate, address: coordinateLabel("Pinned pickup", coordinate), source: "manual_map" });
+    setPickupLocation(location);
   }
 
   function updateDestinationFromMap(coordinate: Coordinate) {
-    setDestinationLat(String(coordinate.latitude));
-    setDestinationLng(String(coordinate.longitude));
-    setDestinationAddress(coordinateLabel("Pinned destination", coordinate));
+    const location = normalizeLocation({ ...coordinate, address: coordinateLabel("Pinned destination", coordinate), source: "manual_map" });
+    setDestinationLocation(location);
   }
 
   function applyPickupLocation(result: GeocodingResult) {
-    setLat(String(result.latitude));
-    setLng(String(result.longitude));
-    setAddressText(result.label);
+    const location = normalizeLocation({ ...result, address: result.label, source: result.source });
+    applySelectedPickup(location);
+  }
+
+  function applySelectedPickup(location: NormalizedLocation) {
+    applyNormalizedLocationTarget("pickup", location, { pickup: setPickupLocation, destination: setDestinationLocation });
     setActiveLocationTarget("pickup");
   }
 
   function applyFavoritePickupLocation(location: FavoriteLocation) {
-    setLat(String(location.latitude));
-    setLng(String(location.longitude));
-    setAddressText(location.addressText);
+    if (location.latitude == null || location.longitude == null || location.source === "google_places") { setError("This saved location is unavailable. Please select it again."); return; }
+    setPickupLocation(normalizeLocation({ latitude: location.latitude, longitude: location.longitude, address: location.addressText, source: location.source || "unknown", placeId: location.placeId }));
     setActiveLocationTarget("pickup");
   }
 
   function applyDestinationLocation(result: GeocodingResult) {
-    setDestinationLat(String(result.latitude));
-    setDestinationLng(String(result.longitude));
-    setDestinationAddress(result.label);
+    const location = normalizeLocation({ ...result, address: result.label, source: result.source });
+    applySelectedDestination(location);
+  }
+
+  function applySelectedDestination(location: NormalizedLocation) {
+    applyNormalizedLocationTarget("destination", location, { pickup: setPickupLocation, destination: setDestinationLocation });
     setActiveLocationTarget("destination");
   }
 
@@ -433,7 +334,7 @@ export default function CreateRequest() {
     try {
       setLocationSearchLoading("pickup");
       setError(null);
-      const [result] = await searchPlaces(addressText, pickupCoordinate);
+      const [result] = await searchPlaces(addressText, pickupLocation ?? undefined);
       if (!result) {
         setError("No pickup location found. Try a more specific address.");
         return;
@@ -450,7 +351,7 @@ export default function CreateRequest() {
     try {
       setLocationSearchLoading("destination");
       setError(null);
-      const [result] = await searchPlaces(destinationAddress, pickupCoordinate);
+      const [result] = await searchPlaces(destinationAddress, pickupLocation ?? undefined);
       if (!result) {
         setError("No destination found. Try a more specific address.");
         return;
@@ -464,34 +365,29 @@ export default function CreateRequest() {
   }
 
   async function saveCurrentPickupAsFavorite() {
-    try {
-      setFavoriteSaving(true);
-      setError(null);
-      const saved = await saveFavoriteLocation({
-        addressText,
-        latitude: pickupCoordinate.latitude,
-        longitude: pickupCoordinate.longitude
-      });
-      setFavoriteLocations(saved);
-    } catch (e: any) {
-      setError(e?.message || "Failed to save favorite location");
-    } finally {
-      setFavoriteSaving(false);
+    if (!pickupLocation) {
+      setError("Choose a pickup location before saving it.");
+      return;
     }
+    setError(null);
+    await saveFavorite({
+      addressText: addressText,
+      source: pickupLocation.source,
+      placeId: pickupLocation.placeId,
+      latitude: pickupLocation.latitude,
+      longitude: pickupLocation.longitude
+    });
   }
 
   async function removeFavoritePickupLocation(id: string) {
-    try {
-      setError(null);
-      const saved = await deleteFavoriteLocation(id);
-      setFavoriteLocations(saved);
-    } catch (e: any) {
-      setError(e?.message || "Failed to remove favorite location");
-    }
+    setError(null);
+    await removeFavorite(id);
   }
 
   async function onSubmit() {
-    if (!token || !vehicleId || !locationReady || submitting.current) return;
+    if (!token || !canSubmit || !vehicleId || submitting.current) return;
+    const locations = selectedRequestLocations(selectedService.category, pickupLocation, destinationLocation);
+    if (!locations) return;
     submitting.current = true;
     try {
       setLoading(true);
@@ -506,20 +402,8 @@ export default function CreateRequest() {
               ? null
               : selectedService.issueType,
         description: description.trim() ? description.trim() : null,
-        pickupLocation: {
-          lat: Number(lat),
-          lng: Number(lng),
-          addressText: addressText.trim() ? addressText.trim() : null
-        },
-        destinationLocation:
-          selectedService.category === "car_towing"
-            ? {
-                lat: Number(destinationLat),
-                lng: Number(destinationLng),
-                addressText: destinationAddress.trim() ? destinationAddress.trim() : null
-              }
-            : null,
-        distanceKm: selectedService.category === "car_towing" ? distanceNumber : null,
+        ...locations,
+        distanceKm: route?.distanceKm ?? null,
         fuelDetails:
           selectedService.category === "fuel_delivery"
             ? {
@@ -554,7 +438,7 @@ export default function CreateRequest() {
   function applyServiceSuggestion(suggestion: ServiceSuggestion) {
     const selection = selectionFromSuggestion(suggestion);
     if (!selection) return;
-    setSelectedServiceId(selection.serviceId);
+    setSelectedServiceId(selection.category);
     if (selection.mechanicIssue) setMechanicIssue(selection.mechanicIssue);
   }
 
@@ -591,6 +475,7 @@ export default function CreateRequest() {
                   item={option}
                   selected={option.id === selectedServiceId}
                   onPress={() => {
+                    if (option.id === selectedServiceId) return;
                     setManualSelectionVersion((version) => version + 1);
                     setSelectedServiceId(option.id);
                   }}
@@ -647,7 +532,16 @@ export default function CreateRequest() {
               </View>
             </Pressable>
             <View style={{ height: 10 }} />
-            <RATextInput icon="location" placeholder="Address" value={addressText} onChangeText={setAddressText} />
+            <LocationAutocompleteField
+              token={token}
+              variant="compact"
+              icon="location"
+              placeholder="Search pickup address"
+              value={addressText}
+              onChangeText={setAddressText}
+              onSelect={applySelectedPickup}
+              near={pickupLocation ?? undefined}
+            />
             <View style={{ height: 10 }} />
             <RAButton
               title={locationSearchLoading === "pickup" ? "Finding pickup..." : "Find Pickup on Map"}
@@ -683,10 +577,10 @@ export default function CreateRequest() {
             </View>
             <View style={styles.coordinateRow}>
               <View style={{ flex: 1 }}>
-                <RATextInput icon="navigate" placeholder="Lat" keyboardType="numeric" value={lat} onChangeText={setLat} />
+                <CoordinateField variant="compact" label="Lat" value={lat} onChangeText={setLat} />
               </View>
               <View style={{ flex: 1 }}>
-                <RATextInput icon="navigate" placeholder="Lng" keyboardType="numeric" value={lng} onChangeText={setLng} />
+                <CoordinateField variant="compact" label="Lng" value={lng} onChangeText={setLng} />
               </View>
             </View>
           </Section>
@@ -696,9 +590,9 @@ export default function CreateRequest() {
             action={<Text style={styles.mapAction}>{nearbyLoading ? "Searching" : `${nearbyProviders.length} available`}</Text>}
           >
             <LocationMapPicker
-              pickup={pickupCoordinate}
-              destination={selectedService.category === "car_towing" ? destinationCoordinate : pickupCoordinate}
-              providers={providerPins}
+              pickup={pickupLocation}
+              destination={selectedService.category === "car_towing" ? destinationLocation : null}
+              route={route?.coordinates}
               activeTarget={activeLocationTarget}
               onActiveTargetChange={setActiveLocationTarget}
               onPickupChange={updatePickupFromMap}
@@ -707,17 +601,18 @@ export default function CreateRequest() {
               pointLabel={selectedService.category === "fuel_delivery" ? "Delivery location" : selectedService.category === "mechanic" ? "Service location" : "Pickup"}
               pickupLabel="Pickup"
               destinationLabel="Destination"
+              requiresGoogleMap={requiresGoogleMap(pickupLocation, selectedService.category === "car_towing" ? destinationLocation : null)}
             />
             <View style={styles.mapSummary}>
               <Text style={styles.mapSummaryTitle}>
                 {nearbyLoading
                   ? "Checking online providers..."
                   : nearbyProviders.length
-                    ? `${nearbyProviders.length} provider${nearbyProviders.length === 1 ? "" : "s"} within ${nearbyRadiusKm} km`
-                    : `No providers within ${nearbyRadiusKm} km`}
+                    ? `${nearbyProviders.length} provider${nearbyProviders.length === 1 ? "" : "s"} ${nearbyRadiusKm === null ? "nearby" : `within ${nearbyRadiusKm} km`}`
+                    : nearbyRadiusKm === null ? "No nearby providers found" : `No providers within ${nearbyRadiusKm} km`}
               </Text>
               <Text style={styles.mapSummaryText}>
-                Blue is pickup, red is destination for towing, and green pins are verified available providers.
+                Blue is pickup. Red is the towing destination.
               </Text>
             </View>
             {nearbyProviders.slice(0, 3).map((provider) => (
@@ -728,7 +623,7 @@ export default function CreateRequest() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.providerName}>{provider.name}</Text>
                   <Text style={styles.providerMeta}>
-                    {provider.distanceKm} km away - {provider.etaMinutes} min ETA - {ratingText(provider)}
+                    {ratingText(provider)}
                   </Text>
                 </View>
               </View>
@@ -741,15 +636,27 @@ export default function CreateRequest() {
               <View style={styles.fareCard}>
                 <View>
                   <Text style={styles.fareLabel}>Estimated Fare</Text>
-                  <Text style={styles.fareValue}>Rs. {estimate.total.toLocaleString()}</Text>
+                  <Text style={styles.fareValue}>{estimate ? `Rs. ${estimate.total.toLocaleString()}` : "Unavailable"}</Text>
                 </View>
                 <View style={styles.fareMeta}>
-                  <Text style={styles.fareMetaText}>{distanceNumber} km</Text>
+                  {route ? <Text style={styles.fareMetaText}>{route.distanceKm.toFixed(1)} km</Text> : null}
+                  {approximateDistance !== null ? (
+                    <Text style={styles.fareMetaText}>About {approximateDistance.toFixed(1)} km</Text>
+                  ) : null}
                   <Text style={styles.fareMetaSub}>Rs. {TOWING_RATE_PER_KM}/km</Text>
                 </View>
               </View>
               <View style={{ height: 10 }} />
-              <RATextInput icon="flag" placeholder="Destination address" value={destinationAddress} onChangeText={setDestinationAddress} />
+              <LocationAutocompleteField
+                token={token}
+                variant="compact"
+                icon="flag"
+                placeholder="Search destination address"
+                value={destinationAddress}
+                onChangeText={setDestinationAddress}
+                onSelect={applySelectedDestination}
+                near={pickupLocation ?? undefined}
+              />
               <View style={{ height: 10 }} />
               <RAButton
                 title={locationSearchLoading === "destination" ? "Finding destination..." : "Find Destination on Map"}
@@ -758,17 +665,20 @@ export default function CreateRequest() {
               />
               <View style={styles.coordinateRow}>
                 <View style={{ flex: 1 }}>
-                  <RATextInput icon="navigate" placeholder="Destination lat" keyboardType="numeric" value={destinationLat} onChangeText={setDestinationLat} />
+                  <CoordinateField variant="compact" label="Destination lat" value={destinationLat} onChangeText={setDestinationLat} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <RATextInput icon="navigate" placeholder="Destination lng" keyboardType="numeric" value={destinationLng} onChangeText={setDestinationLng} />
+                  <CoordinateField variant="compact" label="Destination lng" value={destinationLng} onChangeText={setDestinationLng} />
                 </View>
               </View>
               <Text style={styles.distanceNote}>
                 {routeLoading
                   ? "Calculating road distance..."
-                  : "Distance is calculated from the selected pickup and destination. If road routing is unavailable, the app falls back to straight-line distance."}
+                  : routeError ? `${routeError} Approximate distance is straight-line only.`
+                    : route ? "Preview. The final estimate is calculated by the server."
+                      : "Select pickup and destination to preview the fare."}
               </Text>
+              {routeError ? <RAButton title="Retry route" onPress={retryRoute} /> : null}
             </Section>
           ) : null}
 
@@ -808,16 +718,16 @@ export default function CreateRequest() {
             <Text style={styles.reviewTitle}>Service Summary</Text>
             <SummaryLine label="Service Type" value={selectedService.title} />
             <SummaryLine label="Vehicle" value={selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : "Not selected"} />
-            <SummaryLine label="Location" value={addressText || `${lat}, ${lng}`} />
-            {selectedService.category === "car_towing" ? <SummaryLine label="Destination" value={destinationAddress || `${destinationLat}, ${destinationLng}`} /> : null}
-            {selectedService.category === "fuel_delivery" ? <SummaryLine label="Fuel" value={`${fuelType.toUpperCase()} - ${litersNumber}L`} /> : null}
+            <SummaryLine label="Location" value={pickupLocation ? addressText || `${lat}, ${lng}` : "Choose a pickup location"} />
+            {selectedService.category === "car_towing" ? <SummaryLine label="Destination" value={destinationLocation ? destinationAddress || `${destinationLat}, ${destinationLng}` : "Choose a towing destination"} /> : null}
+            {selectedService.category === "fuel_delivery" ? <SummaryLine label="Fuel" value={Number.isFinite(litersNumber) ? `${fuelType.toUpperCase()} - ${litersNumber}L` : "Enter 1–50 liters"} /> : null}
             {selectedService.category === "mechanic" ? <SummaryLine label="Issue" value={mechanicIssues.find((item) => item.value === mechanicIssue)?.label || mechanicIssue} /> : null}
-            {estimate.lines.map((line) => (
+            {estimate?.lines.map((line) => (
               <SummaryLine key={line.label} label={line.label} value={`Rs. ${line.amount.toLocaleString()}`} />
             ))}
             <View style={styles.estimateRow}>
               <Text style={styles.estimateLabel}>Estimated Total</Text>
-              <Text style={styles.estimateValue}>Rs. {estimate.total.toLocaleString()}</Text>
+              <Text style={styles.estimateValue}>{estimate ? `Rs. ${estimate.total.toLocaleString()}` : "Unavailable"}</Text>
             </View>
           </View>
         </ScrollView>

@@ -1,9 +1,10 @@
-import type { Coordinate } from "../utils/distance";
+import { coordinatesFromLngLat, type Coordinate } from "../utils/distance";
 
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
 
 export type GeocodingResult = Coordinate & {
   label: string;
+  source: "photon";
 };
 
 type PhotonFeature = {
@@ -56,13 +57,13 @@ export async function searchPlaces(query: string, near?: Coordinate): Promise<Ge
         const coordinates = feature.geometry?.coordinates;
         if (!Array.isArray(coordinates) || coordinates.length !== 2) return null;
 
-        const [longitude, latitude] = coordinates;
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        const coordinate = coordinatesFromLngLat(coordinates);
+        if (!coordinate) return null;
 
         return {
-          latitude,
-          longitude,
-          label: formatPhotonLabel(feature)
+          ...coordinate,
+          label: formatPhotonLabel(feature),
+          source: "photon" as const
         };
       })
       .filter((result): result is GeocodingResult => Boolean(result));

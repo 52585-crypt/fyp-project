@@ -1,42 +1,50 @@
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+import type { NormalizedLocation } from "./normalizedLocation";
 
-const FAVORITE_LOCATIONS_KEY = "rapidassist.favoriteLocations";
+// The old unscoped key has no owner and must never be read or migrated.
+const FAVORITE_LOCATIONS_PREFIX = "rapidassist.favoriteLocations.account.";
+const pending = new Map<string, Promise<unknown>>();
+
+function inAccount<T>(accountId: string, operation: (key: string) => Promise<T>): Promise<T> {
+  if (typeof accountId !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(accountId)) return Promise.reject(new Error("Sign in to manage saved locations."));
+  const key = FAVORITE_LOCATIONS_PREFIX + accountId;
+  const task = (pending.get(key) ?? Promise.resolve()).then(() => operation(key));
+  const settled = task.catch(() => {});
+  pending.set(key, settled);
+  void settled.then(() => { if (pending.get(key) === settled) pending.delete(key); });
+  return task;
+}
 const MAX_FAVORITE_LOCATIONS = 6;
 
 export type FavoriteLocation = {
   id: string;
   label: string;
   addressText: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   savedAt: string;
+  source?: NormalizedLocation["source"];
+  placeId?: string;
 };
 
-type SaveFavoriteLocationInput = {
+export type SaveFavoriteLocationInput = {
   label?: string;
   addressText: string;
   latitude: number;
   longitude: number;
+  source?: NormalizedLocation["source"];
+  placeId?: string;
 };
-
-function canUseSecureStore() {
-  return (
-    typeof (SecureStore as any)?.getItemAsync === "function" &&
-    typeof (SecureStore as any)?.setItemAsync === "function"
-  );
-}
-
-function canUseLocalStorage() {
-  try {
-    return typeof globalThis !== "undefined" && typeof globalThis.localStorage !== "undefined";
-  } catch {
-    return false;
-  }
-}
 
 function normalizeFavorite(value: unknown): FavoriteLocation | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<FavoriteLocation>;
+  if (item.source === "google_places") {
+    if (!item.id) return null;
+    return { id: String(item.id), label: "Location unavailable — select again", addressText: "Location unavailable", latitude: null, longitude: null,
+      savedAt: typeof item.savedAt === "string" ? item.savedAt : "", source: "google_places", ...(item.placeId ? { placeId: item.placeId } : {}) };
+  }
   const latitude = Number(item.latitude);
   const longitude = Number(item.longitude);
   if (!item.id || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
@@ -51,39 +59,20 @@ function normalizeFavorite(value: unknown): FavoriteLocation | null {
     addressText,
     latitude,
     longitude,
-    savedAt
+    savedAt,
+    ...(item.source ? { source: item.source } : {}),
+    ...(item.placeId ? { placeId: item.placeId } : {})
   };
 }
 
-async function readFavoriteLocationsRaw() {
-  let raw: string | null = null;
-  if (canUseSecureStore()) {
-    try {
-      raw = await SecureStore.getItemAsync(FAVORITE_LOCATIONS_KEY);
-    } catch {
-      raw = null;
-    }
-  }
-  if (!raw && canUseLocalStorage()) {
-    raw = globalThis.localStorage.getItem(FAVORITE_LOCATIONS_KEY);
-  }
-  return raw;
+function readFavoriteLocationsRaw(key: string) {
+  return Platform.OS === "web" ? globalThis.localStorage.getItem(key) : SecureStore.getItemAsync(key);
 }
 
-async function writeFavoriteLocationsRaw(value: string) {
-  if (canUseSecureStore()) {
-    try {
-      await SecureStore.setItemAsync(FAVORITE_LOCATIONS_KEY, value);
-      return;
-    } catch {
-      // fall through to localStorage for web or broken SecureStore runtimes
-    }
-  }
-  if (canUseLocalStorage()) {
-    globalThis.localStorage.setItem(FAVORITE_LOCATIONS_KEY, value);
-    return;
-  }
-  throw new Error("Unable to save favorite locations. Device storage is unavailable.");
+async function writeFavoriteLocationsRaw(key: string, value: FavoriteLocation[]) {
+  const raw = JSON.stringify(value);
+  if (Platform.OS === "web") globalThis.localStorage.setItem(key, raw);
+  else await SecureStore.setItemAsync(key, raw);
 }
 
 function buildFavoriteLabel(input: SaveFavoriteLocationInput) {
@@ -94,24 +83,34 @@ function buildFavoriteLabel(input: SaveFavoriteLocationInput) {
 
 function isSameFavorite(a: FavoriteLocation, b: FavoriteLocation) {
   const sameAddress = a.addressText.trim().toLowerCase() === b.addressText.trim().toLowerCase();
-  const sameCoordinate = Math.abs(a.latitude - b.latitude) < 0.000001 && Math.abs(a.longitude - b.longitude) < 0.000001;
+  const sameCoordinate = a.latitude != null && b.latitude != null && a.longitude != null && b.longitude != null && Math.abs(a.latitude - b.latitude) < 0.000001 && Math.abs(a.longitude - b.longitude) < 0.000001;
   return sameAddress || sameCoordinate;
 }
 
-export async function getFavoriteLocations() {
-  const raw = await readFavoriteLocationsRaw();
+async function readFavoriteLocations(key: string): Promise<FavoriteLocation[]> {
+  const raw = await readFavoriteLocationsRaw(key);
   if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeFavorite).filter(Boolean).slice(0, MAX_FAVORITE_LOCATIONS) as FavoriteLocation[];
+    const safe = parsed.map(normalizeFavorite).filter((item): item is FavoriteLocation => item !== null)
+      .slice(0, MAX_FAVORITE_LOCATIONS);
+    if (parsed.some((item: unknown) => (item as Partial<FavoriteLocation> | null)?.source === "google_places")) {
+      await writeFavoriteLocationsRaw(key, safe);
+    }
+    return safe;
   } catch {
     return [];
   }
 }
 
-export async function saveFavoriteLocation(input: SaveFavoriteLocationInput) {
+export function getFavoriteLocations(accountId: string) {
+  return inAccount(accountId, readFavoriteLocations);
+}
+
+export async function saveFavoriteLocation(accountId: string, input: SaveFavoriteLocationInput) {
+  if (input.source === "google_places") throw new Error("Google Places favorites are not available yet. Select a location on the map instead.");
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -125,20 +124,24 @@ export async function saveFavoriteLocation(input: SaveFavoriteLocationInput) {
     addressText,
     latitude,
     longitude,
-    savedAt: new Date().toISOString()
+    savedAt: new Date().toISOString(),
+    ...(input.source ? { source: input.source } : {}),
+    ...(input.placeId ? { placeId: input.placeId } : {})
   };
 
-  const existing = await getFavoriteLocations();
-  const nextFavorites = [nextFavorite, ...existing.filter((item) => !isSameFavorite(item, nextFavorite))].slice(
-    0,
-    MAX_FAVORITE_LOCATIONS
-  );
-  await writeFavoriteLocationsRaw(JSON.stringify(nextFavorites));
-  return nextFavorites;
+  return inAccount(accountId, async (key) => {
+    const existing = await readFavoriteLocations(key);
+    const next = [nextFavorite, ...existing.filter((item) => !isSameFavorite(item, nextFavorite))]
+      .slice(0, MAX_FAVORITE_LOCATIONS);
+    await writeFavoriteLocationsRaw(key, next);
+    return next;
+  });
 }
 
-export async function deleteFavoriteLocation(id: string) {
-  const nextFavorites = (await getFavoriteLocations()).filter((item) => item.id !== id);
-  await writeFavoriteLocationsRaw(JSON.stringify(nextFavorites));
-  return nextFavorites;
+export function deleteFavoriteLocation(accountId: string, id: string) {
+  return inAccount(accountId, async (key) => {
+    const next = (await readFavoriteLocations(key)).filter((item) => item.id !== id);
+    await writeFavoriteLocationsRaw(key, next);
+    return next;
+  });
 }

@@ -1,10 +1,18 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
-import { useAuth } from "../../../src/auth/AuthProvider";
-import { AppShell, BottomNav, Card, IconBox, PrimaryButton } from "../../../src/ui/components";
-import { ui } from "../../../src/ui/system";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router, type Href } from "expo-router";
+import { useAuth } from "../../../../src/auth/AuthProvider";
+import { AccountModeAction } from "../../../../src/auth/AccountModeAction";
+import { AppShell, BottomNav, Card, IconBox, PrimaryButton } from "../../../../src/ui/components";
+import { ui } from "../../../../src/ui/system";
+
+const profileRows: Array<{ title: string; icon: React.ComponentProps<typeof Ionicons>["name"]; href?: Href }> = [
+  { title: "Vehicles", icon: "car", href: "/(app)/vehicles" },
+  { title: "Payment history", icon: "card", href: { pathname: "/(user)/history", params: { view: "payments" } } },
+  { title: "Emergency contacts", icon: "call" },
+  { title: "Support center", icon: "headset" }
+];
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
@@ -34,14 +42,22 @@ export default function UserProfile() {
           <Text style={styles.name}>{user?.name || "User"}</Text>
           <Text style={styles.phone}>{user?.phone || "Phone not added"}</Text>
         </Card>
+        <AccountModeAction />
 
-        {["Vehicles", "Payment methods", "Emergency contacts", "Support center"].map((item) => (
-          <Card key={item} style={styles.row}>
-            <IconBox icon={item === "Vehicles" ? "car" : item === "Payment methods" ? "card" : item === "Emergency contacts" ? "call" : "headset"} />
-            <Text style={styles.rowText}>{item}</Text>
-            <Ionicons name="chevron-forward" size={18} color={ui.colors.muted} />
-          </Card>
-        ))}
+        {profileRows.map(({ title, icon, href }) => {
+          const content = (
+            <Card style={styles.row}>
+              <IconBox icon={icon} />
+              <Text style={styles.rowText}>{title}</Text>
+              {href ? <Ionicons name="chevron-forward" size={18} color={ui.colors.muted} /> : null}
+            </Card>
+          );
+          return href ? (
+            <Pressable key={title} accessibilityRole="button" accessibilityLabel={title} onPress={() => router.push(href)}>
+              {content}
+            </Pressable>
+          ) : <React.Fragment key={title}>{content}</React.Fragment>;
+        })}
 
         {error ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, marginBottom: 12 }}>{error}</Text> : null}
         <PrimaryButton title={signingOut ? "Signing out…" : "Logout"} disabled={signingOut} icon="log-out" variant="outline" onPress={onLogout} />

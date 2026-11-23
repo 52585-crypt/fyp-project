@@ -3,9 +3,9 @@ export type MechanicServiceCategory = "mechanic" | "fuel_delivery" | "towing";
 
 export type MechanicProfile = {
   serviceCategory: MechanicServiceCategory;
-  selfieUrl: string;
-  idCardFrontUrl: string;
-  idCardBackUrl: string;
+  selfieUrl: string | null;
+  idCardFrontUrl: string | null;
+  idCardBackUrl: string | null;
   workshopPhotoUrl: string | null;
   certificateUrl: string | null;
   drivingLicenseUrl: string | null;
@@ -17,7 +17,6 @@ export type MechanicProfile = {
   } | null;
   identityMatch: {
     status: "pending" | "matched" | "mismatch" | "manual_review";
-    score: number | null;
     provider: string | null;
     checkedAt: string | null;
   };
@@ -26,10 +25,14 @@ export type MechanicProfile = {
 export type SafeUser = {
   id: string;
   role: UserRole;
+  activeRole?: UserRole;
+  roles?: UserRole[];
   name: string;
   phone: string | null;
   email?: string | null;
+  profilePictureUrl?: string | null;
   authProvider?: "local" | "google";
+  hasGoogleSignIn?: boolean;
   isCertified: boolean;
   certificateUrl: string | null;
   verificationStatus: "unverified" | "pending" | "verified" | "rejected";
@@ -55,5 +58,12 @@ export type AuthResponse = {
   ok: boolean;
   token: string;
   user: SafeUser;
+};
+
+export type GoogleMechanicProfile = {
+  name: string;
+  email: string;
+  profilePictureUrl: string | null;
+  phone?: string | null;
 };
 

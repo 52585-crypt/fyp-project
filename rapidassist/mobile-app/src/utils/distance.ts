@@ -1,7 +1,35 @@
-export type Coordinate = {
+export type Coordinates = {
   latitude: number;
   longitude: number;
 };
+
+// Backward-compatible singular name used by the existing map contracts.
+export type Coordinate = Coordinates;
+
+export function isValidCoordinates(value: unknown): value is Coordinates {
+  if (!value || typeof value !== "object") return false;
+  const coordinate = value as Partial<Coordinates>;
+  return (
+    typeof coordinate.latitude === "number" &&
+    Number.isFinite(coordinate.latitude) &&
+    coordinate.latitude >= -90 &&
+    coordinate.latitude <= 90 &&
+    typeof coordinate.longitude === "number" &&
+    Number.isFinite(coordinate.longitude) &&
+    coordinate.longitude >= -180 &&
+    coordinate.longitude <= 180
+  );
+}
+
+export function coordinatesFromUnknown(value: unknown): Coordinates | null {
+  if (!isValidCoordinates(value)) return null;
+  return { latitude: value.latitude, longitude: value.longitude };
+}
+
+export function coordinatesFromLngLat(value: unknown): Coordinates | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  return coordinatesFromUnknown({ longitude: value[0], latitude: value[1] });
+}
 
 export function distanceKm(from: Coordinate, to: Coordinate) {
   const earthRadiusKm = 6371;

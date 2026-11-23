@@ -6,11 +6,14 @@ import { useAuth } from "../../../src/auth/AuthProvider";
 import { acceptRequest, declineRequest, getRequest, updateRequestStatus } from "../../../src/requests/requests.api";
 import { useDispatchUpdates, useOfferSeconds } from "../../../src/requests/DispatchProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
+import { hasOperationalCoordinates, requiresGoogleMap } from "../../../src/services/locationMapPolicy";
 import { getRequestTitle, getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
 import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, SectionTitle, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 import { canNavigateTo, openExternalNavigation } from "../../../src/utils/navigation";
+import { useVerification } from "../../../src/verification/VerificationProvider";
+import { canAcceptServiceRequests } from "../../../src/verification/verification";
 
 function formatValue(value?: string | number | null) {
   if (value == null || value === "") return "N/A";
@@ -27,12 +30,14 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
 }
 
 function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
-  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
+  if (!hasOperationalCoordinates(location)) return null;
   return { latitude: location.lat, longitude: location.lng };
 }
 
 export default function ProviderRequestDetails() {
   const { token } = useAuth();
+  const verification = useVerification();
+  const canAccept = !verification.loading && !verification.error && canAcceptServiceRequests(verification.status);
   const { refresh, revision } = useDispatchUpdates();
   const params = useLocalSearchParams<{ requestId?: string }>();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
@@ -60,7 +65,7 @@ export default function ProviderRequestDetails() {
   }
 
   async function onAccept() {
-    if (!token || !request) return;
+    if (!token || !request || !canAccept) return;
     try {
       setAccepting(true);
       setError(null);
@@ -169,6 +174,7 @@ export default function ProviderRequestDetails() {
             <Card style={styles.block}>
               {requestCoordinate(request.pickupLocation) ? (
                 <LocationMapPreview
+                  requiresGoogleMap={requiresGoogleMap(request.pickupLocation, request.destinationLocation)}
                   pickup={requestCoordinate(request.pickupLocation)!}
                   destination={requestCoordinate(request.destinationLocation)}
                 />
@@ -216,11 +222,15 @@ export default function ProviderRequestDetails() {
                 title={accepting ? "Accepting..." : "Accept Job"}
                 icon="checkmark"
                 variant="success"
-                disabled={accepting || request.status !== "searching_provider" || seconds === 0}
+                disabled={accepting || request.status !== "searching_provider" || seconds === 0 || !canAccept}
                 style={{ flex: 1 }}
                 onPress={onAccept}
               />
             </View>
+            {request.status === "searching_provider" && !canAccept ? (
+              <PrimaryButton title="Check verification to accept jobs" variant="outline"
+                onPress={() => router.push("/(provider)/verification")} />
+            ) : null}
 
             {request.status === "cancelled" ? (
               <Card style={styles.cancelledBox}>

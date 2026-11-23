@@ -26,7 +26,7 @@ export default function ProviderEarnings() {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppShell title="Earnings" subtitle="Paid totals and completed-job invoices. Tap a job to review payment.">
+      <AppShell title="Earnings" subtitle="Earnings from confirmed cash and completed-job invoices. Tap a job to review payment.">
         <View style={styles.metrics}>
           <Metric label="Today" value={`PKR ${earnings?.today?.toLocaleString() || 0}`} icon="cash" />
           <Metric label="This week" value={`PKR ${earnings?.week?.toLocaleString() || 0}`} icon="trending-up" />
@@ -40,7 +40,7 @@ export default function ProviderEarnings() {
               <Text style={styles.title}>{request.category.replace("_", " ").toUpperCase()}</Text>
               <Text style={styles.meta}>{request.pickupLocation?.addressText || "Completed job"}</Text>
             </View>
-            <StatusPill label={`PKR ${request.estimate?.total?.toLocaleString() || 0}`} tone="success" />
+            <StatusPill label={`Estimate: PKR ${request.estimate?.total?.toLocaleString() || 0}`} tone="primary" />
           </Card>
           </Pressable>
         ))}

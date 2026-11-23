@@ -1,172 +1,163 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { Linking, StyleSheet, Text, View } from "react-native";
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
+import { hasOperationalCoordinates, requiresGoogleMap } from "../../../src/services/locationMapPolicy";
 import { ReviewPromptCard, ReviewSummary } from "../../../src/components/ReviewPromptCard";
-import { approveExtraWork, listMyRequests, retryDispatch, updateRequestStatus } from "../../../src/requests/requests.api";
+import { approveExtraWork, getRequest, listMyRequests, retryDispatch, updateRequestStatus } from "../../../src/requests/requests.api";
 import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
+import { useActiveLocationRefresh } from "../../../src/requests/useActiveLocationRefresh";
+import { isActiveCustomerRequest, selectActiveCustomerRequest, verifiedCustomerRequest } from "../../../src/requests/customerTrackingSelection";
+import { trackingEmptyTitle, trackingLoadFailure } from "../../../src/requests/trackingLoadState";
+import { parseRequestId } from "../../../src/requests/requestId";
 import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
-import { getDrivingRouteMetrics } from "../../../src/services/routing";
-import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
-import { ui } from "../../../src/ui/system";
-import { distanceKm, type Coordinate } from "../../../src/utils/distance";
+import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
+import { customerEta, useCustomerRoute } from "../../../src/requests/useCustomerRoute";
+import { Field, NoticeBanner } from "../../../src/ui/components";
+import {
+  AppHeader, CustomerScreen, IconButton, IconTile, MetricStrip, PrimaryButton, SectionHeading, StatusBadge, SummaryCard, Surface,
+  customerColors, customerStyles
+} from "../../../src/ui/customer/components";
 import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../../../src/services/requestCache";
+import { formatCurrency } from "../../../src/i18n";
 
 const TRACKING_REFRESH_MS = 5000;
 
 const serviceSteps: Record<ServiceRequest["category"], Array<{ label: string; statuses: RequestStatus[] }>> = {
   car_towing: [
-    { label: "Searching", statuses: ["searching_provider"] },
-    { label: "Assigned", statuses: ["provider_assigned"] },
-    { label: "On way", statuses: ["provider_on_way"] },
-    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Request received", statuses: ["pending", "searching_provider"] },
+    { label: "Tow truck assigned", statuses: ["provider_assigned"] },
+    { label: "On the way", statuses: ["provider_on_way"] },
+    { label: "Provider arrived", statuses: ["provider_arrived"] },
+    { label: "Towing in progress", statuses: ["in_progress"] },
     { label: "Vehicle loaded", statuses: ["vehicle_loaded"] },
-    { label: "Reached destination", statuses: ["reached_destination"] },
-    { label: "Confirm", statuses: ["service_finished"] },
+    { label: "At destination", statuses: ["reached_destination"] },
+    { label: "Service finished", statuses: ["service_finished"] },
     { label: "Completed", statuses: ["completed"] }
   ],
   fuel_delivery: [
-    { label: "Searching", statuses: ["searching_provider"] },
-    { label: "Assigned", statuses: ["provider_assigned"] },
-    { label: "On way", statuses: ["provider_on_way"] },
-    { label: "Arrived", statuses: ["provider_arrived"] },
+    { label: "Request received", statuses: ["pending", "searching_provider"] },
+    { label: "Fuel provider assigned", statuses: ["provider_assigned"] },
+    { label: "On the way", statuses: ["provider_on_way"] },
+    { label: "Provider arrived", statuses: ["provider_arrived"] },
+    { label: "Delivery in progress", statuses: ["in_progress"] },
     { label: "Fuel delivered", statuses: ["fuel_delivered"] },
-    { label: "Confirm", statuses: ["service_finished"] },
+    { label: "Service finished", statuses: ["service_finished"] },
     { label: "Completed", statuses: ["completed"] }
   ],
   mechanic: [
-    { label: "Searching", statuses: ["searching_provider"] },
-    { label: "Assigned", statuses: ["provider_assigned"] },
-    { label: "On way", statuses: ["provider_on_way"] },
-    { label: "Arrived", statuses: ["provider_arrived"] },
-    { label: "Inspection", statuses: ["inspection_started"] },
-    { label: "Approval", statuses: ["extra_work_requested", "waiting_user_approval"] },
-    { label: "Work started", statuses: ["work_started"] },
-    { label: "Confirm", statuses: ["service_finished"] },
+    { label: "Request received", statuses: ["pending", "searching_provider"] },
+    { label: "Mechanic assigned", statuses: ["provider_assigned"] },
+    { label: "On the way", statuses: ["provider_on_way"] },
+    { label: "Provider arrived", statuses: ["provider_arrived"] },
+    { label: "Inspection started", statuses: ["inspection_started"] },
+    { label: "Estimate approval", statuses: ["extra_work_requested", "waiting_user_approval"] },
+    { label: "Repair in progress", statuses: ["work_started", "in_progress"] },
+    { label: "Service finished", statuses: ["service_finished"] },
     { label: "Completed", statuses: ["completed"] }
   ]
 };
 
-function stepsFor(category?: ServiceRequest["category"]) {
-  return serviceSteps[category || "car_towing"];
-}
-
-function activeStep(status?: ServiceRequest["status"], category?: ServiceRequest["category"]) {
-  const steps = stepsFor(category);
-  if (!status) return 0;
-  const index = steps.findIndex((item) => item.statuses.includes(status));
-  if (index >= 0) return index;
-  if (status === "cancelled") return 0;
-  return Math.max(0, steps.length - 2);
-}
-
-function titleFor(category?: ServiceRequest["category"]) {
-  if (category === "fuel_delivery") return "Fuel Delivery";
-  if (category === "mechanic") return "Mechanic";
-  return "Car Towing";
-}
-
 function providerLocationText(request?: ServiceRequest | null) {
   const location = request?.providerLocation;
-  if (!location) return "Waiting for provider location.";
+  if (!hasOperationalCoordinates(location)) return "Waiting for provider location…";
 
   const base = location.addressText || `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
   if (!location.updatedAt) return base;
 
-  return `${base} - updated ${new Date(location.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function requestCoordinate(location?: ServiceRequest["pickupLocation"] | null) {
-  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
-  return { latitude: location.lat, longitude: location.lng };
-}
-
-function formatTrackingDistance(value?: number | null) {
-  if (!value) return "Waiting";
-  return value >= 10 ? `${value.toFixed(0)} km` : `${value.toFixed(1)} km`;
-}
-
-function fallbackEtaMinutes(from: Coordinate, to: Coordinate) {
-  const km = distanceKm(from, to);
-  return Math.max(1, Math.round((km / 30) * 60));
+  return `${base} · ${new Date(location.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export default function UserTracking() {
-  const { token, user } = useAuth();
+  const { requestId: parameter } = useLocalSearchParams<{ requestId?: string | string[] }>();
+  const { user } = useAuth();
+  const requestId = parseRequestId(parameter);
+  const invalid = parameter !== undefined && !requestId;
+  return <Tracking
+    key={JSON.stringify([user?.id, requestId, invalid])}
+    customerId={user?.id}
+    requestId={requestId}
+    invalid={invalid}
+  />;
+}
+
+function Tracking({ customerId, requestId, invalid }: { customerId?: string; requestId: string | null; invalid: boolean }) {
+  const { token } = useAuth();
+  const navigation = useNavigation();
   const { revision, connected } = useDispatchUpdates();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
+  const { locationRefreshError, retryLocationRefresh } = useActiveLocationRefresh(token, request, setRequest);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [routeDistanceKm, setRouteDistanceKm] = useState<number | null>(null);
-  const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [route, setRoute] = useState<Coordinate[]>([]);
-  const [approximate, setApproximate] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "empty" | "failed" | "unavailable">(invalid ? "unavailable" : "loading");
+  const [loadError, setLoadError] = useState<string | null>(invalid ? "This tracking link has a missing or invalid request ID." : null);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const trackedRequestIdRef = useRef<string | null>(null);
   const freshRequest = useRef(false);
-  const steps = useMemo(() => stepsFor(request?.category), [request?.category]);
-  const step = useMemo(() => activeStep(request?.status, request?.category), [request?.category, request?.status]);
-  const providerLocation = useMemo(() => providerLocationText(request), [request?.providerLocation]);
-  const providerCoordinate = useMemo(() => requestCoordinate(request?.providerLocation), [request?.providerLocation]);
-  const goingToDestination = request?.category === "car_towing" && ["vehicle_loaded", "reached_destination"].includes(request.status);
-  const customerCoordinate = useMemo(() => requestCoordinate(goingToDestination ? request?.destinationLocation : request?.pickupLocation), [goingToDestination, request?.destinationLocation, request?.pickupLocation]);
-  const locationStale = !request?.providerLocation?.updatedAt || Date.now() - Date.parse(request.providerLocation.updatedAt) > 45000;
-  const trackingDistance = useMemo(() => formatTrackingDistance(routeDistanceKm), [routeDistanceKm]);
+  const loadSequence = useRef(0);
+
+  const route = useCustomerRoute(request);
   const extraWork = request?.mechanicDetails?.extraWork;
   const isClosed = request?.status === "completed" || request?.status === "cancelled";
   const canCompleteJob = request?.status === "service_finished";
-  const cacheKey = user?.id ? `rapidassist.customerActiveJob.${user.id}` : null;
+  // Explicit links always verify ownership and identity against the API before rendering.
+  const cacheKey = customerId && !requestId && !invalid ? `rapidassist.customerActiveJob.${customerId}` : null;
 
   useEffect(() => {
     if (!cacheKey) return;
     let active = true;
-    freshRequest.current = false;
     void readCachedRequest(cacheKey, true).then((saved) => {
-      if (active && saved && !freshRequest.current) { trackedRequestIdRef.current = saved.id; setRequest(saved); }
+      if (active && saved && saved.userId === customerId && !freshRequest.current && isActiveCustomerRequest(saved)) {
+        setRequest(saved);
+      }
     });
     return () => { active = false; };
-  }, [cacheKey]);
+  }, [cacheKey, customerId]);
 
   useEffect(() => {
-    if (!cacheKey || !request) return;
+    if (!cacheKey || !request || !isActiveCustomerRequest(request)) return;
     void writeCachedRequest(cacheKey, request, true);
   }, [cacheKey, request]);
 
-  async function load() {
-    if (!token) return;
+  const load = useCallback(async () => {
+    if (!token || !customerId || invalid) return;
+    const run = ++loadSequence.current;
     try {
-      setError(null);
-      const requests = await listMyRequests(token);
+      const selected = requestId
+        ? verifiedCustomerRequest(await getRequest(token, requestId), requestId, customerId)
+        : selectActiveCustomerRequest(await listMyRequests(token), customerId);
+      if (run !== loadSequence.current) return;
       freshRequest.current = true;
-      if (!requests.length && cacheKey) void removeCachedRequest(cacheKey);
-      const activeRequest = requests.find((item) => item.status !== "completed" && item.status !== "cancelled");
-      const trackedCompletedRequest = trackedRequestIdRef.current
-        ? requests.find((item) => item.id === trackedRequestIdRef.current && item.status === "completed")
-        : null;
-      const latestRequest = requests[0] || null;
-
-      if (trackedCompletedRequest || (!activeRequest && latestRequest?.status === "completed")) {
-        setRequest(trackedCompletedRequest || latestRequest);
-        return;
-      }
-
-      if (activeRequest) {
-        trackedRequestIdRef.current = activeRequest.id;
-      }
-      setRequest(activeRequest || latestRequest);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Failed to load tracking");
+      const unavailable = Boolean(requestId && !selected);
+      setLoadState(unavailable ? "unavailable" : selected ? "loaded" : "empty");
+      setLoadError(unavailable ? "This request is unavailable." : null);
+      if (!selected && cacheKey) void removeCachedRequest(cacheKey);
+      setRequest(selected);
+    } catch (error) {
+      if (run !== loadSequence.current) return;
+      const failure = trackingLoadFailure(error, Boolean(requestId));
+      setLoadState(failure.kind);
+      setLoadError(failure.message);
+      if (failure.kind === "unavailable") setRequest(null);
+    } finally {
+      if (run === loadSequence.current) setRetrying(false);
     }
+  }, [cacheKey, customerId, invalid, requestId, token]);
+
+  function retryTracking() {
+    setRetrying(true);
+    route.retry();
+    void load();
   }
 
   async function onApproveExtraWork(approved: boolean) {
     if (!token || !request) return;
     try {
       const updated = await approveExtraWork(token, request.id, approved);
+      loadSequence.current += 1;
       setRequest(updated);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to update extra work");
@@ -184,8 +175,12 @@ export default function UserTracking() {
         "cancelled",
         cancelReason.trim() || "User cancelled the request"
       );
+      loadSequence.current += 1;
       setRequest(updated);
       setShowCancel(false);
+      if (!requestId && navigation.isFocused()) {
+        router.replace({ pathname: "/(user)/tracking", params: { requestId: request.id } });
+      }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to cancel request");
     } finally {
@@ -198,8 +193,17 @@ export default function UserTracking() {
     try {
       setUpdating(true);
       setError(null);
-      const updated = await updateRequestStatus(token, request.id, "completed", "Customer confirmed service completion");
+      const updated = await updateRequestStatus(
+        token,
+        request.id,
+        "completed",
+        "Customer confirmed service completion"
+      );
+      loadSequence.current += 1;
       setRequest(updated);
+      if (!requestId && navigation.isFocused()) {
+        router.replace({ pathname: "/(user)/tracking", params: { requestId: request.id } });
+      }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to complete job");
     } finally {
@@ -207,255 +211,304 @@ export default function UserTracking() {
     }
   }
 
-  useEffect(() => {
-    load();
+  useFocusEffect(useCallback(() => {
+    if (invalid) return;
+    void load();
     const timer = setInterval(load, TRACKING_REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [token, revision]);
+    return () => { clearInterval(timer); loadSequence.current += 1; };
+  }, [invalid, load, revision]));
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRouteMetrics() {
-      setRoute([]);
-      if (!providerCoordinate || !customerCoordinate || isClosed || locationStale) {
-        setRouteDistanceKm(null);
-        setEtaMinutes(null);
-        return;
-      }
-
-      try {
-        setRouteLoading(true);
-        const metrics = await getDrivingRouteMetrics(providerCoordinate, customerCoordinate);
-        if (!cancelled) {
-          setRouteDistanceKm(metrics.distanceKm);
-          setRoute(metrics.coordinates);
-          setApproximate(false);
-          setEtaMinutes(metrics.durationMinutes || fallbackEtaMinutes(providerCoordinate, customerCoordinate));
-        }
-      } catch {
-        if (!cancelled) {
-          const fallbackDistance = distanceKm(providerCoordinate, customerCoordinate);
-          setApproximate(true);
-          setRouteDistanceKm(fallbackDistance);
-          setEtaMinutes(fallbackEtaMinutes(providerCoordinate, customerCoordinate));
-        }
-      } finally {
-        if (!cancelled) setRouteLoading(false);
-      }
+  async function retrySearch() {
+    if (!token || !request) return;
+    setUpdating(true);
+    try {
+      const updated = await retryDispatch(token, request.id);
+      loadSequence.current += 1;
+      setRequest(updated);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Unable to restart search.");
+    } finally {
+      setUpdating(false);
     }
+  }
 
-    loadRouteMetrics();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [customerCoordinate?.latitude, customerCoordinate?.longitude, isClosed, providerCoordinate?.latitude, providerCoordinate?.longitude, locationStale]);
+  const phone = request?.provider?.phone?.replace(/[^0-9+]/g, "");
+  const mapCenter = route.provider ?? route.target;
+  const pickupLabel = request?.category === "fuel_delivery" ? "Delivery"
+    : request?.category === "mechanic" ? "Service location" : "Pickup";
+  const targetLabel = route.toDestination ? "Drop-off" : pickupLabel;
+  const isSearching = request?.status === "searching_provider";
+  const unavailable = isSearching && request.dispatch?.state === "unavailable";
+  const eta = request ? customerEta(request.status, route) : "—";
+  const distance = route.loading ? "Calculating…" : route.distance === null ? "—"
+    : `${route.approximate ? "About " : ""}${route.distance.toFixed(1)} km`;
 
   return (
-    <View style={{ flex: 1 }}>
-      <AppShell title="Live Tracking" subtitle={request ? `${titleFor(request.category)} - ${request.status.replaceAll("_", " ")}` : "Provider route and request progress."}>
-        {request?.status === "searching_provider" ? <Card style={{ marginBottom: 14, gap: 10 }}>
-          <StatusPill label="SMART ROADSIDE DISPATCH" />
-          <Text style={styles.providerName}>{request.dispatch?.state === "unavailable" ? "No provider accepted yet" : request.dispatch?.state === "offered" ? "Waiting for a provider to accept" : "Finding the best available provider"}</Text>
-          <Text style={styles.providerMeta}>Searching within {request.dispatch?.radiusKm || 5} km · {request.dispatch?.attempts || 0} providers contacted. Offers move automatically to the next provider.</Text>
-          {request.dispatch?.state === "unavailable" || !request.dispatch ? <PrimaryButton title={updating ? "Searching…" : "Search again"} disabled={updating} onPress={async () => {
-            if (!token) return;
-            setUpdating(true);
-            try { setRequest(await retryDispatch(token, request.id)); setError(null); }
-            catch (e: any) { setError(e?.response?.data?.message || e?.message || "Unable to restart search."); }
-            finally { setUpdating(false); }
-          }} /> : null}
-        </Card> : null}
-        {request?.status === "provider_arrived" ? <Card style={{ marginBottom: 14 }}><Text style={styles.providerName}>Your provider has arrived</Text><Text style={styles.providerMeta}>Meet {request.provider?.name || "your provider"} at the pickup point.</Text></Card> : null}
-        {providerCoordinate && customerCoordinate ? (
-          <LocationMapPreview
-            pickup={providerCoordinate}
-            destination={customerCoordinate}
-            route={route}
-            pickupLabel="Provider"
-            destinationLabel={goingToDestination ? "Drop-off" : "Customer"}
-            title={locationStale ? "Location delayed · showing last known position" : "Provider live route"}
-          />
-        ) : (
-          <View style={styles.map}>
-            <View style={styles.road} />
-            <View style={styles.pinUser}><Ionicons name="person" size={18} color="white" /></View>
-            <View style={styles.pinProvider}><Ionicons name={request?.category === "mechanic" ? "construct" : request?.category === "fuel_delivery" ? "water" : "car"} size={18} color="white" /></View>
-            <Text style={styles.mapText}>{providerLocation}</Text>
-          </View>
-        )}
-
-        <Card style={styles.provider}>
-          <View style={styles.metrics}>
-            <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>{approximate ? "Approximate ETA" : "ETA"}</Text>
-              <Text style={styles.metricValue}>{request?.status === "provider_arrived" ? "Arrived" : locationStale ? "Unavailable" : routeLoading ? "..." : etaMinutes ? `${etaMinutes} min` : "Waiting"}</Text>
-            </View>
-            <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>Distance</Text>
-              <Text style={styles.metricValue}>{routeLoading ? "..." : trackingDistance}</Text>
-            </View>
-          </View>
-          <View style={styles.providerTop}>
-            <IconBox icon={request?.category === "mechanic" ? "construct" : request?.category === "fuel_delivery" ? "water" : "car"} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.providerName}>{request?.provider?.name || (request ? titleFor(request.category) : "No active request")}</Text>
-              {request?.provider ? <Text style={styles.providerMeta}>{request.provider.ratingCount ? `★ ${request.provider.ratingAvg.toFixed(1)} · ${request.provider.ratingCount} reviews` : "New verified provider"}</Text> : null}
-              <Text style={styles.providerMeta}>
-                {request ? `PKR ${request.estimate?.total?.toLocaleString() || 0} - ${request.pickupLocation?.addressText || "Pickup"}` : "Create a request to start tracking."}
-              </Text>
-              {request ? <Text style={styles.locationMeta}>{providerLocation}</Text> : null}
-            </View>
-            {request ? (
-              <StatusPill
-                label={request.status.replaceAll("_", " ")}
-                tone={request.status === "completed" ? "success" : request.status === "cancelled" ? "danger" : "warning"}
+    <CustomerScreen active="Activity" header={
+      <AppHeader title="Live tracking" back right={
+        <IconButton icon="time-outline" label="Request history" onPress={() => router.push("/(user)/history")} />
+      } />
+    }>
+      {loadState === "failed" && loadError ? (
+        <Surface>
+          <NoticeBanner tone="warning" title={request ? "Tracking update unavailable" : "Tracking unavailable"} message={loadError} />
+          <PrimaryButton title="Retry" icon="refresh" variant="outline" loading={retrying} onPress={retryTracking} />
+        </Surface>
+      ) : null}
+      {request ? (
+        <>
+          <Surface style={styles.mapCard}>
+            {mapCenter ? (
+              <LocationMapPreview
+                pickup={mapCenter}
+                destination={route.provider ? route.target : null}
+                route={route.route}
+                pickupLabel={route.provider ? "Provider" : targetLabel}
+                destinationLabel={targetLabel}
+                title={route.stale ? "Last known provider location" : "Assistance map"}
+                requiresGoogleMap={requiresGoogleMap(request.pickupLocation, request.destinationLocation)}
+                interactive
               />
-            ) : null}
-          </View>
-          <View style={styles.actions}>
-            <PrimaryButton title="Refresh" icon="refresh" style={{ flex: 1 }} onPress={load} />
-            <PrimaryButton
-              title="Chat"
-              icon="chatbubble"
-              variant="outline"
-              style={{ flex: 1 }}
-              disabled={!request?.providerId}
-              onPress={() => {
-                if (!request) return;
-                router.push({ pathname: "/(user)/chat/[requestId]", params: { requestId: request.id } });
-              }}
-            />
-          </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Text style={styles.providerMeta}>{connected ? "Live updates connected" : "Reconnecting live updates · refreshing automatically"}{approximate ? " · Road route unavailable; ETA is approximate." : ""}</Text>
-          {request?.status === "cancelled" ? <Text style={styles.cancelledText}>This request has been cancelled.</Text> : null}
-          {canCompleteJob ? <Text style={styles.confirmText}>Provider marked the service finished. Confirm completion to unlock rating.</Text> : null}
-          {request?.status === "completed" ? <Text style={styles.doneText}>This request is completed.</Text> : null}
-          {request?.review?.rating ? <ReviewSummary request={request} /> : null}
-        </Card>
-
-        {canCompleteJob ? (
-          <Card style={styles.completeBox}>
-            <Text style={styles.completeTitle}>Confirm service completion</Text>
-            <Text style={styles.completeText}>Tap Complete Job only after the provider has finished the service.</Text>
-            <PrimaryButton
-              title={updating ? "Completing..." : "Complete Job"}
-              icon="checkmark-circle"
-              variant="success"
-              disabled={updating}
-              onPress={onCompleteJob}
-            />
-          </Card>
-        ) : null}
-
-        {token && request?.status === "completed" && request.providerId && !request.review?.rating ? (
-          <ReviewPromptCard token={token} request={request} onSubmitted={setRequest} />
-        ) : null}
-
-        {request?.status === "completed" ? (
-          <PrimaryButton title="Payment & Invoice" icon="receipt" variant="success" onPress={() => router.push({ pathname: "/(user)/payment/[requestId]", params: { requestId: request.id } })} />
-        ) : null}
-
-        {extraWork && request?.status === "extra_work_requested" ? (
-          <Card style={styles.extra}>
-            <Text style={styles.extraTitle}>Extra work approval</Text>
-            <Text style={styles.extraText}>{extraWork.description || extraWork.partName || "Additional work required"}</Text>
-            <Text style={styles.extraPrice}>PKR {((extraWork.partPrice || 0) + (extraWork.laborCharge || 0)).toLocaleString()}</Text>
-            <View style={styles.actions}>
-              <PrimaryButton title="Reject" variant="outline" style={{ flex: 1 }} onPress={() => onApproveExtraWork(false)} />
-              <PrimaryButton title="Approve" variant="success" style={{ flex: 1 }} onPress={() => onApproveExtraWork(true)} />
-            </View>
-          </Card>
-        ) : null}
-
-        <Card style={styles.stepsCard}>
-          {steps.map((item, index) => (
-            <View key={item.label} style={styles.stepRow}>
-              <View style={[styles.stepDot, index <= step ? styles.stepDotActive : null]} />
-              <Text style={[styles.stepText, index <= step ? styles.stepTextActive : null]}>{item.label}</Text>
-            </View>
-          ))}
-        </Card>
-
-        {request && !isClosed ? (
-          showCancel ? (
-            <Card style={styles.cancelBox}>
-              <Text style={styles.cancelTitle}>Cancel this request?</Text>
-              <Text style={styles.cancelText}>The provider will see this request as cancelled.</Text>
-              <Field
-                label="Reason"
-                icon="document-text"
-                placeholder="Reason for cancellation"
-                value={cancelReason}
-                onChangeText={setCancelReason}
-              />
-              <View style={styles.actions}>
-                <PrimaryButton title="Keep Request" variant="outline" style={{ flex: 1 }} onPress={() => setShowCancel(false)} />
-                <PrimaryButton
-                  title={updating ? "Cancelling..." : "Confirm Cancel"}
-                  icon="close-circle"
-                  variant="danger"
-                  disabled={updating}
-                  style={{ flex: 1 }}
-                  onPress={onCancelRequest}
-                />
+            ) : (
+              <View style={[customerStyles.row, styles.mapEmpty]}>
+                <IconTile icon="map-outline" />
+                <Text style={styles.flexText}>Waiting for map location</Text>
               </View>
-            </Card>
-          ) : (
-            <PrimaryButton title="Cancel Request" icon="close-circle" variant="outline" onPress={() => setShowCancel(true)} />
-          )
-        ) : null}
-      </AppShell>
-      <BottomNav role="user" active="Track" />
+            )}
+            <MetricStrip items={[
+              { icon: "time-outline", label: route.toDestination ? "Drop-off ETA" : "Estimated arrival", value: eta },
+              { icon: "navigate-outline", label: "Distance", value: distance }
+            ]} />
+          </Surface>
+
+          <Surface>
+            <View style={customerStyles.row}>
+              <IconTile icon={getServiceIcon(request.category)} />
+              <View style={styles.flex}>
+                <SectionHeading>{getServiceTitle(request.category)}</SectionHeading>
+                <Text style={customerStyles.muted}>Request #{request.id.slice(-6).toUpperCase()}</Text>
+              </View>
+            </View>
+            <StatusBadge status={request.status} unavailable={unavailable} />
+            <TrackingLocation icon="location-outline" label={pickupLabel}
+              value={request.pickupLocation?.addressText
+                || (hasOperationalCoordinates(request.pickupLocation) ? "Map location" : "Location unavailable")} />
+            {request.destinationLocation?.addressText ? (
+              <TrackingLocation icon="flag-outline" label="Drop-off" value={request.destinationLocation.addressText} />
+            ) : null}
+            {request.provider ? (
+              <View style={styles.provider}>
+                <IconTile icon="person-outline" />
+                <View style={styles.flex}>
+                  <Text style={styles.providerName}>{request.provider.name}</Text>
+                  {request.provider.ratingCount > 0 ? (
+                    <Text style={customerStyles.muted}>★ {request.provider.ratingAvg.toFixed(1)} ({request.provider.ratingCount} ratings)</Text>
+                  ) : null}
+                  <Text style={customerStyles.muted}>{providerLocationText(request)}</Text>
+                </View>
+              </View>
+            ) : null}
+            <View style={customerStyles.actions}>
+              <PrimaryButton title="Call" icon="call-outline" variant="outline" style={customerStyles.action}
+                disabled={!phone} onPress={() => {
+                  if (!phone) return;
+                  void Linking.openURL(`tel:${phone}`).catch(() => setError("This device couldn’t open the phone app."));
+                }} />
+              <PrimaryButton title="Message" icon="chatbubble-outline" variant="outline" style={customerStyles.action}
+                disabled={!request.providerId} onPress={() => router.push({
+                  pathname: "/(user)/customer/chat/[requestId]", params: { requestId: request.id }
+                })} />
+              <PrimaryButton title="Refresh GPS" icon="refresh" variant="outline" style={customerStyles.action}
+                onPress={() => {
+                  if (locationRefreshError) retryLocationRefresh();
+                  route.retry();
+                  void load();
+                }} />
+            </View>
+            {!isClosed ? (
+              <Text style={customerStyles.muted} accessibilityLiveRegion="polite">
+                {connected ? "Live updates connected" : "Reconnecting live updates…"}
+              </Text>
+            ) : null}
+            {request.review?.rating ? <ReviewSummary request={request} /> : null}
+          </Surface>
+
+          {isSearching ? (
+            <Surface>
+              <SectionHeading>{unavailable ? "No provider accepted" : "Provider search"}</SectionHeading>
+              <Text style={customerStyles.muted}>
+                {unavailable
+                  ? "Retry using the same pickup and search area. To change the pickup, cancel and submit a new request."
+                  : `Searching${request.dispatch?.radiusKm ? ` within ${request.dispatch.radiusKm} km` : ""} · ${request.dispatch?.attempts ?? 0} providers contacted.`}
+              </Text>
+              {unavailable || !request.dispatch ? (
+                <PrimaryButton title="Retry Search" icon="refresh" style={customerStyles.primary} loading={updating}
+                  onPress={retrySearch} />
+              ) : null}
+            </Surface>
+          ) : null}
+
+          {request.status === "provider_arrived" ? (
+            <NoticeBanner tone="success" title="Your provider is here"
+              message={`Meet ${request.provider?.name || "your provider"} at your vehicle.`} />
+          ) : null}
+
+          {locationRefreshError ? (
+            <Surface>
+              <NoticeBanner tone="warning" title="GPS unavailable" message={locationRefreshError} />
+              <PrimaryButton title="Retry Location Fetch" icon="navigate" variant="outline" onPress={retryLocationRefresh} />
+            </Surface>
+          ) : null}
+
+          {extraWork && request.status === "extra_work_requested" ? (
+            <Surface>
+              <SectionHeading>Additional work estimate</SectionHeading>
+              <Text style={customerStyles.muted}>{extraWork.description || extraWork.partName || "Parts and labour"}</Text>
+              <Text style={styles.metricValue}>{formatCurrency((extraWork.partPrice || 0) + (extraWork.laborCharge || 0))}</Text>
+              <View style={customerStyles.actions}>
+                <PrimaryButton title="Decline Extra Work" variant="outline" style={customerStyles.action}
+                  onPress={() => onApproveExtraWork(false)} />
+                <PrimaryButton title="Approve Estimate" variant="success" style={customerStyles.action}
+                  onPress={() => onApproveExtraWork(true)} />
+              </View>
+            </Surface>
+          ) : null}
+
+          {canCompleteJob ? (
+            <Surface>
+              <SectionHeading>Confirm service completion</SectionHeading>
+              <Text style={customerStyles.muted}>Check that the roadside service is finished before confirming.</Text>
+              <PrimaryButton title="Confirm Job Complete & Release" icon="checkmark-circle" variant="success"
+                loading={updating} onPress={onCompleteJob} />
+            </Surface>
+          ) : null}
+
+          {token && request.status === "completed" && request.providerId && !request.review?.rating ? (
+            <ReviewPromptCard token={token} request={request} onSubmitted={setRequest} />
+          ) : null}
+          {request.status === "completed" ? (
+            <PrimaryButton title="View Invoice & Receipt" icon="receipt-outline" style={customerStyles.primary}
+              onPress={() => router.push({
+                pathname: "/(user)/customer/payment/[requestId]", params: { requestId: request.id }
+              })} />
+          ) : null}
+
+          <Progress request={request} />
+
+          {request.estimate ? (
+            <SummaryCard title="Estimate details" items={request.estimate.lines.map((line) => ({
+              label: line.label, value: formatCurrency(line.amount)
+            }))} total={formatCurrency(request.estimate.total)} />
+          ) : null}
+
+          {error ? <NoticeBanner tone="danger" title="Request update" message={error} /> : null}
+
+          {!isClosed ? (
+            showCancel ? (
+              <Surface>
+                <SectionHeading>Cancel assistance?</SectionHeading>
+                <Text style={customerStyles.muted}>Your provider will be notified.</Text>
+                <Field label="Cancellation reason (optional)" icon="document-text"
+                  placeholder="Add a reason" value={cancelReason} onChangeText={setCancelReason} />
+                <View style={customerStyles.actions}>
+                  <PrimaryButton title="Keep Request" variant="outline" style={customerStyles.action}
+                    disabled={updating} onPress={() => setShowCancel(false)} />
+                <PrimaryButton title="Confirm Cancel" variant="danger" style={styles.dangerAction}
+                    loading={updating} onPress={onCancelRequest} />
+                </View>
+              </Surface>
+            ) : (
+              <PrimaryButton title="Cancel Assistance Request" icon="close-circle-outline" variant="outline"
+                onPress={() => setShowCancel(true)} />
+            )
+          ) : null}
+        </>
+      ) : loadState !== "failed" && loadState !== "loaded" ? (
+        <Surface>
+          <IconTile icon="navigate-outline" />
+          <SectionHeading>{trackingEmptyTitle(loadState)}</SectionHeading>
+          {loadError ? <NoticeBanner tone="danger" title="Tracking unavailable" message={loadError} /> : null}
+          {loadState === "empty" && !requestId ? (
+            <PrimaryButton title="Request Help" style={customerStyles.primary}
+              onPress={() => router.push("/(user)/request")} />
+          ) : null}
+        </Surface>
+      ) : null}
+    </CustomerScreen>
+  );
+}
+
+function TrackingLocation({ icon, label, value }: {
+  icon: "location-outline" | "flag-outline";
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.locationRow}>
+      <Ionicons name={icon} size={18} color={customerColors.brand} />
+      <Text style={styles.locationText}>
+        <Text style={styles.locationLabel}>{label} · </Text>{value}
+      </Text>
     </View>
   );
 }
 
+function Progress({ request }: { request: ServiceRequest }) {
+  if (request.status === "cancelled") {
+    return <Surface><SectionHeading>Request progress</SectionHeading><Text style={customerStyles.muted}>Request cancelled.</Text></Surface>;
+  }
+
+  const steps = serviceSteps[request.category];
+  const current = steps.findIndex((item) => item.statuses.includes(request.status));
+
+  return (
+    <Surface>
+      <SectionHeading>Request progress</SectionHeading>
+      <View>
+        {steps.map(({ label }, index) => {
+          const currentStep = index === current && request.status !== "completed";
+          const done = index < current || request.status === "completed";
+          return (
+            <View key={label} style={styles.step}>
+              <View style={styles.stepTrack}>
+                <View style={[styles.stepDot, (currentStep || done) && styles.stepActive]}>
+                  {done ? <Ionicons name="checkmark" size={11} color={customerColors.surface} /> : null}
+                </View>
+                {index < steps.length - 1 ? <View style={[styles.stepLine, done && styles.stepLineDone]} /> : null}
+              </View>
+              <Text style={[styles.stepLabel, (currentStep || done) && styles.stepLabelActive]}>
+                {label}{currentStep ? " · Current step" : ""}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </Surface>
+  );
+}
+
 const styles = StyleSheet.create({
-  map: { height: 260, borderRadius: 22, backgroundColor: ui.colors.primarySoft, overflow: "hidden", borderWidth: 1, borderColor: ui.colors.border, marginBottom: 12 },
-  road: { position: "absolute", width: 420, height: 90, borderRadius: 60, backgroundColor: "rgba(37,99,235,0.28)", transform: [{ rotate: "-24deg" }], left: -40, top: 100 },
-  pinUser: { position: "absolute", left: 52, bottom: 48, width: 38, height: 38, borderRadius: 19, backgroundColor: ui.colors.primary, alignItems: "center", justifyContent: "center" },
-  pinProvider: { position: "absolute", right: 72, top: 62, width: 38, height: 38, borderRadius: 19, backgroundColor: ui.colors.success, alignItems: "center", justifyContent: "center" },
-  mapText: { position: "absolute", left: 16, top: 16, color: ui.colors.primaryDark, fontSize: 13, fontWeight: "900" },
-  provider: { gap: 14 },
-  metrics: { flexDirection: "row", gap: 10 },
-  metricBox: {
-    flex: 1,
-    minHeight: 70,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    backgroundColor: ui.colors.surfaceAlt,
-    padding: 12,
-    justifyContent: "center"
+  flex: { flex: 1, minWidth: 0 },
+  flexText: { flex: 1, color: customerColors.inkMuted, fontSize: 14 },
+  mapCard: { padding: 8, gap: 8 },
+  mapEmpty: { backgroundColor: customerColors.brandSoft, padding: 12, borderRadius: 10 },
+  metricValue: { color: customerColors.ink, fontSize: 16, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  provider: { flexDirection: "row", alignItems: "center", paddingTop: 10, gap: 9, borderTopColor: customerColors.border, borderTopWidth: 1 },
+  providerName: { color: customerColors.ink, fontWeight: "700", fontSize: 15 },
+  locationRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  locationText: { flex: 1, color: customerColors.inkMuted, fontSize: 13, lineHeight: 19 },
+  locationLabel: { color: customerColors.ink, fontWeight: "700" },
+  dangerAction: { ...customerStyles.action, borderColor: customerColors.statusDanger },
+  step: { flexDirection: "row", gap: 10, minHeight: 33 },
+  stepTrack: { width: 17, alignItems: "center" },
+  stepDot: {
+    width: 16, height: 16, borderRadius: 8, borderColor: customerColors.border, borderWidth: 1,
+    backgroundColor: customerColors.canvas, alignItems: "center", justifyContent: "center"
   },
-  metricLabel: { color: ui.colors.muted, fontSize: 11, fontWeight: "900" },
-  metricValue: { marginTop: 5, color: ui.colors.text, fontSize: 18, fontWeight: "900" },
-  providerTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  providerName: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  providerMeta: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  locationMeta: { marginTop: 3, color: ui.colors.primary, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  actions: { flexDirection: "row", gap: 10 },
-  extra: { marginTop: 12, gap: 10 },
-  extraTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  extraText: { color: ui.colors.muted, fontSize: 13, fontWeight: "700", lineHeight: 18 },
-  extraPrice: { color: ui.colors.primary, fontSize: 18, fontWeight: "900" },
-  stepsCard: { gap: 12, marginTop: 12 },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepDot: { width: 13, height: 13, borderRadius: 7, backgroundColor: ui.colors.border },
-  stepDotActive: { backgroundColor: ui.colors.primary },
-  stepText: { color: ui.colors.muted, fontSize: 13, fontWeight: "800" },
-  stepTextActive: { color: ui.colors.text },
-  doneText: { color: ui.colors.success, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  confirmText: { color: ui.colors.warning, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  cancelledText: { color: ui.colors.danger, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  completeBox: { marginTop: 12, gap: 10, borderColor: ui.colors.successSoft },
-  completeTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  completeText: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  cancelBox: { marginTop: 12, gap: 12, borderColor: ui.colors.dangerSoft },
-  cancelTitle: { color: ui.colors.text, fontSize: 16, fontWeight: "900" },
-  cancelText: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
+  stepActive: { backgroundColor: customerColors.brand, borderColor: customerColors.brand },
+  stepLine: { backgroundColor: customerColors.border, width: 1, flex: 1 },
+  stepLineDone: { backgroundColor: customerColors.brand },
+  stepLabel: { flex: 1, paddingBottom: 8, color: customerColors.inkMuted, fontSize: 13, lineHeight: 18 },
+  stepLabelActive: { color: customerColors.ink, fontWeight: "700" }
 });

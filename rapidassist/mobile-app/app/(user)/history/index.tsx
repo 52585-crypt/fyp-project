@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { ReviewPromptCard, ReviewSummary } from "../../../src/components/ReviewPromptCard";
 import { listMyRequests } from "../../../src/requests/requests.api";
 import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
 import type { ServiceRequest } from "../../../src/requests/requests.types";
 import { useAuth } from "../../../src/auth/AuthProvider";
+import { formatPaymentAmount, listPayments, paymentMethodNames, paymentStatusLabel, paymentStatusTone, type Payment } from "../../../src/payments/payments.api";
+import { onReconnected } from "../../../src/services/networkManager";
 import { AppShell, BottomNav, Card, IconBox, PrimaryButton, StatusPill } from "../../../src/ui/components";
 import { ui } from "../../../src/ui/system";
 
@@ -20,8 +23,14 @@ function canReview(request: ServiceRequest) {
 
 export default function UserHistory() {
   const { token } = useAuth();
+  const { view } = useLocalSearchParams<{ view?: string }>();
+  const paymentsOnly = view === "payments";
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [reviewTarget, setReviewTarget] = useState<ServiceRequest | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentCursor, setPaymentCursor] = useState<string | null>(null);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +39,7 @@ export default function UserHistory() {
     [requests]
   );
 
-  async function loadHistory() {
+  const loadHistory = useCallback(async () => {
     if (!token) return;
     try {
       setLoading(true);
@@ -41,16 +50,38 @@ export default function UserHistory() {
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadHistory();
   }, [token]);
+
+  const loadPayments = useCallback(async (before?: string) => {
+    if (!token) return;
+    setLoadingPayments(true);
+    setPaymentError("");
+    try {
+      const result = await listPayments(token, before);
+      setPayments((existing) => before ? [...existing, ...result.payments] : result.payments);
+      setPaymentCursor(result.next);
+    } catch {
+      setPaymentError("Unable to load payment history. Refresh to try again.");
+    } finally {
+      setLoadingPayments(false);
+    }
+  }, [token]);
+
+  const refresh = useCallback(() => {
+    if (!paymentsOnly) void loadHistory();
+    void loadPayments();
+  }, [loadHistory, loadPayments, paymentsOnly]);
+
+  useFocusEffect(useCallback(() => {
+    refresh();
+    return onReconnected(refresh);
+  }, [refresh]));
 
   return (
     <View style={{ flex: 1 }}>
-      <AppShell title="Service History" subtitle="Completed requests, cancelled requests, and provider reviews.">
-        {token && reviewTarget ? (
+      <AppShell title={paymentsOnly ? "Payment History" : "Service History"}
+        subtitle={paymentsOnly ? undefined : "Completed requests, cancelled requests, and provider reviews."}>
+        {!paymentsOnly && token && reviewTarget ? (
           <ReviewPromptCard
             token={token}
             request={reviewTarget}
@@ -62,10 +93,10 @@ export default function UserHistory() {
           />
         ) : null}
 
-        <PrimaryButton title={loading ? "Refreshing..." : "Refresh History"} icon="refresh" variant="outline" disabled={loading} onPress={loadHistory} />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <PrimaryButton title={loading ? "Refreshing..." : "Refresh History"} icon="refresh" variant="outline" disabled={loading || loadingPayments} onPress={refresh} />
+        {!paymentsOnly && error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {history.length === 0 ? (
+        {!paymentsOnly && history.length === 0 ? (
           <Card style={styles.empty}>
             <IconBox icon="receipt" />
             <View style={{ flex: 1 }}>
@@ -75,7 +106,7 @@ export default function UserHistory() {
           </Card>
         ) : null}
 
-        {history.map((request) => (
+        {!paymentsOnly && history.map((request) => (
           <Card key={request.id} style={styles.row}>
             <View style={styles.top}>
               <IconBox icon={getServiceIcon(request.category)} tone={request.status === "cancelled" ? "danger" : "success"} />
@@ -89,13 +120,38 @@ export default function UserHistory() {
               </View>
               <StatusPill label={request.status.replaceAll("_", " ")} tone={statusTone(request.status)} />
             </View>
+            {request.status === "completed" ? (
+              <PrimaryButton title="View Invoice" icon="receipt" variant="outline"
+                onPress={() => router.push({ pathname: "/(user)/customer/payment/[requestId]", params: { requestId: request.id } })} />
+            ) : null}
             {canReview(request) ? (
               <PrimaryButton title="Review Provider" icon="star" variant="success" onPress={() => setReviewTarget(request)} />
             ) : null}
           </Card>
         ))}
+        <Card style={styles.row}>
+          {!paymentsOnly ? <Text style={styles.title}>Payment History</Text> : null}
+          {paymentError ? <Text style={styles.error}>{paymentError}</Text> : null}
+          {loadingPayments && !payments.length ? <Text style={styles.subtitle}>Loading payments…</Text> : null}
+          {!loadingPayments && !paymentError && !payments.length ? <Text style={styles.subtitle}>No payments yet.</Text> : null}
+          {payments.map((payment) => (
+            <View key={payment.id} style={styles.row}>
+              <View style={styles.top}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.title}>{formatPaymentAmount(payment.amountMinor, payment.currency)}</Text>
+                  <Text style={styles.subtitle}>{paymentMethodNames[payment.method]} · {new Date(payment.paidAt || payment.createdAt).toLocaleString()}</Text>
+                </View>
+                <StatusPill label={paymentStatusLabel(payment)} tone={paymentStatusTone(payment)} />
+              </View>
+              <PrimaryButton title="Payment Details" icon="receipt" variant="outline"
+                onPress={() => router.push({ pathname: "/(user)/customer/payment/[requestId]", params: { requestId: payment.requestId } })} />
+            </View>
+          ))}
+          {paymentCursor ? <PrimaryButton title="Load Earlier Payments" variant="outline" disabled={loadingPayments}
+            onPress={() => void loadPayments(paymentCursor)} /> : null}
+        </Card>
       </AppShell>
-      <BottomNav role="user" active="Home" />
+      <BottomNav role="user" active="Activity" />
     </View>
   );
 }

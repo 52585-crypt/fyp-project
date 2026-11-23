@@ -1,86 +1,52 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { NoticeBanner } from "../../../src/ui/components";
+import {
+  AppHeader, ChoiceGroup, CustomerScreen, LocationCard, PrimaryButton, PrioritySelector, SectionHeading,
+  SummaryCard, Surface, VehicleCard, customerColors, customerStyles
+} from "../../../src/ui/customer/components";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
 import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
 import type { ServiceSuggestion } from "../../../src/ai/serviceSuggestion.types";
 import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
+import { LocationAutocompleteField } from "../../../src/components/LocationAutocompleteField";
 import { createRequest, listNearbyProviders } from "../../../src/requests/requests.api";
-import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory, RequestPriority } from "../../../src/requests/requests.types";
+import type {
+  FuelType,
+  MechanicIssueCategory,
+  RequestCategory,
+  RequestPriority
+} from "../../../src/requests/requests.types";
+import { useFavoriteLocations } from "../../../src/services/useFavoriteLocations";
 import {
-  deleteFavoriteLocation,
-  getFavoriteLocations,
-  saveFavoriteLocation,
-  type FavoriteLocation
-} from "../../../src/services/favoriteLocations.storage";
-import { searchPlaces, type GeocodingResult } from "../../../src/services/geocoding";
-import { getDrivingDistanceKm } from "../../../src/services/routing";
-import { distanceKm, type Coordinate } from "../../../src/utils/distance";
-import { AppShell, BottomNav, Card, Field, IconBox, PrimaryButton, SectionTitle, StatusPill } from "../../../src/ui/components";
-import { ui } from "../../../src/ui/system";
-
-const services: Array<{ label: string; value: RequestCategory; icon: "car" | "water" | "construct" }> = [
-  { label: "Car Towing", value: "car_towing", icon: "car" },
-  { label: "Fuel Delivery", value: "fuel_delivery", icon: "water" },
-  { label: "Mechanic", value: "mechanic", icon: "construct" }
-];
-
-function normalizeCategoryParam(value: unknown): RequestCategory {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === "fuel_delivery" || raw === "mechanic" || raw === "car_towing") return raw;
-  return "car_towing";
-}
-
-const DEFAULT_PICKUP = { latitude: 31.5204, longitude: 74.3587 };
-const DEFAULT_DESTINATION = { latitude: 31.4697, longitude: 74.2728 };
-const TOWING_RATE_PER_KM = 180;
+  applyNormalizedLocationTarget,
+  manualMapLocation,
+  normalizeLocation,
+  selectedRequestLocations,
+  type NormalizedLocation
+} from "../../../src/services/normalizedLocation";
+import { requiresGoogleMap } from "../../../src/services/locationMapPolicy";
+import { useBookingRoute } from "../../../src/requests/useBookingRoute";
+import { getCurrentForegroundLocation } from "../../../src/services/currentLocation";
+import { coordinatesFromUnknown, type Coordinate } from "../../../src/utils/distance";
+import { buildEstimate } from "../../../src/requests/requestEstimate";
+import { listMyVehicles } from "../../../src/vehicles/vehicles.api";
+import type { Vehicle } from "../../../src/vehicles/vehicles.types";
+import { formatCurrency } from "../../../src/i18n";
+import { customerServices, normalizeBookingCategory } from "../../../src/ui/customer/services";
 
 const mechanicIssues: Array<{ label: string; value: MechanicIssueCategory }> = [
   { label: "Battery", value: "battery" },
   { label: "Engine", value: "engine" },
   { label: "Tyre", value: "tyre" },
   { label: "Brake", value: "brake" },
-  { label: "Overheating", value: "overheating" },
+  { label: "Overheat", value: "overheating" },
   { label: "Inspection", value: "general_inspection" }
 ];
-
-function estimate(category: RequestCategory, liters: number, towingDistanceKm: number) {
-  if (category === "car_towing") {
-    const billedDistance = Math.max(1, towingDistanceKm);
-    const total = 1200 + Math.round(billedDistance * TOWING_RATE_PER_KM) + 250;
-    return {
-      total,
-      text: `${billedDistance} km at PKR ${TOWING_RATE_PER_KM}/km, base towing fee, and service fee.`
-    };
-  }
-  if (category === "fuel_delivery") return { total: liters * 275 + 600, text: "Fuel amount, delivery fee, and service fee." };
-  return { total: 1250, text: "Inspection fee and visit fee. Extra work needs approval." };
-}
-
-function parseCoordinate(lat: string, lng: string, fallback: Coordinate) {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return fallback;
-  return { latitude: parsedLat, longitude: parsedLng };
-}
-
-function formatDistanceKm(value: number) {
-  return Number((value >= 10 ? Number(value.toFixed(0)) : Number(value.toFixed(1))).toFixed(1));
-}
-
-function nearbyRadiusFor(category: RequestCategory) {
-  if (category === "car_towing") return 15;
-  if (category === "fuel_delivery") return 8;
-  return 5;
-}
-
-function ratingText(provider: NearbyProvider) {
-  if (!provider.ratingCount) return "New provider";
-  return `${Number(provider.ratingAvg || 0).toFixed(1)} rating (${provider.ratingCount})`;
-}
 
 function coordinateLabel(prefix: string, coordinate: Coordinate) {
   return `${prefix}: ${coordinate.latitude.toFixed(5)}, ${coordinate.longitude.toFixed(5)}`;
@@ -89,93 +55,105 @@ function coordinateLabel(prefix: string, coordinate: Coordinate) {
 export default function UserRequest() {
   const { token } = useAuth();
   const params = useLocalSearchParams<{ category?: string }>();
-  const [category, setCategory] = useState<RequestCategory>(() => normalizeCategoryParam(params.category));
-  const [pickup, setPickup] = useState("Gulberg 3, Lahore");
-  const [destination, setDestination] = useState("Johar Town, Lahore");
-  const [pickupLat, setPickupLat] = useState("31.5204");
-  const [pickupLng, setPickupLng] = useState("74.3587");
-  const [destinationLat, setDestinationLat] = useState("31.4697");
-  const [destinationLng, setDestinationLng] = useState("74.2728");
+  const { height: windowHeight } = useWindowDimensions();
+  const mapHeight = Math.max(190, Math.min(270, Math.round(windowHeight * 0.32)));
+
+  // Request State
+  const [category, setCategory] = useState<RequestCategory>(() => normalizeBookingCategory(params.category));
+  const [pickupLocation, setPickupLocation] = useState<NormalizedLocation | null>(null);
+  const [destinationLocation, setDestinationLocation] = useState<NormalizedLocation | null>(null);
+  const [pickupSearch, setPickupSearch] = useState("");
+  const [destinationSearch, setDestinationSearch] = useState("");
+
+  const pickup = pickupLocation?.address || pickupSearch;
+  const destination = destinationLocation?.address || destinationSearch;
+
   const [activeLocationTarget, setActiveLocationTarget] = useState<LocationTarget>("pickup");
-  const [vehicle, setVehicle] = useState("Honda Civic");
-  const [registrationNumber, setRegistrationNumber] = useState("LEA 2244");
+  const [editingTarget, setEditingTarget] = useState<"pickup" | "destination" | null>(null);
+
+  // Form Fields
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [vehicle, setVehicle] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [vehicleError, setVehicleError] = useState<string | null>(null);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const manualVehicle = useRef(false);
+  const [editingVehicle, setEditingVehicle] = useState(false);
   const [fuelType, setFuelType] = useState<FuelType>("petrol");
   const [liters, setLiters] = useState("5");
   const [mechanicIssue, setMechanicIssue] = useState<MechanicIssueCategory>("battery");
   const [priority, setPriority] = useState<RequestPriority>("normal");
   const [description, setDescription] = useState("");
+  const [showAiModal, setShowAiModal] = useState(false);
+
   const [manualSelectionVersion, setManualSelectionVersion] = useState(0);
   const [loading, setLoading] = useState(false);
   const submission = useRef<{ fingerprint: string; id: string } | null>(null);
   const submitting = useRef(false);
+
   const [locationLoading, setLocationLoading] = useState<"pickup" | "destination" | "current" | null>(null);
-  const [routeDistanceKm, setRouteDistanceKm] = useState<number | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [favoriteLocations, setFavoriteLocations] = useState<FavoriteLocation[]>([]);
-  const [favoriteSaving, setFavoriteSaving] = useState(false);
-  const [nearbyProviders, setNearbyProviders] = useState<NearbyProvider[]>([]);
-  const [nearbyRadiusKm, setNearbyRadiusKm] = useState(nearbyRadiusFor(category));
+
+  const [nearbyProviderCount, setNearbyProviderCount] = useState<number | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
-  const [nearbyError, setNearbyError] = useState<string | null>(null);
+  const [currentMapLocation, setCurrentMapLocation] = useState<Coordinate | null>(null);
+  const [mapCameraFocus, setMapCameraFocus] = useState<{ coordinate: Coordinate; requestId: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { favoriteLocations, favoriteSaving, saveFavorite, removeFavorite } = useFavoriteLocations(setError);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const litersNumber = Math.max(1, Number(liters) || 1);
-  const pickupCoordinate = useMemo(() => parseCoordinate(pickupLat, pickupLng, DEFAULT_PICKUP), [pickupLat, pickupLng]);
-  const destinationCoordinate = useMemo(
-    () => parseCoordinate(destinationLat, destinationLng, DEFAULT_DESTINATION),
-    [destinationLat, destinationLng]
-  );
-  const straightLineDistanceKm = useMemo(
-    () => formatDistanceKm(distanceKm(pickupCoordinate, destinationCoordinate)),
-    [destinationCoordinate, pickupCoordinate]
-  );
-  const towingDistanceKm = routeDistanceKm ? formatDistanceKm(routeDistanceKm) : straightLineDistanceKm;
-  const billedTowingDistanceKm = Math.max(1, towingDistanceKm);
-  const currentEstimate = useMemo(
-    () => estimate(category, litersNumber, billedTowingDistanceKm),
-    [billedTowingDistanceKm, category, litersNumber]
-  );
-  const providerPins = useMemo(
-    () =>
-      nearbyProviders.map((provider) => ({
-        id: provider.id,
-        name: provider.name,
-        distanceKm: provider.distanceKm,
-        location: {
-          latitude: provider.location.lat,
-          longitude: provider.location.lng
-        }
-      })),
-    [nearbyProviders]
-  );
+  const { route: activeDrivingRoute, loading: routeLoading, error: routeError, retry: retryRoute } =
+    useBookingRoute(pickupLocation, category === "car_towing" ? destinationLocation : null);
+  const currentEstimate = buildEstimate(category, activeDrivingRoute?.distanceKm ?? null, fuelType, litersNumber);
+  const selectedVehicle = vehicles.find((item) => item.id === vehicleId);
+
 
   useEffect(() => {
-    setCategory(normalizeCategoryParam(params.category));
+    setCategory(normalizeBookingCategory(params.category));
   }, [params.category]);
 
+  useFocusEffect(useCallback(() => {
+    if (!token) return;
+    let active = true;
+    setVehiclesLoading(true);
+    setVehicleError(null);
+    void listMyVehicles(token).then((items) => {
+      if (!active) return;
+      setVehicles(items);
+      setVehicleId((previous) => {
+        if (manualVehicle.current) return null;
+        return items.find((item) => item.id === previous)?.id ?? items[0]?.id ?? null;
+      });
+    }).catch(() => {
+      if (active) setVehicleError("Saved vehicles couldn’t be loaded.");
+    }).finally(() => {
+      if (active) setVehiclesLoading(false);
+    });
+    return () => { active = false; };
+  }, [token]));
+
+  // Load nearby providers
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(async () => {
-      if (!token) return;
+      if (!token || !pickupLocation) {
+        setNearbyProviderCount(null);
+        setNearbyLoading(false);
+        return;
+      }
       try {
-        const radiusKm = nearbyRadiusFor(category);
         setNearbyLoading(true);
-        setNearbyError(null);
         const result = await listNearbyProviders(token, {
           category,
-          lat: pickupCoordinate.latitude,
-          lng: pickupCoordinate.longitude,
-          radiusKm
+          lat: pickupLocation.latitude,
+          lng: pickupLocation.longitude
         });
         if (!cancelled) {
-          setNearbyProviders(result.providers);
-          setNearbyRadiusKm(result.radiusKm);
+          setNearbyProviderCount(result.providers.length);
         }
-      } catch (e: any) {
-        if (!cancelled) {
-          setNearbyProviders([]);
-          setNearbyError(e?.response?.data?.message || e?.message || "Failed to load nearby providers");
-        }
+      } catch {
+        if (!cancelled) setNearbyProviderCount(null);
       } finally {
         if (!cancelled) setNearbyLoading(false);
       }
@@ -185,116 +163,67 @@ export default function UserRequest() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [category, pickupCoordinate, token]);
+  }, [category, pickupLocation, token]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadFavoriteLocations() {
-      try {
-        const saved = await getFavoriteLocations();
-        if (mounted) setFavoriteLocations(saved);
-      } catch {
-        if (mounted) setFavoriteLocations([]);
-      }
+  function updatePickupFromMap(value: unknown) {
+    const coordinate = coordinatesFromUnknown(value);
+    if (!coordinate) {
+      setError("The map returned invalid coordinates. Your pickup location was not changed.");
+      return;
     }
+    setMapCameraFocus(null);
+    const location = manualMapLocation(coordinate, coordinateLabel("Selected location", coordinate));
+    if (!location) return;
+    setPickupLocation(location);
+    setError(null);
+  }
 
-    loadFavoriteLocations();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRouteDistance() {
-      if (category !== "car_towing") {
-        setRouteDistanceKm(null);
-        return;
-      }
-
-      try {
-        setRouteLoading(true);
-        const km = await getDrivingDistanceKm(pickupCoordinate, destinationCoordinate);
-        if (!cancelled) setRouteDistanceKm(km);
-      } catch {
-        if (!cancelled) setRouteDistanceKm(null);
-      } finally {
-        if (!cancelled) setRouteLoading(false);
-      }
+  function updateDestinationFromMap(value: unknown) {
+    const coordinate = coordinatesFromUnknown(value);
+    if (!coordinate) {
+      setError("The map returned invalid coordinates. Your destination was not changed.");
+      return;
     }
-
-    loadRouteDistance();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [category, destinationCoordinate, pickupCoordinate]);
-
-  function updatePickupFromMap(coordinate: Coordinate) {
-    setPickupLat(String(coordinate.latitude));
-    setPickupLng(String(coordinate.longitude));
-    setPickup(coordinateLabel("Pinned pickup", coordinate));
+    setMapCameraFocus(null);
+    const location = manualMapLocation(coordinate, coordinateLabel("Selected drop-off", coordinate));
+    if (!location) return;
+    setDestinationLocation(location);
+    setError(null);
   }
 
-  function updateDestinationFromMap(coordinate: Coordinate) {
-    setDestinationLat(String(coordinate.latitude));
-    setDestinationLng(String(coordinate.longitude));
-    setDestination(coordinateLabel("Pinned destination", coordinate));
-  }
-
-  function applyPickupLocation(result: GeocodingResult) {
-    setPickup(result.label);
-    setPickupLat(String(result.latitude));
-    setPickupLng(String(result.longitude));
+  function applySelectedPickup(location: NormalizedLocation) {
+    applyNormalizedLocationTarget("pickup", location, {
+      pickup: setPickupLocation,
+      destination: setDestinationLocation
+    });
     setActiveLocationTarget("pickup");
+    setEditingTarget(null);
   }
 
-  function applyFavoritePickupLocation(location: FavoriteLocation) {
-    setPickup(location.addressText);
-    setPickupLat(String(location.latitude));
-    setPickupLng(String(location.longitude));
-    setActiveLocationTarget("pickup");
-  }
-
-  function applyDestinationLocation(result: GeocodingResult) {
-    setDestination(result.label);
-    setDestinationLat(String(result.latitude));
-    setDestinationLng(String(result.longitude));
+  function applySelectedDestination(location: NormalizedLocation) {
+    applyNormalizedLocationTarget("destination", location, {
+      pickup: setPickupLocation,
+      destination: setDestinationLocation
+    });
     setActiveLocationTarget("destination");
+    setEditingTarget(null);
   }
 
-  async function findPickupLocation() {
-    try {
-      setLocationLoading("pickup");
-      setError(null);
-      const [result] = await searchPlaces(pickup, pickupCoordinate);
-      if (!result) {
-        setError("No pickup location found. Try a more specific address.");
-        return;
-      }
-      applyPickupLocation(result);
-    } catch (e: any) {
-      setError(e?.message || "Failed to search pickup location");
-    } finally {
-      setLocationLoading(null);
-    }
+  async function getCurrentMapCoordinate() {
+    const { coordinate } = await getCurrentForegroundLocation();
+    setCurrentMapLocation(coordinate);
+    setMapCameraFocus((value) => ({ coordinate, requestId: (value?.requestId || 0) + 1 }));
+    return coordinate;
   }
 
-  async function findDestinationLocation() {
+  async function recenterMapOnCurrentLocation() {
     try {
-      setLocationLoading("destination");
+      setLocationLoading("current");
       setError(null);
-      const [result] = await searchPlaces(destination, pickupCoordinate);
-      if (!result) {
-        setError("No destination found. Try a more specific address.");
-        return;
-      }
-      applyDestinationLocation(result);
+      return await getCurrentMapCoordinate();
     } catch (e: any) {
-      setError(e?.message || "Failed to search destination");
+      setError(e?.message || "Failed to fetch current location");
+      return null;
     } finally {
       setLocationLoading(null);
     }
@@ -304,19 +233,9 @@ export default function UserRequest() {
     try {
       setLocationLoading("current");
       setError(null);
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
-        setError("Location permission is required to use current pickup location.");
-        return;
-      }
-
-      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const coordinate = {
-        latitude: current.coords.latitude,
-        longitude: current.coords.longitude
-      };
-      setPickupLat(String(coordinate.latitude));
-      setPickupLng(String(coordinate.longitude));
+      const currentCoordinate = await getCurrentMapCoordinate();
+      const coordinate = normalizeLocation({ ...currentCoordinate, source: "gps" });
+      setPickupLocation({ ...coordinate, address: "Locating address…" });
       setActiveLocationTarget("pickup");
 
       try {
@@ -324,72 +243,73 @@ export default function UserRequest() {
         const readable = address
           ? [address.name, address.street, address.city, address.region].filter(Boolean).join(", ")
           : "";
-        setPickup(readable || "Current location");
+        setPickupLocation((value) =>
+          value?.source === "gps" &&
+          value.latitude === coordinate.latitude &&
+          value.longitude === coordinate.longitude
+            ? { ...value, address: readable || "Current location" }
+            : value
+        );
       } catch {
-        setPickup("Current location");
+        setPickupLocation((value) =>
+          value?.source === "gps" &&
+          value.latitude === coordinate.latitude &&
+          value.longitude === coordinate.longitude
+            ? { ...value, address: "Current location" }
+            : value
+        );
       }
     } catch (e: any) {
-      setError(e?.message || "Failed to fetch current location");
+      setError(e?.message || "Location permission denied or unavailable");
     } finally {
       setLocationLoading(null);
     }
   }
 
   async function saveCurrentPickupAsFavorite() {
-    try {
-      setFavoriteSaving(true);
-      setError(null);
-      const saved = await saveFavoriteLocation({
-        addressText: pickup,
-        latitude: pickupCoordinate.latitude,
-        longitude: pickupCoordinate.longitude
-      });
-      setFavoriteLocations(saved);
-    } catch (e: any) {
-      setError(e?.message || "Failed to save favorite location");
-    } finally {
-      setFavoriteSaving(false);
+    if (!pickupLocation) {
+      setError("Choose a pickup location before saving it.");
+      return;
     }
+    setError(null);
+    await saveFavorite({
+      addressText: pickup,
+      source: pickupLocation.source,
+      placeId: pickupLocation.placeId,
+      latitude: pickupLocation.latitude,
+      longitude: pickupLocation.longitude
+    });
   }
 
   async function removeFavoritePickupLocation(id: string) {
-    try {
-      setError(null);
-      const saved = await deleteFavoriteLocation(id);
-      setFavoriteLocations(saved);
-    } catch (e: any) {
-      setError(e?.message || "Failed to remove favorite location");
-    }
+    setError(null);
+    await removeFavorite(id);
   }
 
   async function onSubmit() {
     if (!token || submitting.current) return;
+    const locations = selectedRequestLocations(category, pickupLocation, destinationLocation);
+    if (!locations) {
+      setFormError(pickupLocation
+        ? "Choose a towing destination."
+        : "Choose the service location on the map or use your current GPS location.");
+      return;
+    }
+    if (category === "car_towing" && (!activeDrivingRoute || routeLoading)) {
+      setFormError("A valid road route is required before requesting a tow.");
+      return;
+    }
     submitting.current = true;
     try {
       setLoading(true);
-      setError(null);
+      setFormError(null);
       const input = {
         category,
         priority,
-        vehicleInfo: {
-          type: "car",
-          model: vehicle,
-          registrationNumber
-        },
-        pickupLocation: {
-          lat: pickupCoordinate.latitude,
-          lng: pickupCoordinate.longitude,
-          addressText: pickup
-        },
-        destinationLocation:
-          category === "car_towing"
-            ? {
-                lat: destinationCoordinate.latitude,
-                lng: destinationCoordinate.longitude,
-                addressText: destination
-              }
-            : null,
-        distanceKm: category === "car_towing" ? billedTowingDistanceKm : null,
+        ...(selectedVehicle ? { vehicleId: selectedVehicle.id } : {
+          vehicleInfo: { type: "car", model: vehicle.trim(), registrationNumber: registrationNumber.trim() }
+        }),
+        ...locations,
         issueType: category === "mechanic" ? mechanicIssue : null,
         description,
         fuelDetails:
@@ -407,353 +327,272 @@ export default function UserRequest() {
             : undefined
       };
       const fingerprint = JSON.stringify(input);
-      if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, id: `dispatch-${Date.now()}-${Math.random().toString(36).slice(2)}` };
-      await createRequest(token, { ...input, clientRequestId: submission.current.id });
-      router.push("/(user)/tracking");
+      if (submission.current?.fingerprint !== fingerprint) {
+        submission.current = {
+          fingerprint,
+          id: `dispatch-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        };
+      }
+      const request = await createRequest(token, { ...input, clientRequestId: submission.current.id });
+      router.push({ pathname: "/(user)/tracking", params: { requestId: request.id } });
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Failed to create request");
+      setFormError(e?.response?.data?.message || e?.message || "Failed to create request");
     } finally {
       submitting.current = false;
       setLoading(false);
     }
   }
 
+  const waitingForRoute = category === "car_towing" && Boolean(pickupLocation && destinationLocation) && (routeLoading || !activeDrivingRoute);
+
   function applyServiceSuggestion(suggestion: ServiceSuggestion) {
     const selection = selectionFromSuggestion(suggestion);
     if (!selection) return;
     setCategory(selection.category);
     if (selection.mechanicIssue) setMechanicIssue(selection.mechanicIssue);
+    setShowAiModal(false);
   }
 
+  const config = requestCopy[category];
+  const vehicleLabel = selectedVehicle
+    ? vehicleTitle(selectedVehicle)
+    : [vehicle.trim(), registrationNumber.trim()].filter(Boolean).join(" · ");
+  const estimateLines = currentEstimate?.lines.map((line) => ({ label: line.label, value: formatCurrency(line.amount) })) ?? [];
+  const summaryItems = category === "car_towing" && activeDrivingRoute ? [
+    { label: "Road distance", value: `${activeDrivingRoute.distanceKm.toFixed(1)} km` },
+    { label: "Driving time", value: `${activeDrivingRoute.durationMinutes} min` },
+    ...estimateLines
+  ] : category === "mechanic" ? [
+    { label: "Provider ETA", value: "Available in live tracking" },
+    ...estimateLines
+  ] : estimateLines;
+
   return (
-    <View style={{ flex: 1 }}>
-      <AppShell title="Create Request" subtitle="Choose one of the three RapidAssist services.">
-        <ServiceSuggestionCard
-          token={token}
-          description={description}
-          onDescriptionChange={setDescription}
-          manualSelectionVersion={manualSelectionVersion}
-          onSuggestionAccepted={applyServiceSuggestion}
-          onSignInRequested={() => router.replace("/(auth)/login")}
-        />
-        <SectionTitle title="Select service" />
-        <View style={styles.serviceGrid}>
-          {services.map((item) => {
-            const active = category === item.value;
-            return (
-              <Pressable
-                key={item.value}
-                onPress={() => {
-                  setManualSelectionVersion((version) => version + 1);
-                  setCategory(item.value);
-                }}
-                style={[styles.service, active ? styles.serviceActive : null]}
-              >
-                <IconBox icon={item.icon} tone={active ? "primary" : "dark"} />
-                <Text style={[styles.serviceText, active ? styles.serviceTextActive : null]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+    <CustomerScreen active="Services" header={<AppHeader title={config.title} back />}>
+      <ChoiceGroup label="Roadside service" hideLabel options={customerServices} value={category}
+        onChange={(value) => {
+          if (value === category) return;
+          setManualSelectionVersion((version) => version + 1);
+          setCategory(value);
+          setError(null);
+          setFormError(null);
+        }} />
 
-        <SectionTitle title="Vehicle and pickup" />
-        <Card style={styles.form}>
-          <Field label="Pickup location" icon="locate" value={pickup} onChangeText={setPickup} />
-          <View style={styles.locationActions}>
-            <PrimaryButton
-              title={locationLoading === "pickup" ? "Finding..." : "Find Pickup"}
-              icon="search"
-              variant="outline"
-              disabled={Boolean(locationLoading)}
-              style={{ flex: 1 }}
-              onPress={findPickupLocation}
-            />
-            <PrimaryButton
-              title={locationLoading === "current" ? "Locating..." : "Current"}
-              icon="navigate"
-              variant="outline"
-              disabled={Boolean(locationLoading)}
-              style={{ flex: 1 }}
-              onPress={useCurrentLocation}
-            />
-          </View>
-          <View style={styles.favoriteBlock}>
-            <View style={styles.favoriteHeader}>
-              <Text style={styles.favoriteTitle}>Saved locations</Text>
-              <PrimaryButton
-                title={favoriteSaving ? "Saving..." : "Save Pickup"}
-                icon="bookmark"
-                variant="outline"
-                disabled={favoriteSaving}
-                style={styles.favoriteSaveButton}
-                onPress={saveCurrentPickupAsFavorite}
-              />
-            </View>
-            {favoriteLocations.length > 0 ? (
-              <View style={styles.favoriteList}>
-                {favoriteLocations.map((location) => (
-                  <View key={location.id} style={styles.favoriteChip}>
-                    <Pressable onPress={() => applyFavoritePickupLocation(location)} style={styles.favoriteApply}>
-                      <Text numberOfLines={1} style={styles.favoriteText}>
-                        {location.label}
-                      </Text>
-                    </Pressable>
-                    <Pressable onPress={() => removeFavoritePickupLocation(location.id)} style={styles.favoriteDelete}>
-                      <Ionicons name="close" size={15} color={ui.colors.muted} />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.favoriteEmpty}>Save frequent pickup or service points here.</Text>
-            )}
-          </View>
-          <Field label="Vehicle model" icon="car" value={vehicle} onChangeText={setVehicle} />
-          <Field label="Registration number" icon="reader" value={registrationNumber} onChangeText={setRegistrationNumber} />
-        </Card>
-
-        <SectionTitle
-          title="Service map"
-          action={nearbyLoading ? "Searching" : `${nearbyProviders.length} available`}
+      <Surface style={styles.mapCard}>
+        <LocationMapPicker
+          pickup={pickupLocation}
+          destination={category === "car_towing" ? destinationLocation : null}
+          route={category === "car_towing" ? activeDrivingRoute?.coordinates || [] : []}
+          onCoordinateError={setError}
+          currentLocation={currentMapLocation}
+          cameraFocus={mapCameraFocus}
+          onRequestCurrentLocation={recenterMapOnCurrentLocation}
+          activeTarget={activeLocationTarget}
+          onActiveTargetChange={setActiveLocationTarget}
+          onPickupChange={updatePickupFromMap}
+          onDestinationChange={category === "car_towing" ? updateDestinationFromMap : updatePickupFromMap}
+          singlePoint={category !== "car_towing"}
+          pointLabel={config.location}
+          pickupLabel="Pickup"
+          destinationLabel="Destination"
+          mapHeight={mapHeight}
+          requiresGoogleMap={requiresGoogleMap(pickupLocation, category === "car_towing" ? destinationLocation : null)}
         />
-        <Card style={styles.nearbyCard}>
-          <LocationMapPicker
-            pickup={pickupCoordinate}
-            destination={category === "car_towing" ? destinationCoordinate : pickupCoordinate}
-            providers={providerPins}
-            activeTarget={activeLocationTarget}
-            onActiveTargetChange={setActiveLocationTarget}
-            onPickupChange={updatePickupFromMap}
-            onDestinationChange={category === "car_towing" ? updateDestinationFromMap : updatePickupFromMap}
-            singlePoint={category !== "car_towing"}
-            pointLabel={category === "fuel_delivery" ? "Delivery location" : category === "mechanic" ? "Service location" : "Pickup"}
-            pickupLabel="Pickup"
-            destinationLabel="Destination"
+        <PrimaryButton title="Use current location" icon="locate-outline" variant="outline"
+          style={styles.secondaryButton} onPress={useCurrentLocation} loading={locationLoading === "current"} />
+        {pickupLocation && (nearbyLoading || nearbyProviderCount !== null) ? (
+          <Text style={customerStyles.muted} accessibilityLiveRegion="polite">
+            {nearbyLoading ? "Checking provider availability…" : `${nearbyProviderCount} nearby available`}
+          </Text>
+        ) : null}
+        {error ? <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text> : null}
+      </Surface>
+
+      <LocationCard label={config.location} icon="location-outline" value={pickupLocation?.address || "Choose a location"}
+        expanded={editingTarget === "pickup"} onPress={() => {
+          setActiveLocationTarget("pickup");
+          setEditingTarget(editingTarget === "pickup" ? null : "pickup");
+        }}>
+        <LocationAutocompleteField
+          token={token} label={`Search ${config.location.toLowerCase()}`} icon="search"
+          placeholder="Enter a street or landmark" value={pickup}
+          onChangeText={(value) => { setPickupSearch(value); setPickupLocation(null); }}
+          onSelect={applySelectedPickup} near={pickupLocation ?? undefined}
+        />
+        {pickupLocation ? (
+          <PrimaryButton title="Save location" icon="bookmark-outline" variant="outline"
+            style={styles.secondaryButton} loading={favoriteSaving} onPress={saveCurrentPickupAsFavorite} />
+        ) : null}
+        {favoriteLocations.map((favorite) => (
+          <View key={favorite.id} style={customerStyles.row}>
+            <Pressable accessibilityRole="button" style={styles.favorite}
+              disabled={favorite.latitude == null || favorite.longitude == null}
+              onPress={() => {
+                if (favorite.latitude == null || favorite.longitude == null) return;
+                applySelectedPickup(normalizeLocation({
+                  latitude: favorite.latitude,
+                  longitude: favorite.longitude,
+                  address: favorite.addressText,
+                  source: favorite.source || "unknown",
+                  placeId: favorite.placeId
+                }));
+              }}>
+              <Ionicons name="bookmark-outline" size={16} color={customerColors.brand} />
+              <Text style={styles.fieldLabel} numberOfLines={1}>{favorite.label}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${favorite.label}`}
+              onPress={() => void removeFavoritePickupLocation(favorite.id)} style={styles.removeFavorite}>
+              <Ionicons name="trash-outline" size={18} color={customerColors.inkMuted} />
+            </Pressable>
+          </View>
+        ))}
+      </LocationCard>
+
+      {category === "car_towing" ? (
+        <LocationCard label="Towing destination" icon="flag-outline"
+          value={destinationLocation?.address || "Choose a destination"}
+          expanded={editingTarget === "destination"} onPress={() => {
+            setActiveLocationTarget("destination");
+            setEditingTarget(editingTarget === "destination" ? null : "destination");
+          }}>
+          <LocationAutocompleteField
+            token={token} label="Search destination" icon="flag" placeholder="Enter a drop-off address"
+            value={destination} onChangeText={(value) => { setDestinationSearch(value); setDestinationLocation(null); }}
+            onSelect={applySelectedDestination} near={pickupLocation ?? undefined}
           />
-          <View style={styles.nearbySummary}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nearbyTitle}>
-                {nearbyLoading
-                  ? "Checking online providers..."
-                  : nearbyProviders.length
-                    ? `${nearbyProviders.length} provider${nearbyProviders.length === 1 ? "" : "s"} within ${nearbyRadiusKm} km`
-                    : `No providers within ${nearbyRadiusKm} km`}
-              </Text>
-              <Text style={styles.nearbyText}>
-                This map shows your service location and verified online providers matching this service.
-              </Text>
-            </View>
-            <StatusPill label={nearbyProviders.length ? "Live" : "Waiting"} tone={nearbyProviders.length ? "success" : "warning"} />
-          </View>
-          {nearbyProviders.slice(0, 3).map((provider) => (
-            <View key={provider.id} style={styles.providerRow}>
-              <IconBox icon={category === "mechanic" ? "construct" : category === "fuel_delivery" ? "water" : "car"} tone="success" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.providerName}>{provider.name}</Text>
-                <Text style={styles.providerMeta}>
-                  {provider.distanceKm} km away - {provider.etaMinutes} min ETA - {ratingText(provider)}
-                </Text>
-                <Text style={styles.providerMeta}>{provider.completedJobs} completed jobs</Text>
-              </View>
-            </View>
-          ))}
-          {nearbyError ? <Text style={styles.error}>{nearbyError}</Text> : null}
-        </Card>
+        </LocationCard>
+      ) : null}
 
-        {category === "car_towing" ? (
-          <>
-            <SectionTitle title="Towing details" />
-            <Card style={styles.form}>
-              <View style={styles.fareCard}>
-                <View>
-                  <Text style={styles.fareLabel}>Estimated Fare</Text>
-                  <Text style={styles.fareValue}>PKR {currentEstimate.total.toLocaleString()}</Text>
-                </View>
-                <View style={styles.fareMeta}>
-                  <Text style={styles.fareMetaText}>{billedTowingDistanceKm} km</Text>
-                  <Text style={styles.fareMetaSub}>PKR {TOWING_RATE_PER_KM}/km</Text>
-                </View>
-              </View>
-              <Field label="Destination" icon="flag" value={destination} onChangeText={setDestination} />
-              <PrimaryButton
-                title={locationLoading === "destination" ? "Finding destination..." : "Find Destination"}
-                icon="search"
-                variant="outline"
-                disabled={Boolean(locationLoading)}
-                onPress={findDestinationLocation}
-              />
-              <View style={styles.coordinateRow}>
-                <View style={{ flex: 1 }}>
-                  <Field label="Pickup lat" icon="navigate" keyboardType="numeric" value={pickupLat} onChangeText={setPickupLat} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label="Pickup lng" icon="navigate" keyboardType="numeric" value={pickupLng} onChangeText={setPickupLng} />
-                </View>
-              </View>
-              <View style={styles.coordinateRow}>
-                <View style={{ flex: 1 }}>
-                  <Field label="Drop lat" icon="navigate" keyboardType="numeric" value={destinationLat} onChangeText={setDestinationLat} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label="Drop lng" icon="navigate" keyboardType="numeric" value={destinationLng} onChangeText={setDestinationLng} />
-                </View>
-              </View>
-              <Text style={styles.distanceNote}>
-                {routeLoading
-                  ? "Calculating road distance..."
-                  : routeDistanceKm
-                    ? "Price uses road distance. Tap pickup or destination, then tap the map to adjust the pin."
-                    : "Road distance unavailable, using straight-line distance. Tap pickup or destination, then tap the map to adjust the pin."}
-              </Text>
-            </Card>
-          </>
+      <VehicleCard value={vehicleLabel || (vehiclesLoading ? "Loading saved vehicles…" : "Select or enter a vehicle")}
+        expanded={editingVehicle} onPress={() => setEditingVehicle(!editingVehicle)}>
+        {vehicleError ? <Text style={customerStyles.muted}>{vehicleError}</Text> : null}
+        {vehicles.length > 0 ? (
+          <ChoiceGroup label="Vehicle to assist"
+            options={[...vehicles.map((item) => ({ value: item.id, label: vehicleTitle(item) })), { value: "", label: "Enter manually" }]}
+            value={vehicleId ?? ""}
+            onChange={(value) => { manualVehicle.current = !value; setVehicleId(value || null); }}
+          />
         ) : null}
-
-        {category === "fuel_delivery" ? (
-          <>
-            <SectionTitle title="Fuel details" />
-            <Card style={styles.form}>
-              <View style={styles.segment}>
-                {(["petrol", "diesel"] as FuelType[]).map((item) => (
-                  <Pressable key={item} onPress={() => setFuelType(item)} style={[styles.segmentItem, fuelType === item ? styles.segmentItemActive : null]}>
-                    <Text style={[styles.segmentText, fuelType === item ? styles.segmentTextActive : null]}>{item.toUpperCase()}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Field label="Quantity in liters" icon="water" keyboardType="numeric" value={liters} onChangeText={setLiters} />
-            </Card>
-          </>
-        ) : null}
-
-        {category === "mechanic" ? (
-          <>
-            <SectionTitle title="Mechanic issue" />
-            <View style={styles.issueGrid}>
-              {mechanicIssues.map((item) => {
-                const active = mechanicIssue === item.value;
-                return (
-                  <Pressable key={item.value} onPress={() => setMechanicIssue(item.value)} style={[styles.issue, active ? styles.issueActive : null]}>
-                    <Text style={[styles.issueText, active ? styles.issueTextActive : null]}>{item.label}</Text>
-                  </Pressable>
-                );
-              })}
+        {!selectedVehicle ? (
+          <View style={styles.fields}>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Vehicle model</Text>
+              <TextInput accessibilityLabel="Vehicle model" value={vehicle} onChangeText={setVehicle}
+                placeholder="Enter model" placeholderTextColor={customerColors.inkMuted} style={customerStyles.input} />
             </View>
-          </>
-        ) : null}
-
-        <SectionTitle title="Request priority" />
-        <Card style={styles.form}>
-          <View style={styles.segment}>
-            {(["normal", "high", "urgent"] as RequestPriority[]).map((item) => (
-              <Pressable key={item} onPress={() => setPriority(item)} style={[styles.segmentItem, priority === item ? styles.segmentItemActive : null]}>
-                <Text style={[styles.segmentText, priority === item ? styles.segmentTextActive : null]}>{item.toUpperCase()}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.distanceNote}>Priority is validated by the server and influences waiting cost in the batch assignment.</Text>
-        </Card>
-
-        <SectionTitle title="Estimate" />
-        <Card style={styles.estimate}>
-          <View style={styles.estimateRow}>
-            <IconBox icon="receipt" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.estimateTitle}>PKR {currentEstimate.total.toLocaleString()}</Text>
-              <Text style={styles.estimateText}>{currentEstimate.text}</Text>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>License plate</Text>
+              <TextInput accessibilityLabel="License plate" value={registrationNumber} onChangeText={setRegistrationNumber}
+                placeholder="Enter plate" placeholderTextColor={customerColors.inkMuted}
+                autoCapitalize="characters" style={customerStyles.input} />
             </View>
-            <StatusPill label="Cash" tone="warning" />
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <PrimaryButton title={loading ? "Creating..." : "Confirm and Find Provider"} icon="search" disabled={loading} onPress={onSubmit} />
-        </Card>
-      </AppShell>
-      <BottomNav role="user" active="Request" />
+        ) : null}
+        <PrimaryButton title="Add a saved vehicle" icon="add" variant="outline" style={styles.secondaryButton}
+          onPress={() => router.push("/(app)/vehicles/add")} />
+      </VehicleCard>
+
+      {category === "fuel_delivery" ? (
+        <Surface>
+          <SectionHeading>Fuel details</SectionHeading>
+          <ChoiceGroup label="Fuel type" options={fuelTypes} value={fuelType} onChange={setFuelType} />
+          <ChoiceGroup label="Quantity" options={fuelQuantities} value={liters} onChange={setLiters} />
+        </Surface>
+      ) : null}
+
+      {category === "mechanic" ? (
+        <Surface>
+          <SectionHeading>Vehicle issue</SectionHeading>
+          <ChoiceGroup label="Issue category" hideLabel options={mechanicIssues} value={mechanicIssue} onChange={(issue) => {
+            setManualSelectionVersion((value) => value + 1);
+            setMechanicIssue(issue);
+          }} />
+          <Description label="Issue description" value={description} onChange={setDescription} />
+        </Surface>
+      ) : (
+        <Surface>
+          <Description label="Notes (optional)" value={description} onChange={setDescription} />
+        </Surface>
+      )}
+
+      <Surface style={styles.aiCard}>
+        <Pressable accessibilityRole="button" accessibilityLabel="AI Breakdown Diagnostic Assist" accessibilityState={{ expanded: showAiModal }}
+          onPress={() => setShowAiModal(!showAiModal)} style={styles.aiButton}>
+          <Ionicons name="sparkles-outline" size={20} color={customerColors.brand} />
+          <Text style={[styles.fieldLabel, styles.aiLabel]}>AI Breakdown Diagnostic Assist</Text>
+          <Ionicons name={showAiModal ? "chevron-up" : "chevron-down"} size={16} color={customerColors.brand} />
+        </Pressable>
+        {showAiModal ? (
+          <View style={styles.aiBody}>
+            <ServiceSuggestionCard token={token} description={description} onDescriptionChange={setDescription}
+              manualSelectionVersion={manualSelectionVersion} onSuggestionAccepted={applyServiceSuggestion}
+              onSignInRequested={() => router.replace("/(auth)/login")} />
+          </View>
+        ) : null}
+      </Surface>
+
+      <PrioritySelector value={priority} onChange={setPriority} />
+      <SummaryCard title={config.summary} items={summaryItems}
+        total={currentEstimate ? formatCurrency(currentEstimate.total) : undefined}
+        note={category === "car_towing" && !currentEstimate && !routeError
+          ? waitingForRoute ? "Finding the driving route…" : "Select pickup and destination to estimate your fare."
+          : currentEstimate ? "Preview. The final estimate is calculated by the server." : undefined} />
+      {routeError ? (
+        <Surface>
+          <NoticeBanner tone="warning" title="Driving route unavailable" message={routeError} />
+          <PrimaryButton title="Retry route" icon="refresh" variant="outline"
+            onPress={retryRoute} />
+        </Surface>
+      ) : null}
+      {formError ? <NoticeBanner tone="danger" title="Request details" message={formError} /> : null}
+      <PrimaryButton title={config.action} icon="arrow-forward" style={customerStyles.primary}
+        loading={loading} disabled={Boolean(locationLoading) || waitingForRoute} onPress={onSubmit} />
+    </CustomerScreen>
+  );
+}
+
+const requestCopy = {
+  car_towing: { title: "Car towing request", location: "Pickup location", summary: "Estimated fare", action: "Find Tow Trucks" },
+  fuel_delivery: { title: "Fuel delivery request", location: "Delivery location", summary: "Estimated cost", action: "Find Fuel Providers" },
+  mechanic: { title: "Mechanic booking", location: "Service location", summary: "Visit estimate", action: "Find Mechanics" }
+};
+
+const fuelTypes: ReadonlyArray<{ label: string; value: FuelType }> = [
+  { label: "Petrol", value: "petrol" }, { label: "Diesel", value: "diesel" }
+];
+const fuelQuantities = ["3", "5", "10"].map((value) => ({ label: `${value} L`, value }));
+
+function vehicleTitle(item: Vehicle) {
+  return [`${item.make} ${item.model}`.trim(), item.registrationNumber].filter(Boolean).join(" · ");
+}
+
+function Description({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput accessibilityLabel={label} placeholder="Add any details for your provider"
+        placeholderTextColor={customerColors.inkMuted} value={value} onChangeText={onChange}
+        multiline style={[customerStyles.input, styles.description]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  serviceGrid: { flexDirection: "row", gap: 10 },
-  service: { flex: 1, minHeight: 112, borderRadius: 18, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, alignItems: "center", justifyContent: "center", gap: 10, padding: 8 },
-  serviceActive: { borderColor: ui.colors.primary, backgroundColor: ui.colors.primarySoft },
-  serviceText: { color: ui.colors.text, fontSize: 12, fontWeight: "900", textAlign: "center" },
-  serviceTextActive: { color: ui.colors.primaryDark },
-  form: { gap: 12 },
-  locationActions: { flexDirection: "row", gap: 10 },
-  favoriteBlock: { gap: 8 },
-  favoriteHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  favoriteTitle: { color: ui.colors.text, fontSize: 12, fontWeight: "900" },
-  favoriteSaveButton: { minHeight: 38, paddingHorizontal: 12 },
-  favoriteList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  favoriteChip: {
-    maxWidth: "100%",
-    minHeight: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    backgroundColor: ui.colors.bg,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden"
-  },
-  favoriteApply: { maxWidth: 210, minHeight: 38, justifyContent: "center", paddingLeft: 12, paddingRight: 8 },
-  favoriteText: { color: ui.colors.text, fontSize: 12, fontWeight: "900" },
-  favoriteDelete: { width: 34, height: 38, alignItems: "center", justifyContent: "center" },
-  favoriteEmpty: { color: ui.colors.muted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
-  coordinateRow: { flexDirection: "row", gap: 10 },
-  fareCard: {
-    minHeight: 86,
-    borderRadius: 16,
-    backgroundColor: ui.colors.primary,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12
-  },
-  fareLabel: { color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "800" },
-  fareValue: { marginTop: 4, color: "white", fontSize: 23, fontWeight: "900" },
-  fareMeta: {
-    minWidth: 96,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: "center"
-  },
-  fareMetaText: { color: "white", fontSize: 15, fontWeight: "900" },
-  fareMetaSub: { marginTop: 3, color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: "800" },
-  distanceNote: { color: ui.colors.muted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
-  segment: { height: 48, borderRadius: 14, backgroundColor: ui.colors.bg, borderWidth: 1, borderColor: ui.colors.border, flexDirection: "row", padding: 4 },
-  segmentItem: { flex: 1, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  segmentItemActive: { backgroundColor: ui.colors.primary },
-  segmentText: { color: ui.colors.muted, fontSize: 12, fontWeight: "900" },
-  segmentTextActive: { color: "white" },
-  nearbyCard: { gap: 12 },
-  nearbySummary: { flexDirection: "row", alignItems: "center", gap: 12 },
-  nearbyTitle: { color: ui.colors.text, fontSize: 15, fontWeight: "900" },
-  nearbyText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  providerRow: {
-    minHeight: 76,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    backgroundColor: ui.colors.surfaceAlt,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12
-  },
-  providerName: { color: ui.colors.text, fontSize: 14, fontWeight: "900" },
-  providerMeta: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  issueGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  issue: { width: "31.8%", height: 46, borderRadius: 14, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, alignItems: "center", justifyContent: "center" },
-  issueActive: { backgroundColor: ui.colors.primary, borderColor: ui.colors.primary },
-  issueText: { color: ui.colors.text, fontSize: 11, fontWeight: "900" },
-  issueTextActive: { color: "white" },
-  estimate: { gap: 14 },
-  estimateRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  estimateTitle: { color: ui.colors.text, fontSize: 19, fontWeight: "900" },
-  estimateText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700", lineHeight: 17 },
-  error: { color: ui.colors.danger, fontSize: 12, fontWeight: "800" }
+  mapCard: { padding: 9 },
+  fields: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  field: { flex: 1, minWidth: 110, gap: 6 },
+  fieldLabel: { color: customerColors.ink, fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  description: { minHeight: 72, textAlignVertical: "top" },
+  secondaryButton: { minHeight: 44, borderColor: customerColors.border },
+  favorite: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, minHeight: 44, paddingHorizontal: 8 },
+  removeFavorite: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
+  aiCard: { padding: 0, gap: 0, backgroundColor: customerColors.brandSoft },
+  aiButton: { minHeight: 50, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 13 },
+  aiLabel: { flex: 1 },
+  aiBody: { padding: 12 },
+  error: { color: customerColors.statusDanger, fontSize: 13, lineHeight: 18 }
 });

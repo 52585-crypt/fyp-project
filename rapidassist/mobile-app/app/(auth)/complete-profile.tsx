@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { Redirect, router } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { completeGooglePhone } from "../../src/auth/auth.api";
+import { resumeAfterSignIn } from "../../src/auth/customerNavigation";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { getNetworkErrorMessage } from "../../src/config/api";
 import { Field, PrimaryButton, StatusPill } from "../../src/ui/components";
@@ -10,15 +11,16 @@ import { ui } from "../../src/ui/system";
 
 export default function CompleteProfile() {
   const { token, user, updateUser, logout } = useAuth();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canSave = useMemo(() => phone.trim().length >= 10, [phone]);
 
-  if (!token || !user) return <Redirect href="/(auth)/login" />;
+  if (!token || !user) return <Redirect href={{ pathname: "/(auth)/login", params: { returnTo } }} />;
   if (user.role !== "user") return <Redirect href="/" />;
-  if (user.phone) return <Redirect href="/(user)/home" />;
+  if (user.phone) return <Redirect href={resumeAfterSignIn(user, returnTo) ?? "/(user)/home"} />;
 
   async function onSave() {
     if (!token || saving) return;
@@ -27,7 +29,7 @@ export default function CompleteProfile() {
       setError(null);
       const result = await completeGooglePhone(token, phone.trim());
       updateUser(result.user);
-      router.replace("/(user)/home");
+      router.replace(resumeAfterSignIn(result.user, returnTo) ?? "/(user)/home");
     } catch (e: any) {
       setError(getNetworkErrorMessage(e));
     } finally {

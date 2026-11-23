@@ -6,6 +6,7 @@ import type { ChatMessage } from "../../requests/requests.types";
 import { AppShell, Card, PrimaryButton } from "../../ui/components";
 import { ui } from "../../ui/system";
 import { createSocket } from "../../services/socket";
+import { onReconnected } from "../../services/networkManager";
 
 export function RequestChatThread({
   requestId,
@@ -65,6 +66,12 @@ export function RequestChatThread({
     loadMessages();
     const timer = setInterval(loadMessages, 15000);
     return () => clearInterval(timer);
+  }, [requestId, token]);
+
+  useEffect(() => {
+    return onReconnected(() => {
+      void loadMessages();
+    });
   }, [requestId, token]);
 
   useEffect(() => {

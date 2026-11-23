@@ -28,22 +28,23 @@ export function RAButton({ title, onPress, disabled, style }: Props) {
 
 const styles = StyleSheet.create({
   base: {
-    height: 52,
-    borderRadius: 16,
+    height: 54,
+    borderRadius: 14,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     elevation: 2
   },
   pressed: {
     opacity: 0.9
   },
   disabled: {
-    backgroundColor: "#93C5FD"
+    backgroundColor: "#A9D5BF",
+    opacity: 0.7
   },
   text: {
     color: "white",
