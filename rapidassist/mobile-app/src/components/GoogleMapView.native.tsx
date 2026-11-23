@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { BOOKING_MAP_CENTER, type GoogleMapProps } from "./GoogleMap.shared";
+import { tokens } from "../design/tokens";
 
 export function GoogleMapView({ pickup, destination, providers = [], route = [], pickupLabel = "Pickup", destinationLabel = "Destination", currentLocation, cameraFocus, onPress }: GoogleMapProps) {
   // Avoid loading native map views in existing builds that use the fallback map.
@@ -28,8 +29,8 @@ export function GoogleMapView({ pickup, destination, providers = [], route = [],
     {destination ? <Marker coordinate={destination} title={destinationLabel} pinColor="red" /> : null}
     {providers.map((provider) => <Marker key={provider.id} coordinate={provider.location} title={provider.name} pinColor="blue" />)}
     {route.length > 1 ? <>
-      <Polyline coordinates={route} strokeColor="rgba(255,255,255,0.96)" strokeWidth={10} lineCap="round" lineJoin="round" />
-      <Polyline coordinates={route} strokeColor="#4f46e5" strokeWidth={6} lineCap="round" lineJoin="round" />
+      <Polyline coordinates={route} strokeColor={tokens.color.surfaceGlass} strokeWidth={10} lineCap="round" lineJoin="round" />
+      <Polyline coordinates={route} strokeColor={tokens.color.primary} strokeWidth={6} lineCap="round" lineJoin="round" />
     </> : null}
   </MapView>;
 }

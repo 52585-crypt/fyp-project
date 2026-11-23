@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { BOOKING_MAP_CENTER, type GoogleMapProps } from "./GoogleMap.shared";
+import { tokens } from "../design/tokens";
 
 let loading: Promise<any> | undefined;
 const authFailureListeners = new Set<() => void>();
@@ -57,8 +58,8 @@ export function GoogleMapView({ pickup, destination, providers = [], route = [],
     overlays.current = markers.map(({ point, title }) => new maps.Marker({ map: map.current, position: toLatLng(point), title }));
     if (route.length > 1) {
       const path = route.map(toLatLng);
-      overlays.current.push(new maps.Polyline({ map: map.current, path, strokeColor: "#ffffff", strokeOpacity: 0.96, strokeWeight: 10, zIndex: 3 }));
-      overlays.current.push(new maps.Polyline({ map: map.current, path, strokeColor: "#4f46e5", strokeOpacity: 0.96, strokeWeight: 6, zIndex: 4 }));
+      overlays.current.push(new maps.Polyline({ map: map.current, path, strokeColor: tokens.color.surface, strokeOpacity: 0.96, strokeWeight: 10, zIndex: 3 }));
+      overlays.current.push(new maps.Polyline({ map: map.current, path, strokeColor: tokens.color.primary, strokeOpacity: 0.96, strokeWeight: 6, zIndex: 4 }));
     }
     const all = route.length > 1
       ? [...(pickup ? [pickup] : []), ...(destination ? [destination] : []), ...route]

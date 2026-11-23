@@ -36,9 +36,10 @@ function loadStatusOverlay() {
     module: overlayModule,
     exports: overlayModule.exports,
     require: (name) => {
+      if (/design\/tokens$/.test(name)) return require("./helpers/designTokens.cjs");
       if (name === "react") return React;
       if (name === "react-native") return reactNative;
-      if (name === "../../theme/colors") return { colors: {} };
+      if (name === "../../design/tokens") return require("./helpers/designTokens.cjs");
       return require(name);
     }
   }, { filename: overlayFilename });
@@ -80,6 +81,7 @@ function loadFallbackWrapper(initialStates = [false, 0, null]) {
     module: wrapperModule,
     exports: wrapperModule.exports,
     require: (name) => {
+      if (/design\/tokens$/.test(name)) return require("./helpers/designTokens.cjs");
       if (name === "react") return reactMock;
       if (name === "react-native") return reactNative;
       if (name === "./RapidAssistMap") return { RapidAssistMap };

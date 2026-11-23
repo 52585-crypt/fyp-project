@@ -2,12 +2,12 @@ import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LocationMapPreview as LegacyMapPreview } from "../../src/components/LocationMapPreviewLegacy";
 import { RapidAssistMapWithFallback } from "../../src/components/maps/RapidAssistMapWithFallback";
+import { tokens } from "../../src/design/tokens";
 import type {
   RapidAssistMapCamera,
   RapidAssistMapMarker,
   RapidAssistMapRoute
 } from "../../src/components/maps/RapidAssistMap.types";
-import { colors } from "../../src/theme/colors";
 
 type DemoMode = "maplibre" | "style-error" | "legacy";
 type DemoStatus = "loading" | "ready" | "error" | "legacy";
@@ -15,8 +15,8 @@ type DemoStatus = "loading" | "ready" | "error" | "legacy";
 const INTENTIONAL_STYLE_ERROR = "data:application/json,%7B%22version%22%3A7%2C%22sources%22%3A%7B%7D%2C%22layers%22%3A%5B%5D%7D";
 
 const markers: RapidAssistMapMarker[] = [
-  { id: "customer", coordinate: { latitude: 31.5204, longitude: 74.3587 }, title: "Customer", label: "C", color: "#dc2626" },
-  { id: "provider", coordinate: { latitude: 31.5308, longitude: 74.3461 }, title: "Provider", label: "P", color: "#087f5b" }
+  { id: "customer", coordinate: { latitude: 31.5204, longitude: 74.3587 }, title: "Customer", label: "C", color: tokens.color.danger },
+  { id: "provider", coordinate: { latitude: 31.5308, longitude: 74.3461 }, title: "Provider", label: "P", color: tokens.color.primary }
 ];
 
 const sampleRoute: RapidAssistMapRoute = {
@@ -25,7 +25,7 @@ const sampleRoute: RapidAssistMapRoute = {
     { latitude: 31.5259, longitude: 74.3532 },
     markers[1].coordinate
   ],
-  color: colors.primary,
+  color: tokens.color.primary,
   width: 5
 };
 
@@ -87,7 +87,7 @@ export default function MapFoundationScreen() {
           style={[styles.status, demoStatus === "error" ? styles.statusError : null]}
           testID="map-foundation-status"
         >
-          {demoStatus === "loading" ? <ActivityIndicator color={colors.primary} size="small" /> : null}
+          {demoStatus === "loading" ? <ActivityIndicator color={tokens.color.primary} size="small" /> : null}
           <View style={styles.statusCopy}>
             <Text style={styles.statusTitle}>{statusTitle(demoStatus)}</Text>
             <Text style={styles.statusMessage}>{message}</Text>
@@ -168,26 +168,26 @@ function statusTitle(status: DemoStatus) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: tokens.color.bg },
   content: { padding: 18, gap: 12 },
-  eyebrow: { color: colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 26, fontWeight: "900" },
-  body: { color: colors.mutedText, fontSize: 13, lineHeight: 19 },
+  eyebrow: { color: tokens.color.primary, fontSize: tokens.size.micro, fontFamily: tokens.font.bold, letterSpacing: 1.2 },
+  title: { color: tokens.color.text, fontSize: tokens.size.display, fontFamily: tokens.font.bold },
+  body: { color: tokens.color.muted, fontSize: tokens.size.bodySmall, lineHeight: tokens.lineHeight.body },
   demoActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   demoButton: {
     minHeight: 40,
     flexGrow: 1,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     paddingHorizontal: 12,
     paddingVertical: 9,
     alignItems: "center",
     justifyContent: "center"
   },
-  demoButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  demoButtonText: { color: colors.primaryDark, fontSize: 11, fontWeight: "900" },
+  demoButtonActive: { backgroundColor: tokens.color.primary, borderColor: tokens.color.primary },
+  demoButtonText: { color: tokens.color.primaryDark, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
   status: {
     minHeight: 64,
     flexDirection: "row",
@@ -195,40 +195,40 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     paddingHorizontal: 13,
     paddingVertical: 10
   },
-  statusError: { borderColor: colors.danger, backgroundColor: "#fff5f5" },
+  statusError: { borderColor: tokens.color.danger, backgroundColor: tokens.color.dangerSoft },
   statusCopy: { flex: 1, gap: 2 },
-  statusTitle: { color: colors.text, fontSize: 12, fontWeight: "900" },
-  statusMessage: { color: colors.mutedText, fontSize: 11, lineHeight: 16 },
+  statusTitle: { color: tokens.color.text, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
+  statusMessage: { color: tokens.color.muted, fontSize: tokens.size.micro, lineHeight: tokens.lineHeight.caption },
   mapCard: {
     height: 420,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surfaceAlt
   },
   legacyCard: { height: 260 },
   map: { flex: 1 },
-  sectionTitle: { color: colors.text, fontSize: 13, fontWeight: "900" },
+  sectionTitle: { color: tokens.color.text, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.bold },
   cameraActions: { flexDirection: "row", gap: 8 },
   cameraButton: {
     flex: 1,
     minHeight: 40,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     padding: 10,
     alignItems: "center",
     justifyContent: "center"
   },
-  buttonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  buttonText: { color: colors.primaryDark, fontSize: 11, fontWeight: "900" },
-  buttonTextActive: { color: "white" },
-  note: { color: colors.mutedText, fontSize: 11, lineHeight: 17 }
+  buttonActive: { backgroundColor: tokens.color.primary, borderColor: tokens.color.primary },
+  buttonText: { color: tokens.color.primaryDark, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
+  buttonTextActive: { color: tokens.color.onPrimary },
+  note: { color: tokens.color.muted, fontSize: tokens.size.micro, lineHeight: tokens.lineHeight.bodySmall }
 });

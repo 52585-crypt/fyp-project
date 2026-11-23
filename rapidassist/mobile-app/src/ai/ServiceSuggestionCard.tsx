@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, PrimaryButton, StatusPill } from "../ui/components";
-import { ui } from "../ui/system";
 import { useServiceSuggestion } from "./useServiceSuggestion";
 import type { ServiceSuggestion } from "./serviceSuggestion.types";
+import { Badge, Button, Card } from "../design/components";
+import { tokens } from "../design/tokens";
 
 const serviceDisplay = {
   mechanic: { label: "Mechanic", icon: "construct" as const },
@@ -64,7 +64,7 @@ export function ServiceSuggestionCard({
     <Card style={styles.card}>
       <View style={styles.headingRow}>
         <View style={styles.sparkleBox}>
-          <Ionicons name="sparkles" size={20} color={ui.colors.primary} />
+          <Ionicons name="sparkles" size={20} color={tokens.color.primary} />
         </View>
         <View style={styles.headingCopy}>
           <Text style={styles.title}>Help me choose a service</Text>
@@ -80,7 +80,7 @@ export function ServiceSuggestionCard({
           multiline
           onChangeText={onDescriptionChange}
           placeholder="Meri gari start nahi ho rahi, click ki awaz hai..."
-          placeholderTextColor={ui.colors.muted}
+          placeholderTextColor={tokens.color.muted}
           style={styles.descriptionInput}
           textAlignVertical="top"
           value={description}
@@ -104,19 +104,19 @@ export function ServiceSuggestionCard({
       ) : null}
 
       {status === "idle" ? (
-        <PrimaryButton title="Suggest Service" icon="sparkles" disabled={description.trim().length < 5} onPress={suggest} />
+        <Button title="Suggest Service" icon="sparkles" disabled={description.trim().length < 5} onPress={suggest} />
       ) : null}
 
       {status === "loading" ? (
         <View accessibilityLiveRegion="polite" style={styles.loadingBox}>
-          <ActivityIndicator color={ui.colors.primary} />
+          <ActivityIndicator color={tokens.color.primary} />
           <Text style={styles.loadingText}>Understanding your problem...</Text>
         </View>
       ) : null}
 
       {status === "clarification" && suggestion?.followUpQuestion ? (
         <View style={styles.resultBox}>
-          <StatusPill label="A little more detail" tone="warning" />
+          <Badge label="A little more detail" tone="warning" />
           <Text style={styles.question}>{suggestion.followUpQuestion}</Text>
           <TextInput
             accessibilityLabel="Clarification answer"
@@ -124,12 +124,12 @@ export function ServiceSuggestionCard({
             multiline
             onChangeText={setClarificationAnswer}
             placeholder="Type your answer..."
-            placeholderTextColor={ui.colors.muted}
+            placeholderTextColor={tokens.color.muted}
             style={styles.answerInput}
             textAlignVertical="top"
             value={clarificationAnswer}
           />
-          <PrimaryButton
+          <Button
             title="Continue"
             disabled={!clarificationAnswer.trim()}
             onPress={() => answerClarification(clarificationAnswer)}
@@ -142,7 +142,7 @@ export function ServiceSuggestionCard({
           <Text style={styles.resultEyebrow}>Suggested service</Text>
           <View style={styles.serviceRow}>
             <View style={styles.serviceIcon}>
-              <Ionicons name={service.icon} size={22} color="white" />
+              <Ionicons name={service.icon} size={22} color={tokens.color.onPrimary} />
             </View>
             <View style={styles.serviceCopy}>
               <Text style={styles.serviceName}>{service.label}</Text>
@@ -153,10 +153,10 @@ export function ServiceSuggestionCard({
           </View>
           <Text style={styles.possibleIssue}>{suggestion.possibleIssue}</Text>
           {status === "suggested" ? (
-            <PrimaryButton title="Use This Service" icon="checkmark-circle" onPress={acceptSuggestion} />
+            <Button title="Use This Service" icon="checkmark-circle" onPress={acceptSuggestion} />
           ) : (
             <View style={styles.appliedBox}>
-              <Ionicons name="checkmark-circle" size={20} color={ui.colors.success} />
+              <Ionicons name="checkmark-circle" size={20} color={tokens.color.success} />
               <Text style={styles.appliedText}>{service.label} selected. Review the service details below.</Text>
             </View>
           )}
@@ -166,7 +166,7 @@ export function ServiceSuggestionCard({
 
       {status === "unsupported" && suggestion ? (
         <View accessibilityLiveRegion="polite" style={styles.resultBox}>
-          <StatusPill label="Choose manually" tone="warning" />
+          <Badge label="Choose manually" tone="warning" />
           <Text style={styles.possibleIssue}>{suggestion.possibleIssue}</Text>
         </View>
       ) : null}
@@ -174,13 +174,13 @@ export function ServiceSuggestionCard({
       {status === "error" ? (
         <View accessibilityLiveRegion="assertive" style={styles.errorBox}>
           <View style={styles.errorRow}>
-            <Ionicons name="alert-circle" size={20} color={ui.colors.danger} />
+            <Ionicons name="alert-circle" size={20} color={tokens.color.danger} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
           {errorStatus === 401 && onSignInRequested ? (
-            <PrimaryButton title="Sign In Again" variant="outline" onPress={onSignInRequested} />
+            <Button title="Sign In Again" variant="outline" onPress={onSignInRequested} />
           ) : (
-            <PrimaryButton
+            <Button
               title={retryAfterSeconds > 0 ? `Retry in ${retryAfterSeconds}s` : "Retry"}
               variant="outline"
               disabled={retryAfterSeconds > 0}
@@ -204,39 +204,39 @@ export function ServiceSuggestionCard({
 const styles = StyleSheet.create({
   card: { gap: 16, marginBottom: 2 },
   headingRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sparkleBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: ui.colors.primarySoft },
+  sparkleBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.primarySoft },
   headingCopy: { flex: 1, minWidth: 0 },
-  title: { color: ui.colors.text, fontSize: 17, fontWeight: "900" },
-  subtitle: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "600", lineHeight: 17 },
-  label: { marginBottom: 8, color: ui.colors.text, fontSize: 13, fontWeight: "800" },
-  descriptionInput: { minHeight: 104, maxHeight: 190, borderWidth: 1, borderColor: ui.colors.border, borderRadius: ui.radius.md, backgroundColor: ui.colors.surface, color: ui.colors.text, fontSize: 15, lineHeight: 21, paddingHorizontal: 14, paddingVertical: 12 },
+  title: { color: tokens.color.text, fontSize: tokens.size.headline, fontFamily: tokens.font.bold },
+  subtitle: { marginTop: 3, color: tokens.color.muted, fontSize: tokens.size.caption, fontFamily: tokens.font.semibold, lineHeight: tokens.lineHeight.bodySmall },
+  label: { marginBottom: 8, color: tokens.color.text, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.bold },
+  descriptionInput: { minHeight: 104, maxHeight: 190, borderWidth: 1, borderColor: tokens.color.border, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surface, color: tokens.color.text, fontSize: tokens.size.body, lineHeight: tokens.lineHeight.headline, paddingHorizontal: 14, paddingVertical: 12 },
   helperRow: { marginTop: 7, flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  helper: { color: ui.colors.muted, fontSize: 11, fontWeight: "600" },
-  counter: { color: ui.colors.muted, fontSize: 11, fontWeight: "700" },
-  loadingBox: { minHeight: 66, borderRadius: ui.radius.md, backgroundColor: ui.colors.primarySoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, padding: 14 },
-  loadingText: { color: ui.colors.primaryDark, fontSize: 13, fontWeight: "800" },
-  resultBox: { gap: 12, borderRadius: ui.radius.md, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceAlt, padding: 14 },
-  resultEyebrow: { color: ui.colors.muted, fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  helper: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.semibold },
+  counter: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
+  loadingBox: { minHeight: 66, borderRadius: tokens.radius.md, backgroundColor: tokens.color.primarySoft, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, padding: 14 },
+  loadingText: { color: tokens.color.primaryDark, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.bold },
+  resultBox: { gap: 12, borderRadius: tokens.radius.md, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surfaceAlt, padding: 14 },
+  resultEyebrow: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.bold, textTransform: "uppercase", letterSpacing: 0.7 },
   serviceRow: { flexDirection: "row", alignItems: "center", gap: 11 },
-  serviceIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: ui.colors.primary },
+  serviceIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.primary },
   serviceCopy: { flex: 1, minWidth: 0 },
-  serviceName: { color: ui.colors.text, fontSize: 18, fontWeight: "900" },
-  issueText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700" },
-  possibleIssue: { color: ui.colors.text, fontSize: 13, fontWeight: "600", lineHeight: 20 },
-  disclaimer: { color: ui.colors.muted, fontSize: 11, fontWeight: "600", lineHeight: 16 },
-  question: { color: ui.colors.text, fontSize: 14, fontWeight: "800", lineHeight: 20 },
-  answerInput: { minHeight: 82, maxHeight: 150, borderWidth: 1, borderColor: ui.colors.border, borderRadius: ui.radius.md, backgroundColor: ui.colors.surface, color: ui.colors.text, fontSize: 14, lineHeight: 20, paddingHorizontal: 12, paddingVertical: 10 },
-  history: { gap: 8, borderLeftWidth: 3, borderLeftColor: ui.colors.primary, paddingLeft: 11 },
-  historyTitle: { color: ui.colors.text, fontSize: 12, fontWeight: "900" },
+  serviceName: { color: tokens.color.text, fontSize: tokens.size.title, fontFamily: tokens.font.bold },
+  issueText: { marginTop: 3, color: tokens.color.muted, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
+  possibleIssue: { color: tokens.color.text, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.semibold, lineHeight: tokens.lineHeight.body },
+  disclaimer: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.semibold, lineHeight: tokens.lineHeight.caption },
+  question: { color: tokens.color.text, fontSize: tokens.size.body, fontFamily: tokens.font.bold, lineHeight: tokens.lineHeight.body },
+  answerInput: { minHeight: 82, maxHeight: 150, borderWidth: 1, borderColor: tokens.color.border, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surface, color: tokens.color.text, fontSize: tokens.size.body, lineHeight: tokens.lineHeight.body, paddingHorizontal: 12, paddingVertical: 10 },
+  history: { gap: 8, borderLeftWidth: 3, borderLeftColor: tokens.color.primary, paddingLeft: 11 },
+  historyTitle: { color: tokens.color.text, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
   historyItem: { gap: 2 },
-  historyQuestion: { color: ui.colors.muted, fontSize: 11, fontWeight: "700" },
-  historyAnswer: { color: ui.colors.text, fontSize: 12, fontWeight: "700" },
-  appliedBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, backgroundColor: ui.colors.successSoft, padding: 11 },
-  appliedText: { flex: 1, color: ui.colors.success, fontSize: 12, fontWeight: "800", lineHeight: 17 },
-  errorBox: { gap: 12, borderRadius: ui.radius.md, borderWidth: 1, borderColor: "#FECACA", backgroundColor: ui.colors.dangerSoft, padding: 14 },
+  historyQuestion: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
+  historyAnswer: { color: tokens.color.text, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
+  appliedBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, backgroundColor: tokens.color.successSoft, padding: 11 },
+  appliedText: { flex: 1, color: tokens.color.success, fontSize: tokens.size.caption, fontFamily: tokens.font.bold, lineHeight: tokens.lineHeight.bodySmall },
+  errorBox: { gap: 12, borderRadius: tokens.radius.md, borderWidth: 1, borderColor: tokens.color.dangerSoft, backgroundColor: tokens.color.dangerSoft, padding: 14 },
   errorRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  errorText: { flex: 1, color: ui.colors.danger, fontSize: 12, fontWeight: "800", lineHeight: 18 },
+  errorText: { flex: 1, color: tokens.color.danger, fontSize: tokens.size.caption, fontFamily: tokens.font.bold, lineHeight: tokens.lineHeight.bodySmall },
   manualButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  manualText: { color: ui.colors.primary, fontSize: 13, fontWeight: "900" },
-  manualHint: { color: ui.colors.muted, fontSize: 12, fontWeight: "700", textAlign: "center" }
+  manualText: { color: tokens.color.primary, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.bold },
+  manualHint: { color: tokens.color.muted, fontSize: tokens.size.caption, fontFamily: tokens.font.bold, textAlign: "center" }
 });

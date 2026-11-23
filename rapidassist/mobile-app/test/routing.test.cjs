@@ -125,8 +125,9 @@ test("both legacy production renderers draw only supplied route geometry with a 
   const web = fs.readFileSync(path.resolve(__dirname, "../src/components/LocationMapPickerLegacy.tsx"), "utf8");
   const android = fs.readFileSync(path.resolve(__dirname, "../src/components/LocationMapPickerLegacy.native.tsx"), "utf8");
   for (const source of [web, android]) {
-    assert.match(source, /#4f46e5/);
-    assert.match(source, /#ffffff|255,255,255/);
+    // Brand-coloured route line drawn over a white casing (both from design tokens).
+    assert.match(source, /tokens\.color\.primary/);
+    assert.match(source, /tokens\.color\.(surface|surfaceGlass)\b/);
     assert.doesNotMatch(source, /addRoute\(pickup, destination\)/);
   }
   assert.match(web, /<Svg width="100%" height="100%"/);

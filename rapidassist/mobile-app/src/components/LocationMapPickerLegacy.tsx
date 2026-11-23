@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureResponderEvent, Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
-import { colors } from "../theme/colors";
 import { coordinatesFromUnknown, isValidCoordinates, type Coordinate } from "../utils/distance";
 import { TargetSwitch } from "./LocationMapPicker.shared";
 import { BOOKING_MAP_CENTER, selectedCoordinateText, type PickerProps } from "./GoogleMap.shared";
 import { LEGACY_MAP_TILES, legacyMapTileUrl } from "./maps/legacyMapTiles";
+import { tokens } from "../design/tokens";
 
 export type { LocationTarget } from "./LocationMapPicker.shared";
 
@@ -122,24 +122,24 @@ export function LocationMapPicker({
         ))}
         {!singlePoint && validRoute.length > 1 ? (
           <Svg width="100%" height="100%" pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-            <Polyline points={routePoints} fill="none" stroke="rgba(255,255,255,0.96)" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
-            <Polyline points={routePoints} fill="none" stroke="#4f46e5" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" />
+            <Polyline points={routePoints} fill="none" stroke={tokens.color.surfaceGlass} strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+            <Polyline points={routePoints} fill="none" stroke={tokens.color.primary} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         ) : null}
-        {pickupPoint ? <MapPin point={pickupPoint} label={singlePoint ? pointLabel : pickupLabel} color={colors.primary} markerText="P" /> : null}
-        {currentLocationPoint ? <MapPin point={currentLocationPoint} label="You" color="#0ea5e9" markerText="" /> : null}
-        {!singlePoint && destinationPoint ? <MapPin point={destinationPoint} label={destinationLabel} color={colors.danger} markerText="D" /> : null}
+        {pickupPoint ? <MapPin point={pickupPoint} label={singlePoint ? pointLabel : pickupLabel} color={tokens.color.primary} markerText="P" /> : null}
+        {currentLocationPoint ? <MapPin point={currentLocationPoint} label="You" color={tokens.color.info} markerText="" /> : null}
+        {!singlePoint && destinationPoint ? <MapPin point={destinationPoint} label={destinationLabel} color={tokens.color.danger} markerText="D" /> : null}
         {providerPoints.map(({ provider, point }) => (
           <MapPin
             key={provider.id}
             point={point}
             label={`${provider.name}${provider.distanceKm == null ? "" : ` - ${provider.distanceKm} km`}`}
-            color="#16a34a"
+            color={tokens.color.success}
             markerText="V"
           />
         ))}
         <View style={styles.hint}>
-          <Ionicons name="map" size={15} color={colors.primary} />
+          <Ionicons name="map" size={15} color={tokens.color.primary} />
           <Text style={styles.hintText}>OpenStreetMap - tap to set {singlePoint ? pointLabel.toLowerCase() : activeTarget}</Text>
         </View>
         <View style={styles.attribution}>
@@ -221,7 +221,7 @@ function ZoomControls({
         disabled={zoom >= MAX_ZOOM}
         style={({ pressed }) => [styles.zoomButton, zoom >= MAX_ZOOM ? styles.zoomButtonDisabled : null, pressed ? styles.zoomButtonPressed : null]}
       >
-        <Ionicons name="add" size={22} color={colors.text} />
+        <Ionicons name="add" size={22} color={tokens.color.text} />
       </Pressable>
       <View style={styles.zoomDivider} />
       <Pressable
@@ -229,7 +229,7 @@ function ZoomControls({
         disabled={zoom <= MIN_ZOOM}
         style={({ pressed }) => [styles.zoomButton, zoom <= MIN_ZOOM ? styles.zoomButtonDisabled : null, pressed ? styles.zoomButtonPressed : null]}
       >
-        <Ionicons name="remove" size={22} color={colors.text} />
+        <Ionicons name="remove" size={22} color={tokens.color.text} />
       </Pressable>
     </View>
   );
@@ -352,8 +352,8 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surfaceAlt,
     overflow: "hidden"
   },
   tile: {
@@ -372,22 +372,22 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 3,
-    borderColor: "white",
+    borderColor: tokens.color.surface,
     alignItems: "center",
     justifyContent: "center"
   },
   markerText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "900"
+    color: tokens.color.onPrimary,
+    fontSize: tokens.size.body,
+    fontFamily: tokens.font.bold
   },
   pinLabel: {
     marginTop: 2,
     borderRadius: 9,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    color: colors.text,
-    fontSize: 10,
-    fontWeight: "900",
+    backgroundColor: tokens.color.surfaceGlass,
+    color: tokens.color.text,
+    fontSize: tokens.size.micro,
+    fontFamily: tokens.font.bold,
     paddingHorizontal: 6,
     paddingVertical: 3
   },
@@ -396,8 +396,8 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     paddingHorizontal: 10,
     paddingVertical: 7,
     flexDirection: "row",
@@ -405,16 +405,16 @@ const styles = StyleSheet.create({
     gap: 8
   },
   coordinateDot: { width: 10, height: 10, borderRadius: 5 },
-  pickupDot: { backgroundColor: colors.primary },
-  destinationDot: { backgroundColor: colors.danger },
-  coordinateText: { flex: 1, color: colors.text, fontSize: 11, fontWeight: "800" },
+  pickupDot: { backgroundColor: tokens.color.primary },
+  destinationDot: { backgroundColor: tokens.color.danger },
+  coordinateText: { flex: 1, color: tokens.color.text, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
   hint: {
     position: "absolute",
     left: 12,
     right: 12,
     top: 12,
     borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: tokens.color.surfaceGlass,
     paddingHorizontal: 12,
     paddingVertical: 9,
     flexDirection: "row",
@@ -422,17 +422,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6
   },
-  hintText: { color: colors.text, fontSize: 12, fontWeight: "900", textAlign: "center" },
+  hintText: { color: tokens.color.text, fontSize: tokens.size.caption, fontFamily: tokens.font.bold, textAlign: "center" },
   attribution: {
     position: "absolute",
     right: 8,
     bottom: 8,
     borderRadius: 9,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: tokens.color.surfaceGlass,
     paddingHorizontal: 8,
     paddingVertical: 5
   },
-  attributionText: { color: colors.mutedText, fontSize: 10, fontWeight: "800" }
+  attributionText: { color: tokens.color.muted, fontSize: tokens.size.micro, fontFamily: tokens.font.bold }
   ,
   zoomControls: {
     position: "absolute",
@@ -440,10 +440,10 @@ const styles = StyleSheet.create({
     top: 64,
     width: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: tokens.color.surfaceGlass,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: tokens.color.border
   },
   zoomButton: {
     width: 44,
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  zoomButtonPressed: { backgroundColor: colors.primarySoft },
+  zoomButtonPressed: { backgroundColor: tokens.color.primarySoft },
   zoomButtonDisabled: { opacity: 0.4 },
-  zoomDivider: { height: 1, backgroundColor: colors.border }
+  zoomDivider: { height: 1, backgroundColor: tokens.color.border }
 });

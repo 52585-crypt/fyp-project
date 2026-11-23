@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { networkManager, NetworkState } from "./networkManager";
+import { tokens } from "../design/tokens";
 
 type ConnectivityContextType = {
   online: boolean;
@@ -81,7 +82,7 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
             ]}
           >
             {state.isChecking ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={tokens.color.onPrimary} />
             ) : (
               <Text style={styles.retryButtonText}>Retry</Text>
             )}
@@ -106,12 +107,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#7C2D12",
+    backgroundColor: tokens.color.warningText,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    shadowColor: "#000",
+    shadowColor: tokens.color.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 5,
@@ -127,19 +128,19 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#FCA5A5"
+    backgroundColor: tokens.color.dangerSoft
   },
   text: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-    lineHeight: 16
+    color: tokens.color.onPrimary,
+    fontSize: tokens.size.caption,
+    fontFamily: tokens.font.bold,
+    lineHeight: tokens.lineHeight.caption
   },
   retryButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: tokens.color.onDarkFaint,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.4)",
+    borderColor: tokens.color.onDarkLine,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 14,
@@ -148,14 +149,14 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   retryButtonPressed: {
-    backgroundColor: "rgba(255, 255, 255, 0.35)"
+    backgroundColor: tokens.color.onDarkLine
   },
   retryButtonDisabled: {
     opacity: 0.6
   },
   retryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800"
+    color: tokens.color.onPrimary,
+    fontSize: tokens.size.caption,
+    fontFamily: tokens.font.bold
   }
 });

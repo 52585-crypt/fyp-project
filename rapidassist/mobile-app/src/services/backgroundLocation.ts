@@ -3,6 +3,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { getToken } from "../auth/auth.storage";
 import { updateProviderLocation } from "../requests/requests.api";
+import { tokens } from "../design/tokens";
 
 const PROVIDER_LOCATION_TASK = "rapidassist-provider-location";
 
@@ -51,7 +52,7 @@ export async function startProviderBackgroundLocation() {
     foregroundService: {
       notificationTitle: "RapidAssist active job",
       notificationBody: "Sharing your location with the assigned customer.",
-      notificationColor: "#087F5B"
+      notificationColor: tokens.color.primary
     }
   });
   return true;

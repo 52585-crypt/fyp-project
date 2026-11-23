@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { RapidAssistMap } from "./RapidAssistMap";
 import type { RapidAssistMapProps } from "./RapidAssistMap.types";
+import { tokens } from "../../design/tokens";
 
 const DEFAULT_FALLBACK_MESSAGE = "The basic OpenStreetMap view is active.";
 
@@ -104,19 +105,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     gap: 4,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: tokens.color.surfaceGlass,
     borderWidth: 1,
-    borderColor: "#dbe4df"
+    borderColor: tokens.color.border
   },
-  fallbackTitle: { color: "#14231d", fontSize: 11, fontWeight: "900" },
-  fallbackMessage: { color: "#52685c", fontSize: 10, lineHeight: 14 },
+  fallbackTitle: { color: tokens.color.text, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
+  fallbackMessage: { color: tokens.color.muted, fontSize: tokens.size.micro, lineHeight: tokens.lineHeight.micro },
   tryButton: {
     alignSelf: "flex-start",
     marginTop: 3,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#087f5b"
+    backgroundColor: tokens.color.primary
   },
-  tryText: { color: "white", fontSize: 11, fontWeight: "900" }
+  tryText: { color: tokens.color.onPrimary, fontSize: tokens.size.micro, fontFamily: tokens.font.bold }
 });

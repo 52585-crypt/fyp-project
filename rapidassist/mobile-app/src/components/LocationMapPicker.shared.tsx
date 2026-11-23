@@ -1,7 +1,7 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import { tokens } from "../design/tokens";
 
 export type LocationTarget = "pickup" | "destination";
 
@@ -42,8 +42,8 @@ function TargetButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.targetButton, active ? styles.targetButtonActive : null]}>
-      <Ionicons name={icon} size={16} color={active ? "white" : colors.primaryDark} />
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.targetButton, active ? styles.targetButtonActive : null]}>
+      <Ionicons name={icon} size={16} color={active ? tokens.color.onPrimary : tokens.color.primaryDark} />
       <Text style={[styles.targetText, active ? styles.targetTextActive : null]}>{label}</Text>
     </Pressable>
   );
@@ -54,8 +54,8 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surfaceAlt,
     flexDirection: "row",
     padding: 4
   },
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 7
   },
-  targetButtonActive: { backgroundColor: colors.primary },
-  targetText: { color: colors.primaryDark, fontSize: 12, fontWeight: "900" },
-  targetTextActive: { color: "white" }
+  targetButtonActive: { backgroundColor: tokens.color.primary },
+  targetText: { color: tokens.color.primaryDark, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
+  targetTextActive: { color: tokens.color.onPrimary }
 });

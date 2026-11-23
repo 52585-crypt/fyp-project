@@ -20,9 +20,36 @@ rider, tow driver workflows).
 | 5. Customer flow | done |
 | 6. Provider flow | done |
 | 7. Polish | done |
-| 8. Final cleanup | todo |
+| 8. Final cleanup | done |
 
-## Current problems (measured 2026-11-23)
+## Outcome (2026-11-23)
+
+- `src/ui`, `src/theme`, `src/constants/theme.ts`, `RAButton`, `RATextInput` and
+  10 unused legacy components are deleted. No hex/rgba/named colour or raw
+  font size remains outside `src/design/tokens.ts`; no font weight above 700.
+- Checks: `npx tsc --noEmit` clean; 124 node tests + 62 jest stage tests pass;
+  `expo export` succeeds for Android and Web.
+- Deviations from the plan above:
+  - Customer request routes are `/request/[id]/chat|pay|review` and the
+    customer Profile tab lives at `/account` (route groups don't namespace
+    URLs, so they must not collide with provider `/profile`, `/job/[id]/chat`).
+  - Provider `job/[id]/payment` kept for the invoice / cash-collected view.
+  - Mechanic `work_started` renders the Payment & Completion UI (matches the
+    mockup: Inspection → Payment & Completion).
+- Remaining raw numbers: spacing/size literals inside the legacy map renderers
+  (`LocationMapPickerLegacy*`, `maps/RapidAssistMap*`) and the dev-only
+  `(dev)/map-foundation` screen. Colours and type there already use tokens.
+- Screenshots: `docs/mobile-redesign-screenshots/` (web, fixture data).
+
+## Backend gaps found
+
+- Providers receive no customer name or phone (`toJSONSafe` exposes only
+  `userId`), so provider screens show "Customer" and chat only.
+- No endpoints for: extra-work / fuel photo upload, adjusting delivered fuel
+  quantity, provider wallet/payouts, changing service area, acceptance rate,
+  "was this helpful" review flag, support chat / FAQ.
+
+## Current problems (measured 2026-11-23, before the redesign)
 
 1. **Three overlapping theme layers.** `src/theme/tokens.ts` (green "Highway"
    brand), `src/ui/system.ts` (re-maps it), `src/constants/theme.ts` and

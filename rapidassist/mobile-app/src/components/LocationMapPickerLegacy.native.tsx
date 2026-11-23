@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { colors } from "../theme/colors";
 import { isValidCoordinates, type Coordinate } from "../utils/distance";
 import { TargetSwitch, type LocationTarget } from "./LocationMapPicker.shared";
 import { BOOKING_MAP_CENTER, selectedCoordinateText, type MapProvider, type PickerProps } from "./GoogleMap.shared";
 import { LEGACY_MAP_TILES } from "./maps/legacyMapTiles";
+import { tokens } from "../design/tokens";
 
 const INITIAL_ZOOM = 13;
 const MIN_ZOOM = 10;
@@ -197,11 +197,11 @@ export function LocationMapPicker({
           </Text>
         </View>
         <Pressable onPress={() => setFullMapVisible(true)} style={styles.expandButton}>
-          <Ionicons name="expand" size={17} color={colors.primary} />
+          <Ionicons name="expand" size={17} color={tokens.color.primary} />
           <Text style={styles.expandText}>Full map</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Recenter map on current location" disabled={recentering} onPress={recenterOnCurrentLocation} style={[styles.recenterButton, recentering ? styles.recenterButtonDisabled : null]}>
-          <Ionicons name="locate" size={20} color={colors.primary} />
+          <Ionicons name="locate" size={20} color={tokens.color.primary} />
         </Pressable>
         <ZoomControls zoom={zoom} onZoomIn={() => updateZoom(1)} onZoomOut={() => updateZoom(-1)} />
       </View>
@@ -219,7 +219,7 @@ export function LocationMapPicker({
               </Text>
             </View>
             <Pressable onPress={() => setFullMapVisible(false)} style={styles.closeButton}>
-              <Ionicons name="close" size={22} color={colors.text} />
+              <Ionicons name="close" size={22} color={tokens.color.text} />
             </Pressable>
           </View>
           {singlePoint ? null : (
@@ -235,7 +235,7 @@ export function LocationMapPicker({
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Recenter map on current location" disabled={recentering} onPress={recenterOnCurrentLocation} style={[styles.recenterButton, styles.recenterButtonFull, recentering ? styles.recenterButtonDisabled : null]}>
-              <Ionicons name="locate" size={20} color={colors.primary} />
+              <Ionicons name="locate" size={20} color={tokens.color.primary} />
             </Pressable>
             <ZoomControls zoom={zoom} onZoomIn={() => updateZoom(1)} onZoomOut={() => updateZoom(-1)} fullScreen />
           </View>
@@ -316,7 +316,7 @@ function ZoomControls({
         disabled={zoom >= MAX_ZOOM}
         style={({ pressed }) => [styles.zoomButton, zoom >= MAX_ZOOM ? styles.zoomButtonDisabled : null, pressed ? styles.zoomButtonPressed : null]}
       >
-        <Ionicons name="add" size={22} color={colors.text} />
+        <Ionicons name="add" size={22} color={tokens.color.text} />
       </Pressable>
       <View style={styles.zoomDivider} />
       <Pressable
@@ -324,7 +324,7 @@ function ZoomControls({
         disabled={zoom <= MIN_ZOOM}
         style={({ pressed }) => [styles.zoomButton, zoom <= MIN_ZOOM ? styles.zoomButtonDisabled : null, pressed ? styles.zoomButtonPressed : null]}
       >
-        <Ionicons name="remove" size={22} color={colors.text} />
+        <Ionicons name="remove" size={22} color={tokens.color.text} />
       </Pressable>
     </View>
   );
@@ -385,7 +385,7 @@ export function buildMapHtml({
         height: 100%;
         margin: 0;
         overflow: hidden;
-        background: #eef2f7;
+        background: ${tokens.color.surfaceAlt};
         font-family: Arial, sans-serif;
         touch-action: manipulation;
       }
@@ -401,9 +401,9 @@ export function buildMapHtml({
         margin-left: -17px;
         margin-top: -17px;
         border-radius: 17px;
-        border: 3px solid #ffffff;
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.32);
-        color: #ffffff;
+        border: 3px solid ${tokens.color.surface};
+        box-shadow: 0 4px 10px ${tokens.color.shadowSoft};
+        color: ${tokens.color.onPrimary};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -412,24 +412,24 @@ export function buildMapHtml({
         z-index: 8;
         pointer-events: none;
       }
-      .pickup { background: #2563eb; }
-      .destination { background: #dc2626; }
-      .provider { background: #16a34a; font-size: 13px; }
+      .pickup { background: ${tokens.color.primary}; }
+      .destination { background: ${tokens.color.danger}; }
+      .provider { background: ${tokens.color.success}; font-size: 13px; }
       .provider { pointer-events: auto; cursor: pointer; }
-      .provider.selected { border-color: #facc15; box-shadow: 0 0 0 4px rgba(250,204,21,0.35), 0 4px 10px rgba(15,23,42,0.32); transform: scale(1.12); }
-      .current-location { width: 20px; height: 20px; margin-left: -10px; margin-top: -10px; background: #2563eb; border-width: 4px; }
+      .provider.selected { border-color: ${tokens.color.star}; box-shadow: 0 0 0 4px ${tokens.color.starGlow}, 0 4px 10px ${tokens.color.shadowSoft}; transform: scale(1.12); }
+      .current-location { width: 20px; height: 20px; margin-left: -10px; margin-top: -10px; background: ${tokens.color.info}; border-width: 4px; }
       .label {
         position: absolute;
         transform: translate(-50%, 18px);
         z-index: 9;
         border-radius: 10px;
-        background: rgba(255,255,255,0.96);
+        background: ${tokens.color.surfaceGlass};
         padding: 4px 7px;
-        color: #0f172a;
+        color: ${tokens.color.text};
         font-size: 11px;
         font-weight: 800;
         white-space: nowrap;
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+        box-shadow: 0 2px 6px ${tokens.color.shadowSoft};
         pointer-events: none;
       }
       .route-svg {
@@ -444,9 +444,9 @@ export function buildMapHtml({
         bottom: 8px;
         z-index: 6;
         border-radius: 9px;
-        background: rgba(255,255,255,0.92);
+        background: ${tokens.color.surfaceGlass};
         padding: 5px 8px;
-        color: #64748b;
+        color: ${tokens.color.muted};
         font-size: 10px;
         font-weight: 700;
       }
@@ -632,7 +632,7 @@ export function buildMapHtml({
           const point = toScreenPoint(coordinate, topLeft, scale);
           return point.x + "," + point.y;
         }).join(" ");
-        [["#ffffff", "10"], ["#4f46e5", "6"]].forEach(([color, strokeWidth]) => {
+        [["${tokens.color.surface}", "10"], ["${tokens.color.primary}", "6"]].forEach(([color, strokeWidth]) => {
           const line = document.createElementNS(namespace, "polyline");
           line.setAttribute("points", points);
           line.setAttribute("fill", "none");
@@ -659,17 +659,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surfaceAlt
   },
-  webView: { flex: 1, backgroundColor: colors.surfaceMuted },
+  webView: { flex: 1, backgroundColor: tokens.color.surfaceAlt },
   coordinateChips: { gap: 7 },
   coordinateChip: {
     minHeight: 34,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     paddingHorizontal: 10,
     paddingVertical: 7,
     flexDirection: "row",
@@ -677,33 +677,33 @@ const styles = StyleSheet.create({
     gap: 8
   },
   coordinateDot: { width: 10, height: 10, borderRadius: 5 },
-  pickupDot: { backgroundColor: colors.primary },
-  destinationDot: { backgroundColor: colors.danger },
-  coordinateText: { flex: 1, color: colors.text, fontSize: 11, fontWeight: "800" },
+  pickupDot: { backgroundColor: tokens.color.primary },
+  destinationDot: { backgroundColor: tokens.color.danger },
+  coordinateText: { flex: 1, color: tokens.color.text, fontSize: tokens.size.micro, fontFamily: tokens.font.bold },
   hint: {
     position: "absolute",
     left: 12,
     right: 12,
     top: 12,
     borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: tokens.color.surfaceGlass,
     paddingHorizontal: 12,
     paddingVertical: 9
   },
-  hintText: { color: colors.text, fontSize: 12, fontWeight: "900", textAlign: "center" },
+  hintText: { color: tokens.color.text, fontSize: tokens.size.caption, fontFamily: tokens.font.bold, textAlign: "center" },
   expandButton: {
     position: "absolute",
     right: 12,
     bottom: 12,
     minHeight: 38,
     borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: tokens.color.surfaceGlass,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 6
   },
-  expandText: { color: colors.primary, fontSize: 12, fontWeight: "900" },
+  expandText: { color: tokens.color.primary, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
   recenterButton: {
     position: "absolute",
     left: 12,
@@ -712,8 +712,8 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surfaceGlass,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -725,10 +725,10 @@ const styles = StyleSheet.create({
     top: 64,
     width: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: tokens.color.surfaceGlass,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: tokens.color.border
   },
   zoomControlsFull: { top: 62 },
   zoomButton: {
@@ -737,34 +737,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  zoomButtonPressed: { backgroundColor: colors.primarySoft },
+  zoomButtonPressed: { backgroundColor: tokens.color.primarySoft },
   zoomButtonDisabled: { opacity: 0.4 },
-  zoomDivider: { height: 1, backgroundColor: colors.border },
-  fullScreen: { flex: 1, backgroundColor: colors.bg },
+  zoomDivider: { height: 1, backgroundColor: tokens.color.border },
+  fullScreen: { flex: 1, backgroundColor: tokens.color.bg },
   fullHeader: {
     minHeight: 74,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+    borderBottomColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 12
   },
-  fullTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
-  fullSubtitle: { marginTop: 3, color: colors.mutedText, fontSize: 12, fontWeight: "700" },
+  fullTitle: { color: tokens.color.text, fontSize: tokens.size.title, fontFamily: tokens.font.bold },
+  fullSubtitle: { marginTop: 3, color: tokens.color.muted, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
   closeButton: {
     width: 42,
     height: 42,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     alignItems: "center",
     justifyContent: "center"
   },
-  fullSwitch: { padding: 12, backgroundColor: colors.surface },
+  fullSwitch: { padding: 12, backgroundColor: tokens.color.surface },
   fullMap: { flex: 1 },
   fullHint: {
     position: "absolute",
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     right: 12,
     top: 12,
     borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: tokens.color.surfaceGlass,
     paddingHorizontal: 12,
     paddingVertical: 9
   }

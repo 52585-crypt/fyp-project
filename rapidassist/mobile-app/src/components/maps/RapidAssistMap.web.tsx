@@ -24,10 +24,11 @@ import {
   type RapidAssistMapProps,
   type RapidAssistMapStatus
 } from "./RapidAssistMap.types";
+import { tokens } from "../../design/tokens";
 
 const ROUTE_SOURCE_ID = "rapidassist-route-source";
 const ROUTE_LAYER_ID = "rapidassist-route-line";
-const DEFAULT_ROUTE_COLOR = "#087f5b";
+const DEFAULT_ROUTE_COLOR = tokens.color.primary;
 const DEFAULT_ROUTE_WIDTH = 5;
 const LOAD_TIMEOUT_MS = 20_000;
 const MAP_LOAD_ERROR = "Unable to load OpenFreeMap. Check your connection and try again.";
@@ -282,11 +283,11 @@ function createWebMarker(
     borderRadius: "50%",
     border: "3px solid white",
     background: marker.color || DEFAULT_ROUTE_COLOR,
-    color: "white",
+    color: tokens.color.onPrimary,
     fontSize: "12px",
-    fontWeight: "900",
+    fontFamily: tokens.font.bold,
     lineHeight: "1",
-    boxShadow: "0 3px 9px rgba(15, 23, 42, 0.35)",
+    boxShadow: `0 3px 9px ${tokens.color.shadowSoft}`,
     cursor: "pointer"
   });
   const handleClick = (event: MouseEvent) => {
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     width: "100%",
     minHeight: 240,
     overflow: "hidden",
-    backgroundColor: "#edf4f0"
+    backgroundColor: tokens.color.surfaceAlt
   }
 });
 

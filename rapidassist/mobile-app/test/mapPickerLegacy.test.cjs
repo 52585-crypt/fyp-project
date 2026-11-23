@@ -55,11 +55,7 @@ function loadPicker() {
       View: "View"
     },
     "react-native-webview": { WebView: "WebView" },
-    "../theme/colors": { colors: {
-      primary: "#087f5b", border: "#ddd", bg: "#fff", surface: "#fff",
-      surfaceMuted: "#eee", mutedText: "#666", text: "#111", danger: "#c00",
-      primarySoft: "#def", primaryDark: "#064"
-    } },
+    "../design/tokens": require("./helpers/designTokens.cjs"),
     "./GoogleMap.shared": mapModule.exports,
     "./LocationMapPicker.shared": { TargetSwitch: () => null },
     "../utils/distance": distanceModule.exports,

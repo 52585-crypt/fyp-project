@@ -29,6 +29,13 @@ const palette = {
   onPrimaryMuted: "#D9D1FF",
   star: "#F5B301",
   overlay: "rgba(21, 17, 36, 0.45)",
+  /** Frosted white for controls and labels floating over maps. */
+  surfaceGlass: "rgba(255, 255, 255, 0.94)",
+  /** Faint white fills/lines on dark banners. */
+  onDarkFaint: "rgba(255, 255, 255, 0.2)",
+  onDarkLine: "rgba(255, 255, 255, 0.4)",
+  shadowSoft: "rgba(21, 17, 36, 0.3)",
+  starGlow: "rgba(245, 179, 1, 0.35)",
   heroGlow: "rgba(255, 255, 255, 0.12)",
   shadow: "#151124",
   transparent: "transparent"

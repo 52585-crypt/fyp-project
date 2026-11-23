@@ -8,7 +8,7 @@ import { useBooking } from "../../../../src/requests/booking/BookingProvider";
 import { FuelFields, MechanicFields, NotesField, TowingFields, VehicleSection } from "../../../../src/requests/booking/FormSections";
 import { LocationSection } from "../../../../src/requests/booking/LocationSection";
 import { bookingCopy, mechanicServices } from "../../../../src/requests/booking/options";
-import { normalizeBookingCategory } from "../../../../src/ui/customer/services";
+import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
 
 /** Service request form (Towing / Fuel / Mechanic). Next step: request/estimate. */
 export default function NewRequest() {

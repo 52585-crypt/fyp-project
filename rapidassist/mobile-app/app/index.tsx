@@ -1,14 +1,14 @@
 import { Redirect } from "expo-router";
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text } from "react-native";
 import { useAuth } from "../src/auth/AuthProvider";
-import { colors } from "../src/theme/colors";
+import { tokens } from "../src/design/tokens";
 
 export default function Index() {
   const { isLoading, token, user } = useAuth();
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={tokens.color.primary} />
         <Text style={styles.text}>Loading RapidAssist...</Text>
       </SafeAreaView>
     );
@@ -19,7 +19,7 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
-  text: { marginTop: 12, color: colors.mutedText, fontSize: 13, fontWeight: "800" }
+  safe: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.bg },
+  text: { marginTop: 12, color: tokens.color.muted, fontSize: tokens.size.bodySmall, fontFamily: tokens.font.bold }
 });
 

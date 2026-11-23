@@ -81,7 +81,7 @@ function loadWebPicker() {
       StyleSheet: { create: (styles) => styles, absoluteFillObject: {} }
     },
     "react-native-svg": { default: "Svg", Polyline: "Polyline" },
-    "../theme/colors": { colors: { primary: "#087f5b", danger: "#dc2626", text: "#111", border: "#ddd", surface: "#fff", surfaceMuted: "#eee" } },
+    "../design/tokens": require("./helpers/designTokens.cjs"),
     "../utils/distance": coordinates,
     "./GoogleMap.shared": mapModule.exports,
     "./LocationMapPicker.shared": { TargetSwitch: () => null },

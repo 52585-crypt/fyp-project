@@ -1,9 +1,9 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useRef, useState, type FormEvent } from "react";
-import { PrimaryButton } from "../ui/components";
 import { stripeTestKey } from "./stripeConfig";
 import type { StripeCheckoutProps } from "./stripeCheckout.types";
+import { Button } from "../design/components";
 
 let stripePromise: ReturnType<typeof loadStripe> | undefined;
 
@@ -71,7 +71,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
   }
 
   if (!clientSecret || !stripePromise) {
-    return <PrimaryButton title={props.disabled ? "Opening Stripe…" : "Pay Now"} icon="card" disabled={props.disabled} onPress={() => void open()} />;
+    return <Button title={props.disabled ? "Opening Stripe…" : "Pay Now"} icon="card" disabled={props.disabled} onPress={() => void open()} />;
   }
 
   return <Elements stripe={stripePromise} options={{ clientSecret }}>

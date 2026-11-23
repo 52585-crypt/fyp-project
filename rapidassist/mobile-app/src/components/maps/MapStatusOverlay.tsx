@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../../theme/colors";
 import type { RapidAssistMapStatus } from "./RapidAssistMap.types";
+import { tokens } from "../../design/tokens";
 
 export type MapStatusOverlayProps = {
   status?: RapidAssistMapStatus;
@@ -39,7 +39,7 @@ export function MapStatusOverlay({
       testID="map-status-overlay"
     >
       <View style={styles.panel}>
-        {resolvedLoading && !resolvedError ? <ActivityIndicator accessibilityLabel={resolvedLoadingMessage} color={colors.primary} /> : null}
+        {resolvedLoading && !resolvedError ? <ActivityIndicator accessibilityLabel={resolvedLoadingMessage} color={tokens.color.primary} /> : null}
         <Text style={styles.title}>{resolvedError ? errorTitle : resolvedLoadingMessage}</Text>
         {resolvedError ? <Text style={styles.message}>{resolvedError}</Text> : null}
         {resolvedError && (onRetry || onFallback) ? (
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-    backgroundColor: "rgba(238, 244, 241, 0.82)"
+    backgroundColor: tokens.color.surfaceGlass
   },
   panel: {
     maxWidth: 300,
@@ -67,16 +67,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: tokens.color.border,
+    backgroundColor: tokens.color.surface,
     alignItems: "center",
     gap: 8
   },
-  title: { color: colors.text, fontSize: 14, fontWeight: "900", textAlign: "center" },
-  message: { color: colors.mutedText, fontSize: 12, lineHeight: 17, textAlign: "center" },
+  title: { color: tokens.color.text, fontSize: tokens.size.body, fontFamily: tokens.font.bold, textAlign: "center" },
+  message: { color: tokens.color.muted, fontSize: tokens.size.caption, lineHeight: tokens.lineHeight.bodySmall, textAlign: "center" },
   actions: { flexDirection: "row", gap: 8, marginTop: 4 },
-  button: { borderRadius: 10, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9 },
-  buttonText: { color: "white", fontSize: 12, fontWeight: "900" },
-  fallbackButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  fallbackText: { color: colors.primaryDark, fontSize: 12, fontWeight: "900" }
+  button: { borderRadius: 10, backgroundColor: tokens.color.primary, paddingHorizontal: 14, paddingVertical: 9 },
+  buttonText: { color: tokens.color.onPrimary, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
+  fallbackButton: { backgroundColor: tokens.color.surface, borderWidth: 1, borderColor: tokens.color.border },
+  fallbackText: { color: tokens.color.primaryDark, fontSize: tokens.size.caption, fontFamily: tokens.font.bold }
 });

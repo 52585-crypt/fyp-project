@@ -1,8 +1,8 @@
 import { PaymentSheetError, useStripe } from "@stripe/stripe-react-native";
 import { useRef } from "react";
-import { PrimaryButton } from "../ui/components";
 import { stripeReturnURL } from "./stripeConfig";
 import type { StripeCheckoutProps } from "./stripeCheckout.types";
+import { Button } from "../design/components";
 
 export function StripeCheckout({ createIntent, onResult, onBusyChange, disabled }: StripeCheckoutProps) {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -36,5 +36,5 @@ export function StripeCheckout({ createIntent, onResult, onBusyChange, disabled 
     }
   }
 
-  return <PrimaryButton title={disabled ? "Opening Stripe…" : "Pay Now"} icon="card" disabled={disabled} onPress={() => void checkout()} />;
+  return <Button title={disabled ? "Opening Stripe…" : "Pay Now"} icon="card" disabled={disabled} onPress={() => void checkout()} />;
 }

@@ -22,9 +22,10 @@ import {
   type RapidAssistMapProps,
   type RapidAssistMapStatus
 } from "./RapidAssistMap.types";
+import { tokens } from "../../design/tokens";
 
 const LOAD_TIMEOUT_MS = 20_000;
-const DEFAULT_ROUTE_COLOR = "#087f5b";
+const DEFAULT_ROUTE_COLOR = tokens.color.primary;
 const DEFAULT_ROUTE_WIDTH = 5;
 const MAP_LOAD_ERROR = "Unable to load OpenFreeMap. Check your connection and try again.";
 
@@ -195,28 +196,28 @@ export function RapidAssistMap({
 }
 
 const styles = StyleSheet.create({
-  root: { minHeight: 240, overflow: "hidden", backgroundColor: "#edf4f0" },
+  root: { minHeight: 240, overflow: "hidden", backgroundColor: tokens.color.surfaceAlt },
   markerWrap: { alignItems: "center", maxWidth: 150 },
   marker: {
     width: 34,
     height: 34,
     borderRadius: 17,
     borderWidth: 3,
-    borderColor: "white",
+    borderColor: tokens.color.surface,
     alignItems: "center",
     justifyContent: "center",
     elevation: 5
   },
-  markerText: { color: "white", fontSize: 12, fontWeight: "900" },
+  markerText: { color: tokens.color.onPrimary, fontSize: tokens.size.caption, fontFamily: tokens.font.bold },
   markerLabel: {
     marginTop: 3,
     maxWidth: 140,
     borderRadius: 7,
     paddingHorizontal: 6,
     paddingVertical: 3,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    color: "#14231d",
-    fontSize: 10,
-    fontWeight: "800"
+    backgroundColor: tokens.color.surfaceGlass,
+    color: tokens.color.text,
+    fontSize: tokens.size.micro,
+    fontFamily: tokens.font.bold
   }
 });

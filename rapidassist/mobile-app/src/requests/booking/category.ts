@@ -1,4 +1,4 @@
-import type { RequestCategory } from "../../requests/requests.types";
+import type { RequestCategory } from "../requests.types";
 
 export const customerServices: ReadonlyArray<{ value: RequestCategory; label: string }> = [
   { value: "mechanic", label: "Mechanic" },

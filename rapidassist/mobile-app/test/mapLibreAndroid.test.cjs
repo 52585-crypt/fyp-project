@@ -80,7 +80,7 @@ function renderNativeMap(props, options = {}) {
   vm.runInNewContext(transpile(filename, true), {
     module: moduleValue,
     exports: moduleValue.exports,
-    require: (name) => Object.hasOwn(mocks, name) ? mocks[name] : require(name),
+    require: (name) => (/design\/tokens$/.test(name) ? require("./helpers/designTokens.cjs") : Object.hasOwn(mocks, name) ? mocks[name] : require(name)),
     setTimeout,
     clearTimeout
   }, { filename });

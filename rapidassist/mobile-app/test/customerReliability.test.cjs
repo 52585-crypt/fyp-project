@@ -13,7 +13,7 @@ function load(relative, mocks = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(output, {
     module, exports: module.exports, Error,
-    require: (name) => Object.hasOwn(mocks, name) ? mocks[name] : require(name),
+    require: (name) => (/design\/tokens$/.test(name) ? require("./helpers/designTokens.cjs") : Object.hasOwn(mocks, name) ? mocks[name] : require(name)),
     ...globals
   }, { filename });
   return module.exports;
@@ -208,7 +208,7 @@ test("Profile exposes only supported actions and links the existing Vehicles and
 });
 
 test("both booking routes resolve categories from the same service options", () => {
-  const { customerServices, normalizeBookingCategory } = load("src/ui/customer/services.ts");
+  const { customerServices, normalizeBookingCategory } = load("src/requests/booking/category.ts");
   for (const { value } of customerServices) {
     assert.equal(normalizeBookingCategory(value), value);
     assert.equal(normalizeBookingCategory([value]), value);

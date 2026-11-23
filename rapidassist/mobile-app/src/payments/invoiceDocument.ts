@@ -1,4 +1,5 @@
 import { formatPaymentAmount, paymentStatusLabel, type PaymentBundle } from "./payments.api";
+import { tokens } from "../design/tokens";
 
 function escapeHtml(value: string) {
   const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -18,11 +19,11 @@ export function buildInvoiceDocument({ invoice, payment }: PaymentBundle) {
   <meta charset="utf-8">
   <title>RapidAssist Invoice ${number}</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 32px; color: #182e28; }
+    body { font-family: Arial, sans-serif; padding: 32px; color: ${tokens.color.text}; }
     table { width: 100%; border-collapse: collapse; }
     td { padding: 8px 0; }
     td + td { text-align: right; }
-    tfoot { font-weight: bold; border-top: 2px solid #182e28; }
+    tfoot { font-weight: bold; border-top: 2px solid ${tokens.color.text}; }
   </style>
 </head>
 <body>
