@@ -287,7 +287,7 @@ test("account mode switching replaces the session and routes pending providers t
     react: hooks.react,
     "expo-router": { router: { replace: (route) => routes.push(route) } },
     "../config/api": { getNetworkErrorMessage: (error) => error.message },
-    "../ui/components": { NoticeBanner: () => null, PrimaryButton: () => null },
+    "../design/components": { Banner: () => null, Button: () => null },
     "./AuthProvider": { useAuth: () => ({
       token: "signed-session",
       user: { role: activeRole, activeRole, roles: ["user", "mechanic"] },

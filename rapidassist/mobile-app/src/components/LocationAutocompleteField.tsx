@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Field } from "../ui/components";
-import { RATextInput } from "./RATextInput";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Input, Text, type IconName } from "../design/components";
+import { tapFeedback } from "../design/haptics";
+import { tokens } from "../design/tokens";
 import { searchPlaces } from "../services/geocoding";
 import { isGoogleMapConfigured } from "../services/googleMapsAvailability";
 import type { NormalizedLocation } from "../services/normalizedLocation";
@@ -63,40 +64,43 @@ export function LocationAutocompleteField({ token, value, onChangeText, onSelect
     }
   }
 
-  const inputProps = { value: draft, onChangeText: change, placeholder, icon: icon as any };
   return <View style={styles.root}>
-    {variant === "compact"
-      ? <RATextInput {...inputProps} />
-      : <Field {...inputProps} label={label || placeholder} />}
-    {state.loading ? <Text style={styles.status}>Searching locations…</Text> : null}
+    <Input value={draft} onChangeText={change} placeholder={placeholder} icon={icon as IconName}
+      label={variant === "compact" ? undefined : label || placeholder} accessibilityLabel={label || placeholder} />
+    {state.loading ? <Text variant="caption" color="muted">Searching locations…</Text> : null}
     {state.suggestions.length ? <View style={styles.suggestions}>
       {state.suggestions.map((suggestion) => <Pressable
         accessibilityRole="button"
+        accessibilityLabel={[suggestion.primaryText, suggestion.secondaryText].filter(Boolean).join(", ")}
         key={`${suggestion.provider}:${suggestion.id}`}
-        onPress={() => void choose(suggestion)}
-        style={styles.suggestion}
+        onPress={() => { tapFeedback(); void choose(suggestion); }}
+        style={({ pressed }) => [styles.suggestion, pressed && { backgroundColor: tokens.color.primarySoft }]}
       >
-        <Text style={styles.primary}>{suggestion.primaryText}</Text>
-        {suggestion.secondaryText ? <Text style={styles.secondary}>{suggestion.secondaryText}</Text> : null}
+        <Text variant="bodySmallStrong">{suggestion.primaryText}</Text>
+        {suggestion.secondaryText ? <Text variant="caption" color="muted">{suggestion.secondaryText}</Text> : null}
       </Pressable>)}
-      <Text style={styles.attribution}>{state.provider === "google_places" ? "Google Maps" : "Powered by Photon · © OpenStreetMap"}</Text>
+      <Text variant="micro" color="muted" style={styles.attribution}>{state.provider === "google_places" ? "Google Maps" : "Powered by Photon · © OpenStreetMap"}</Text>
     </View> : null}
     {state.error ? <View style={styles.errorRow}>
-      <Text style={styles.error}>{state.error}</Text>
-      <Pressable accessibilityRole="button" onPress={() => controller.retry(near)}><Text style={styles.retry}>Retry</Text></Pressable>
+      <Text variant="caption" color="danger" style={styles.flex}>{state.error}</Text>
+      <Pressable accessibilityRole="button" onPress={() => controller.retry(near)} hitSlop={tokens.space.md}>
+        <Text variant="bodySmallStrong" color="primary">Retry</Text>
+      </Pressable>
     </View> : null}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  root: { gap: 7 },
-  status: { color: "#64748b", fontSize: 11, fontWeight: "700" },
-  suggestions: { borderWidth: 1, borderColor: "#dbe4df", borderRadius: 14, backgroundColor: "white", overflow: "hidden" },
-  suggestion: { minHeight: 54, justifyContent: "center", paddingHorizontal: 13, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#edf2ef" },
-  primary: { color: "#14231d", fontSize: 13, fontWeight: "900" },
-  secondary: { marginTop: 3, color: "#64748b", fontSize: 11, lineHeight: 15, fontWeight: "600" },
-  attribution: { alignSelf: "flex-end", paddingHorizontal: 10, paddingVertical: 7, color: "#5f6368", fontSize: 10, fontWeight: "800" },
-  errorRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  error: { flex: 1, color: "#b91c1c", fontSize: 11, fontWeight: "700" },
-  retry: { color: "#087f5b", fontSize: 12, fontWeight: "900" }
+  root: { gap: tokens.space.sm },
+  suggestions: {
+    borderWidth: tokens.sizes.hairline, borderColor: tokens.color.border, borderRadius: tokens.radius.md,
+    backgroundColor: tokens.color.surface, overflow: "hidden"
+  },
+  suggestion: {
+    minHeight: tokens.sizes.input, justifyContent: "center", gap: tokens.space.xxs, paddingHorizontal: tokens.space.md,
+    paddingVertical: tokens.space.sm, borderBottomWidth: tokens.sizes.hairline, borderBottomColor: tokens.color.border
+  },
+  attribution: { alignSelf: "flex-end", paddingHorizontal: tokens.space.sm, paddingVertical: tokens.space.xs },
+  errorRow: { flexDirection: "row", alignItems: "center", gap: tokens.space.sm },
+  flex: { flex: 1 }
 });

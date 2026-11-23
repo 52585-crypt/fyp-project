@@ -124,6 +124,9 @@ export type ServiceRequest = {
     total: number;
   };
   status: RequestStatus;
+  /** Server-recorded status changes, oldest first. */
+  statusTimeline?: Array<{ status: RequestStatus; at: string; note?: string | null }>;
+  completedAt?: string | null;
   review: RequestReview | null;
   createdAt: string;
   updatedAt: string;

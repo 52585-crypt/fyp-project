@@ -197,30 +197,14 @@ test("Web opens and prints an escaped invoice-only document and handles blocked 
 });
 
 test("Profile exposes only supported actions and links the existing Vehicles and payment history screens", () => {
-  const destinations = [];
-  const Ionicons = "Ionicons";
-  const { default: Profile } = load("app/(user)/(tabs)/account.tsx", {
-    react: { ...require("react"), useState: (value) => [value, () => {}] },
-    "react-native": { Pressable: "Pressable", StyleSheet: { create: (value) => value }, Text: "Text", View: "View" },
-    "@expo/vector-icons": { Ionicons },
-    "expo-router": { router: { push: (value) => destinations.push(value) } },
-    "../../../src/auth/AuthProvider": { useAuth: () => ({}) },
-    "../../../src/auth/AccountModeAction": { AccountModeAction: "AccountModeAction" },
-    "../../../src/ui/components": { AppShell: "AppShell", BottomNav: "BottomNav", Card: "Card", IconBox: "IconBox", PrimaryButton: "PrimaryButton" },
-    "../../../src/ui/system": { ui: { colors: {} } }
-  });
-  function walk(node) {
-    if (!node || typeof node !== "object") return [];
-    return Array.isArray(node) ? node.flatMap(walk) : [node, ...walk(node.props?.children)];
-  }
-  const nodes = walk(Profile());
-  const pressables = nodes.filter((node) => node.type === "Pressable");
-  assert.deepEqual(Array.from(pressables, (node) => node.props.accessibilityLabel), ["Vehicles", "Payment history"]);
-  pressables.forEach((node) => node.props.onPress());
-  assert.equal(destinations[0], "/vehicles");
-  assert.equal(destinations[1].pathname, "/requests");
-  assert.equal(destinations[1].params.view, "payments");
-  assert.equal(nodes.filter((node) => node.type === Ionicons && node.props.name === "chevron-forward").length, 2);
+  const { customerProfileRows } = load("src/auth/customerProfileRows.ts");
+  const linked = customerProfileRows.filter((row) => row.href);
+  assert.deepEqual(Array.from(linked, (row) => row.title), ["Vehicles", "Payment history", "Notifications", "Support"]);
+  assert.equal(linked[0].href, "/vehicles");
+  assert.equal(linked[1].href.pathname, "/requests");
+  assert.equal(linked[1].href.params.view, "payments");
+  // Rows without a backend feature never navigate; they are labelled Coming soon instead.
+  for (const row of customerProfileRows.filter((r) => !r.href)) assert.equal(row.comingSoon, true);
 });
 
 test("both booking routes resolve categories from the same service options", () => {

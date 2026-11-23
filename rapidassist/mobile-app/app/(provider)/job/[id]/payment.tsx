@@ -1,3 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
-import { PaymentDetails } from "../../../../src/payments/PaymentDetails";
-export default function ProviderPayment() { const { id } = useLocalSearchParams<{ id?: string }>(); return <PaymentDetails role="provider" requestId={id} />; }
+import { PaymentView } from "../../../../src/payments/PaymentView";
+
+export default function ProviderPayment() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <PaymentView role="provider" requestId={id} />;
+}

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { router } from "expo-router";
 import { getNetworkErrorMessage } from "../config/api";
-import { NoticeBanner, PrimaryButton } from "../ui/components";
+import { Banner, Button } from "../design/components";
 import { useAuth } from "./AuthProvider";
 import { authDestination, changeActiveRole } from "./auth.api";
 
@@ -17,7 +17,7 @@ export function AccountModeAction() {
   if (!user.roles?.includes(target)) {
     const needsGoogleLink = user.authProvider === "local" && !user.hasGoogleSignIn;
     return activeRole === "user" ? (
-      <PrimaryButton title="Become a Service Provider" variant="outline" onPress={() =>
+      <Button title="Become a Service Provider" icon="construct-outline" variant="outline" onPress={() =>
         router.push({ pathname: "/(auth)/signup", params: {
           role: "mechanic", ...(needsGoogleLink ? { linkGoogle: "1" } : {})
         } })} />
@@ -43,8 +43,8 @@ export function AccountModeAction() {
   }
 
   return <>
-    {error ? <NoticeBanner tone="danger" title="Could not switch modes" message={error} /> : null}
-    <PrimaryButton title={target === "mechanic" ? "Switch to Provider" : "Switch to Customer"}
+    {error ? <Banner tone="danger" title="Could not switch modes" message={error} /> : null}
+    <Button icon="swap-horizontal" title={target === "mechanic" ? "Switch to Provider" : "Switch to Customer"}
       variant="outline" loading={loading} onPress={switchMode} />
   </>;
 }

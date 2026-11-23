@@ -17,7 +17,7 @@ rider, tow driver workflows).
 | 2. Component kit + gallery | done |
 | 3. Navigation (tabs, guards) | done |
 | 4. Auth redesign | done |
-| 5. Customer flow | todo |
+| 5. Customer flow | done |
 | 6. Provider flow | todo |
 | 7. Polish | todo |
 | 8. Final cleanup | todo |

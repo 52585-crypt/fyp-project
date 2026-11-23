@@ -1,140 +1,63 @@
-import { customerRoutes } from "../../../src/navigation/routes";
-import React, { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
+import { StyleSheet, View } from "react-native";
 import { useAuth } from "../../../src/auth/AuthProvider";
-import { formatCurrency } from "../../../src/i18n";
+import { Banner, HeroCard, IconButton, Screen, SectionHeader, ServiceTile, SkeletonCard, Text } from "../../../src/design/components";
+import { tokens } from "../../../src/design/tokens";
+import { customerRoutes } from "../../../src/navigation/routes";
 import { useNotifications } from "../../../src/notifications/NotificationProvider";
-import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
-import { listMyRequests } from "../../../src/requests/requests.api";
-import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
-import { customerEta, useCustomerRoute } from "../../../src/requests/useCustomerRoute";
-import type { RequestCategory, ServiceRequest } from "../../../src/requests/requests.types";
-import { onReconnected } from "../../../src/services/networkManager";
-import { NoticeBanner } from "../../../src/ui/components";
-import {
-  AppHeader, CustomerScreen, IconButton, IconTile, MetricStrip, PrimaryButton, SectionHeading, ServiceCard, StatusBadge, Surface,
-  customerColors, customerStyles
-} from "../../../src/ui/customer/components";
-import { customerServices } from "../../../src/ui/customer/services";
+import { RequestCard } from "../../../src/requests/customer/RequestCard";
+import { useMyRequests } from "../../../src/requests/useMyRequests";
 
-function openRequest(category?: RequestCategory) {
-  router.push(customerRoutes.newRequest(category ?? "car_towing"));
-}
+const services = [
+  { title: "Tow Truck", subtitle: "Vehicle towing", icon: "car-sport-outline", go: () => router.push(customerRoutes.newRequest("car_towing")) },
+  { title: "Fuel Delivery", subtitle: "At your location", icon: "water-outline", go: () => router.push(customerRoutes.newRequest("fuel_delivery")) },
+  { title: "Mechanic", subtitle: "On-demand", icon: "construct-outline", go: () => router.push(customerRoutes.newRequest("mechanic")) },
+  { title: "Battery Jump", subtitle: "Start your vehicle", icon: "battery-charging-outline",
+    go: () => router.push({ pathname: "/request/new/[service]", params: { service: "mechanic", issue: "battery" } }) },
+  { title: "Tyre Change", subtitle: "Flat tyre help", icon: "disc-outline",
+    go: () => router.push({ pathname: "/request/new/[service]", params: { service: "mechanic", issue: "tyre" } }) }
+] as const;
 
-export default function UserHome() {
-  const { token, user } = useAuth();
+export default function CustomerHome() {
+  const { user } = useAuth();
   const { unread } = useNotifications();
-  const { revision } = useDispatchUpdates();
-  const [snapshot, setSnapshot] = useState<{ token: string; request: ServiceRequest | null } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const activeRequest = token && snapshot?.token === token ? snapshot.request : null;
-  const route = useCustomerRoute(activeRequest);
-
-  useFocusEffect(useCallback(() => {
-    if (!token) return;
-    let active = true;
-    let sequence = 0;
-    async function load() {
-      if (!token) return;
-      const run = ++sequence;
-      try {
-        const requests = await listMyRequests(token);
-        if (!active || run !== sequence) return;
-        setSnapshot({
-          token,
-          request: requests.find((item) => item.status !== "completed" && item.status !== "cancelled") ?? null
-        });
-        setError(null);
-      } catch {
-        if (active && run === sequence) setError("We couldn't refresh your requests. Try again when connected.");
-      }
-    }
-
-    void load();
-    const unsubscribe = onReconnected(load);
-    return () => { active = false; unsubscribe(); };
-  }, [token, revision]));
-
+  const mine = useMyRequests();
   const firstName = user?.name?.trim().split(/\s+/)[0];
 
   return (
-    <CustomerScreen active="Home" header={
-      <AppHeader title="RapidAssist" brand right={
+    <Screen edges={["top", "left", "right"]} refreshing={mine.refreshing} onRefresh={mine.refresh}>
+      <View style={styles.top}>
+        <View style={styles.flex}>
+          <Text variant="title">Hello{firstName ? `, ${firstName}` : ""} 👋</Text>
+          <Text variant="bodySmall" color="muted">How can we help you today?</Text>
+        </View>
         <IconButton icon="notifications-outline" label={unread ? `Notifications, ${unread} unread` : "Notifications"}
-          unread={unread} onPress={() => router.push("/notifications")} />
-      } />
-    }>
-      <View style={styles.greeting}>
-        <Text accessibilityRole="header" style={styles.title}>{firstName ? `Hi, ${firstName}` : "Hello"}</Text>
-        <Text style={customerStyles.muted}>How can we help you today?</Text>
+          badge={unread > 0} onPress={() => router.push(customerRoutes.notifications)} />
       </View>
 
-      <Surface style={styles.banner}>
-        <View style={styles.bannerHeading}>
-          <IconTile icon="help-buoy-outline" solid />
-          <View style={styles.bannerCopy}>
-            <SectionHeading>Need roadside help?</SectionHeading>
-            <Text style={customerStyles.muted}>Find assistance at your location.</Text>
-          </View>
-        </View>
-        <PrimaryButton title="Request Help" icon="arrow-forward" style={customerStyles.primary}
-          onPress={() => openRequest()} />
-      </Surface>
+      <HeroCard title="Need Help for Your Vehicle?" subtitle="24/7 support • Fast • Reliable" art="car-sport"
+        actionLabel="Get Help Now" onAction={() => router.push(customerRoutes.newRequest("car_towing"))} />
 
-      {error ? <NoticeBanner tone="warning" title="Request updates" message={error} /> : null}
-
-      <View style={styles.section}>
-        <SectionHeading>Roadside services</SectionHeading>
-        <View style={styles.serviceRow}>
-          {customerServices.map(({ value, label }) => (
-            <ServiceCard key={value} icon={getServiceIcon(value)} title={label} onPress={() => openRequest(value)} />
-          ))}
-        </View>
-      </View>
-
-      {activeRequest ? (
-        <View style={styles.section}>
-          <SectionHeading>Active assistance</SectionHeading>
-          <Surface>
-            <View style={customerStyles.row}>
-              <IconTile icon={getServiceIcon(activeRequest.category)} />
-              <View style={styles.activeCopy}>
-                <Text style={styles.activeTitle}>{getServiceTitle(activeRequest.category)}</Text>
-                {activeRequest.pickupLocation?.addressText ? (
-                  <Text style={customerStyles.muted} numberOfLines={2}>{activeRequest.pickupLocation.addressText}</Text>
-                ) : null}
-              </View>
-            </View>
-            <StatusBadge status={activeRequest.status} unavailable={activeRequest.dispatch?.state === "unavailable"} />
-            <MetricStrip items={[
-              {
-                icon: "time-outline", label: route.toDestination ? "Drop-off ETA" : "Estimated arrival",
-                value: customerEta(activeRequest.status, route)
-              },
-              {
-                icon: "receipt-outline", label: "Estimate",
-                value: formatCurrency(activeRequest.estimate.total)
-              }
-            ]} />
-            <PrimaryButton title="Track Request" icon="navigate-outline" variant="outline" onPress={() => {
-              router.push(customerRoutes.request(activeRequest.id));
-            }} />
-          </Surface>
-        </View>
+      {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
+      {mine.loading ? <SkeletonCard lines={1} /> : null}
+      {mine.active.length ? (
+        <>
+          <SectionHeader title="Active request" badge="Live" />
+          {mine.active.slice(0, 2).map((r) => <RequestCard key={r.id} request={r} />)}
+        </>
       ) : null}
-    </CustomerScreen>
+
+      <SectionHeader title="Our Services" />
+      <View style={styles.grid}>
+        {services.map((s) => <ServiceTile key={s.title} title={s.title} subtitle={s.subtitle} icon={s.icon} onPress={s.go} />)}
+        <ServiceTile title="More" icon="ellipsis-horizontal" comingSoon />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  greeting: { gap: 3, paddingTop: 8, paddingBottom: 4 },
-  title: { color: customerColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", letterSpacing: -0.6 },
-  banner: { backgroundColor: customerColors.brandSoft, padding: 15, gap: 12 },
-  bannerHeading: { flexDirection: "row", alignItems: "center", gap: 12 },
-  bannerCopy: { flex: 1, gap: 3 },
-  section: { gap: 9 },
-  serviceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  activeCopy: { flex: 1, gap: 2 },
-  activeTitle: { color: customerColors.ink, fontSize: 16, fontWeight: "700" }
+  top: { flexDirection: "row", alignItems: "center", gap: tokens.space.md, paddingTop: tokens.space.sm },
+  flex: { flex: 1 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: tokens.space.sm }
 });
