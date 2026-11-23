@@ -1,3 +1,4 @@
+import { customerRoutes } from "../../../src/navigation/routes";
 import React, { useCallback, useMemo, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
@@ -122,7 +123,7 @@ export default function UserHistory() {
             </View>
             {request.status === "completed" ? (
               <PrimaryButton title="View Invoice" icon="receipt" variant="outline"
-                onPress={() => router.push({ pathname: "/(user)/customer/payment/[requestId]", params: { requestId: request.id } })} />
+                onPress={() => router.push(customerRoutes.pay(request.id))} />
             ) : null}
             {canReview(request) ? (
               <PrimaryButton title="Review Provider" icon="star" variant="success" onPress={() => setReviewTarget(request)} />
@@ -144,7 +145,7 @@ export default function UserHistory() {
                 <StatusPill label={paymentStatusLabel(payment)} tone={paymentStatusTone(payment)} />
               </View>
               <PrimaryButton title="Payment Details" icon="receipt" variant="outline"
-                onPress={() => router.push({ pathname: "/(user)/customer/payment/[requestId]", params: { requestId: payment.requestId } })} />
+                onPress={() => router.push(customerRoutes.pay(payment.requestId))} />
             </View>
           ))}
           {paymentCursor ? <PrimaryButton title="Load Earlier Payments" variant="outline" disabled={loadingPayments}

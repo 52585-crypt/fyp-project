@@ -1,3 +1,4 @@
+import { providerRoutes } from "../../../src/navigation/routes";
 import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
@@ -190,7 +191,7 @@ export default function ProviderJobs() {
               title="Open Chat"
               icon="chatbubble"
               variant="outline"
-              onPress={() => router.push({ pathname: "/(provider)/chat/[requestId]", params: { requestId: activeRequest.id } })}
+              onPress={() => router.push(providerRoutes.chat(activeRequest.id))}
             />
           ) : null}
           {activeRequest ? (
@@ -228,8 +229,8 @@ export default function ProviderJobs() {
 
         {isClosed ? (
           <View style={styles.navActions}>
-            {isCompleted && activeRequest ? <PrimaryButton title="Invoice & Payment" icon="receipt" variant="outline" style={{ flex: 1 }} onPress={() => router.push({ pathname: "/(provider)/payment/[requestId]", params: { requestId: activeRequest.id } })} /> : null}
-            <PrimaryButton title="Back to Dashboard" icon="speedometer" variant="success" style={{ flex: 1 }} onPress={() => router.replace("/(provider)/dashboard")} />
+            {isCompleted && activeRequest ? <PrimaryButton title="Invoice & Payment" icon="receipt" variant="outline" style={{ flex: 1 }} onPress={() => router.push(providerRoutes.payment(activeRequest.id))} /> : null}
+            <PrimaryButton title="Back to Dashboard" icon="speedometer" variant="success" style={{ flex: 1 }} onPress={() => router.replace("/dashboard")} />
           </View>
         ) : waitingCustomerConfirmation ? (
           <PrimaryButton title="Waiting Customer Confirmation" icon="time" variant="outline" disabled />

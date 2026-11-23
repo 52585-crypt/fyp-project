@@ -1,3 +1,4 @@
+import { customerRoutes, providerRoutes } from "../navigation/routes";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -197,7 +198,7 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
   return <Context.Provider value={{ offers, activeJob, online, setOnline, revision, connected, serverOffset, error, refresh, locationRefreshError, retryLocationRefresh, subscribeToPaymentUpdates }}>
     {children}
     {notice ? <View style={[styles.notice, { top: insets.top + 8 }]} accessibilityLiveRegion="polite">
-      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push({ pathname: "/(user)/tracking", params: { requestId: notice.requestId } }); }}><Text style={styles.noticeText}>{notice.message}</Text></Pressable>
+      <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => { setNotice(null); router.push(customerRoutes.request(notice.requestId)); }}><Text style={styles.noticeText}>{notice.message}</Text></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification" hitSlop={12} onPress={() => setNotice(null)}><Text style={styles.noticeText}>×</Text></Pressable>
     </View> : null}
     {provider ? <OfferBanner /> : null}
@@ -210,7 +211,7 @@ function OfferBanner() {
   const seconds = useOfferSeconds(offer?.dispatch?.expiresAt);
   const insets = useSafeAreaInsets();
   if (!offer || !seconds || pathname.includes("/requests/") || pathname.endsWith("/dashboard")) return null;
-  return <Pressable accessibilityRole="button" style={[styles.offer, { bottom: insets.bottom + 82 }]} onPress={() => router.push({ pathname: "/(provider)/requests/[requestId]", params: { requestId: offer.id } })}>
+  return <Pressable accessibilityRole="button" style={[styles.offer, { bottom: insets.bottom + 82 }]} onPress={() => router.push(providerRoutes.incoming(offer.id))}>
     <Text style={styles.noticeText}>New roadside job · {seconds}s to respond</Text>
     <Text style={styles.offerDetail}>PKR {offer.estimate.total.toLocaleString()} · Tap to review offer</Text>
   </Pressable>;

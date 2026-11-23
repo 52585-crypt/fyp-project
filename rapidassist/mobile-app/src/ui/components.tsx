@@ -396,7 +396,12 @@ type TabConfig = {
   matchAliases?: string[];
 };
 
-export function BottomNav({ role, active }: { role: "user" | "provider"; active: string }) {
+/** @deprecated Real expo-router Tabs render the tab bar now; kept as a no-op until phase 8. */
+export function BottomNav(_props: { role: "user" | "provider"; active: string }) {
+  return null;
+}
+
+function LegacyBottomNav({ role, active }: { role: "user" | "provider"; active: string }) {
   const insets = useSafeAreaInsets();
   const { unread } = useNotifications();
 

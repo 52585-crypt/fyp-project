@@ -20,7 +20,7 @@ export default function CompleteProfile() {
 
   if (!token || !user) return <Redirect href={{ pathname: "/(auth)/login", params: { returnTo } }} />;
   if (user.role !== "user") return <Redirect href="/" />;
-  if (user.phone) return <Redirect href={resumeAfterSignIn(user, returnTo) ?? "/(user)/home"} />;
+  if (user.phone) return <Redirect href={resumeAfterSignIn(user, returnTo) ?? "/home"} />;
 
   async function onSave() {
     if (!token || saving) return;
@@ -29,7 +29,7 @@ export default function CompleteProfile() {
       setError(null);
       const result = await completeGooglePhone(token, phone.trim());
       updateUser(result.user);
-      router.replace(resumeAfterSignIn(result.user, returnTo) ?? "/(user)/home");
+      router.replace(resumeAfterSignIn(result.user, returnTo) ?? "/home");
     } catch (e: any) {
       setError(getNetworkErrorMessage(e));
     } finally {

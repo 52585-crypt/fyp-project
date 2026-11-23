@@ -5,7 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 const React = require("react");
-const onboardingRoute = { pathname: "/(provider)/verification", params: { onboarding: "1" } };
+const onboardingRoute = { pathname: "/verification", params: { onboarding: "1" } };
 
 function load(file, mocks) {
   const filename = path.resolve(__dirname, "..", file);
@@ -31,7 +31,7 @@ test("shared Google flow exchanges web credentials and native tokens and routes 
     "expo-router": { router: { replace: (route) => routes.push(route) } },
     "react-native": { StyleSheet: { create: (s) => s }, Text: "Text", View: "View" },
     "./auth.api": {
-      authDestination: (user) => user.phone ? "/(user)/home" : "/(auth)/complete-profile",
+      authDestination: (user) => user.phone ? "/home" : "/(auth)/complete-profile",
       loginWithGoogle: async (credential, intent) => { exchanged.push([credential, intent]); return { token: "session", user: { role: "user", phone } }; }
     },
     "./AuthProvider": { useAuth: () => ({ setSession: async (...args) => sessions.push(args) }) },
@@ -49,7 +49,7 @@ test("shared Google flow exchanges web credentials and native tokens and routes 
   await flow.onGoogleSignIn();
   assert.equal(nativeCalls, 1);
   assert.deepEqual(exchanged[1], ["native-id", "customer"]);
-  assert.equal(routes[1], "/(user)/home");
+  assert.equal(routes[1], "/home");
   assert.equal(sessions.length, 2);
   assert.deepEqual(errors, [null, null]);
 });
@@ -82,7 +82,7 @@ test("provider Google session routes to the dashboard, while a new identity retu
     "expo-router": { router: { replace: (route) => routes.push(route) } },
     "react-native": { StyleSheet: { create: (s) => s } },
     "./auth.api": {
-      authDestination: (_, onboarding) => onboarding ? onboardingRoute : "/(provider)/dashboard",
+      authDestination: (_, onboarding) => onboarding ? onboardingRoute : "/dashboard",
       loginWithGoogle: async (token, intent) => {
         calls.push([token, intent]);
         return intent === "mechanic_register" && token === "web-id"
@@ -103,7 +103,7 @@ test("provider Google session routes to the dashboard, while a new identity retu
   await useGoogleSignIn(() => {}, "mechanic_register").onGoogleCredential("existing-provider");
   assert.deepEqual(calls, [["web-id", "mechanic_register"], ["android-id", "mechanic_login"], ["existing-provider", "mechanic_register"]]);
   assert.deepEqual(sessions, Array(2).fill(["session", { role: "mechanic" }]));
-  assert.deepEqual(routes, ["/(provider)/dashboard", onboardingRoute]);
+  assert.deepEqual(routes, ["/dashboard", onboardingRoute]);
 });
 
 function findElement(element, predicate) {
@@ -160,7 +160,7 @@ for (const method of ["google", "phone", "enrollment", "link", "phone-resume"]) 
       "../../src/ui/components": { PrimaryButton: () => null },
       "../../src/verification/ProviderRegistrationProgress": { ProviderRegistrationProgress: () => null },
       "../../src/auth/auth.api": {
-        authDestination: (user, onboarding) => onboarding && user.role === "mechanic" ? onboardingRoute : "/(user)/home",
+        authDestination: (user, onboarding) => onboarding && user.role === "mechanic" ? onboardingRoute : "/home",
         recoverProviderRegistration: async (credentials) => {
           recoveries.push(credentials);
           return { token: "recovered", user: { role: "mechanic" } };
@@ -263,7 +263,7 @@ test("Login restores the existing manual provider session and lets users choose 
     "../../src/auth/GoogleSignInButton": { GoogleSignInButton: () => null },
     "../../src/auth/AuthProvider": { useAuth: () => ({ setSession: async (...args) => sessions.push(args) }) },
     "../../src/auth/auth.api": {
-      authDestination: (user) => user.role === "mechanic" ? "/(provider)/dashboard" : "/(user)/home",
+      authDestination: (user) => user.role === "mechanic" ? "/dashboard" : "/home",
       login: async (body) => { requests.push(body); return { token: "manual-jwt", user: { role: "mechanic" } }; }
     },
     "../../src/components/RATextInput": { RATextInput: () => null },
@@ -284,7 +284,7 @@ test("Login restores the existing manual provider session and lets users choose 
   assert.equal(requests[0].phone, "03001112222");
   assert.equal(requests[0].password, "password");
   assert.deepEqual(sessions, [["manual-jwt", { role: "mechanic" }]]);
-  assert.deepEqual(routes, ["/(provider)/dashboard"]);
+  assert.deepEqual(routes, ["/dashboard"]);
 });
 
 test("account mode switching replaces the session and routes pending providers to verification", async () => {
@@ -302,7 +302,7 @@ test("account mode switching replaces the session and routes pending providers t
       setSession: async (token, user) => { sessions.push(token); activeRole = user.activeRole; }
     }) },
     "./auth.api": {
-      authDestination: () => "/(user)/home",
+      authDestination: () => "/home",
       changeActiveRole: async (token, role) => {
         changes.push([token, role]);
         return { token: `signed-${role}`, user: { activeRole: role, verificationStatus: "pending" } };
@@ -318,7 +318,7 @@ test("account mode switching replaces the session and routes pending providers t
   await button("Switch to Customer").props.onPress();
   assert.deepEqual(changes, [["signed-session", "mechanic"], ["signed-session", "user"]]);
   assert.deepEqual(sessions, ["signed-mechanic", "signed-user"]);
-  assert.deepEqual(routes, ["/(provider)/verification", "/(user)/home"]);
+  assert.deepEqual(routes, ["/verification", "/home"]);
 });
 
 test("provider onboarding resumes at identity, requires consent and both photos, then reviews and retries the same submission", async () => {
@@ -389,5 +389,5 @@ test("provider onboarding resumes at identity, requires consent and both photos,
   assert.ok(find((el) => el.props.label === "Pending admin review"));
   assert.ok(find((el) => el.props.title === "AI comparison did not find a match"));
   button("Back to dashboard").props.onPress();
-  assert.deepEqual(routes, ["/(provider)/dashboard"]);
+  assert.deepEqual(routes, ["/dashboard"]);
 });

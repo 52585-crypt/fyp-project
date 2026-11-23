@@ -62,7 +62,7 @@ export default function ProviderProfile() {
             </Card>
           );
           return item === "Verification documents" ? (
-            <Pressable key={item} accessibilityRole="button" onPress={() => router.push("/(provider)/verification")}>
+            <Pressable key={item} accessibilityRole="button" onPress={() => router.push("/verification")}>
               {row}
             </Pressable>
           ) : <React.Fragment key={item}>{row}</React.Fragment>;

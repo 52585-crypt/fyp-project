@@ -19,7 +19,7 @@ export default function UserLayout() {
     if (path === "/login") return null;
     return <Redirect href={{ pathname: "/(auth)/login", params: { returnTo } }} />;
   }
-  if ((user.activeRole ?? user.role) === "mechanic") return <Redirect href="/(provider)/dashboard" />;
+  if ((user.activeRole ?? user.role) === "mechanic") return <Redirect href="/dashboard" />;
   if (!user.phone) {
     if (path === "/complete-profile") return null;
     return <Redirect href={{ pathname: "/(auth)/complete-profile", params: { returnTo } }} />;

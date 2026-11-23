@@ -1,24 +1,25 @@
+import { customerRoutes } from "../../../src/navigation/routes";
 import React, { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { useAuth } from "../../src/auth/AuthProvider";
-import { formatCurrency } from "../../src/i18n";
-import { useNotifications } from "../../src/notifications/NotificationProvider";
-import { useDispatchUpdates } from "../../src/requests/DispatchProvider";
-import { listMyRequests } from "../../src/requests/requests.api";
-import { getServiceIcon, getServiceTitle } from "../../src/requests/serviceCatalog";
-import { customerEta, useCustomerRoute } from "../../src/requests/useCustomerRoute";
-import type { RequestCategory, ServiceRequest } from "../../src/requests/requests.types";
-import { onReconnected } from "../../src/services/networkManager";
-import { NoticeBanner } from "../../src/ui/components";
+import { useAuth } from "../../../src/auth/AuthProvider";
+import { formatCurrency } from "../../../src/i18n";
+import { useNotifications } from "../../../src/notifications/NotificationProvider";
+import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
+import { listMyRequests } from "../../../src/requests/requests.api";
+import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
+import { customerEta, useCustomerRoute } from "../../../src/requests/useCustomerRoute";
+import type { RequestCategory, ServiceRequest } from "../../../src/requests/requests.types";
+import { onReconnected } from "../../../src/services/networkManager";
+import { NoticeBanner } from "../../../src/ui/components";
 import {
   AppHeader, CustomerScreen, IconButton, IconTile, MetricStrip, PrimaryButton, SectionHeading, ServiceCard, StatusBadge, Surface,
   customerColors, customerStyles
-} from "../../src/ui/customer/components";
-import { customerServices } from "../../src/ui/customer/services";
+} from "../../../src/ui/customer/components";
+import { customerServices } from "../../../src/ui/customer/services";
 
 function openRequest(category?: RequestCategory) {
-  router.push({ pathname: "/(user)/request", params: category ? { category } : undefined });
+  router.push(customerRoutes.newRequest(category ?? "car_towing"));
 }
 
 export default function UserHome() {
@@ -61,7 +62,7 @@ export default function UserHome() {
     <CustomerScreen active="Home" header={
       <AppHeader title="RapidAssist" brand right={
         <IconButton icon="notifications-outline" label={unread ? `Notifications, ${unread} unread` : "Notifications"}
-          unread={unread} onPress={() => router.push("/(user)/customer/notifications")} />
+          unread={unread} onPress={() => router.push("/notifications")} />
       } />
     }>
       <View style={styles.greeting}>
@@ -117,7 +118,7 @@ export default function UserHome() {
               }
             ]} />
             <PrimaryButton title="Track Request" icon="navigate-outline" variant="outline" onPress={() => {
-              router.push({ pathname: "/(user)/tracking", params: { requestId: activeRequest.id } });
+              router.push(customerRoutes.request(activeRequest.id));
             }} />
           </Surface>
         </View>

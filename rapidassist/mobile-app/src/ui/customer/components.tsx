@@ -31,7 +31,12 @@ const tabs = [
 
 type CustomerTab = typeof tabs[number]["label"];
 
-export function BottomNavigation({ active }: { active: CustomerTab }) {
+/** @deprecated Real expo-router Tabs render the tab bar now. */
+export function BottomNavigation(_props: { active: CustomerTab }) {
+  return null;
+}
+
+function LegacyBottomNavigation({ active }: { active: CustomerTab }) {
   const { bottom } = useSafeAreaInsets();
   return (
     <View style={[styles.navSurface, { paddingBottom: Math.max(bottom, 6) }]}>
@@ -74,7 +79,6 @@ export function CustomerScreen({ active, header, children }: {
       >
         <View style={styles.content}>{children}</View>
       </ScrollView>
-      <BottomNavigation active={active} />
     </SafeAreaView>
   );
 }

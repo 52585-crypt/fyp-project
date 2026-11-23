@@ -4,17 +4,17 @@ import { View } from "react-native";
 import { RequestChatThread } from "../../../../src/screens/common/RequestChatThread";
 import { BottomNav } from "../../../../src/ui/components";
 
-export default function UserRequestChat() {
-  const params = useLocalSearchParams<{ requestId?: string }>();
+export default function ProviderRequestChat() {
+  const params = useLocalSearchParams<{ id?: string }>();
 
   return (
     <View style={{ flex: 1 }}>
       <RequestChatThread
-        requestId={params.requestId}
-        title="Request Chat"
-        subtitle="Message your assigned provider."
+        requestId={params.id}
+        title="Customer Chat"
+        subtitle="Message the customer for this job."
       />
-      <BottomNav role="user" active="Activity" />
+      <BottomNav role="provider" active="Jobs" />
     </View>
   );
 }

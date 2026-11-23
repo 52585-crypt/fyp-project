@@ -33,7 +33,7 @@ export function AccountModeAction() {
       const session = await changeActiveRole(token, target);
       await setSession(session.token, session.user);
       router.replace(target === "mechanic" && session.user.verificationStatus !== "verified"
-        ? "/(provider)/verification" : authDestination(session.user));
+        ? "/verification" : authDestination(session.user));
     } catch (failure) {
       setError(getNetworkErrorMessage(failure));
     } finally {

@@ -35,11 +35,11 @@ export async function linkGoogleAccount(token: string, idToken: string, password
   return data;
 }
 
-export const providerOnboardingRoute = { pathname: "/(provider)/verification", params: { onboarding: "1" } } as const;
+export const providerOnboardingRoute = { pathname: "/verification", params: { onboarding: "1" } } as const;
 
 export function authDestination(user: SafeUser, duringRegistration = false) {
-  if ((user.activeRole ?? user.role) === "mechanic") return duringRegistration ? providerOnboardingRoute : "/(provider)/dashboard";
-  return user.phone ? "/(user)/home" : "/(auth)/complete-profile";
+  if ((user.activeRole ?? user.role) === "mechanic") return duringRegistration ? providerOnboardingRoute : "/dashboard";
+  return user.phone ? "/home" : "/(auth)/complete-profile";
 }
 
 export async function enrollProvider(params: {

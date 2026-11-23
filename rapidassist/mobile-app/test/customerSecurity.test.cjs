@@ -104,9 +104,9 @@ test("customer layout waits for restoration and protects booking before login", 
   let session = { isLoading: true, token: null, user: null };
   const { default: Layout } = load("app/(user)/_layout.tsx", {
     react: { useRef: (current) => ({ current }) },
-    "@react-navigation/native": { useRoute: () => ({ params: { screen: "request/index",
-      params: { category: "fuel_delivery" } } }) },
-    "expo-router": { Redirect: "Redirect", Stack: "Stack", usePathname: () => "/request",
+    "@react-navigation/native": { useRoute: () => ({ params: { screen: "request/new/[service]",
+      params: { service: "fuel_delivery" } } }) },
+    "expo-router": { Redirect: "Redirect", Stack: "Stack", usePathname: () => "/request/new/fuel_delivery",
       useGlobalSearchParams: () => ({}) },
     "../../src/auth/AuthProvider": { useAuth: () => session },
     "../../src/auth/customerNavigation": navigation
@@ -114,25 +114,39 @@ test("customer layout waits for restoration and protects booking before login", 
   assert.equal(Layout(), null);
   session = { ...session, isLoading: false };
   assert.equal(Layout().props.href.pathname, "/(auth)/login");
-  assert.equal(Layout().props.href.params.returnTo, "/request?category=fuel_delivery");
+  assert.equal(Layout().props.href.params.returnTo, "/request/new/fuel_delivery");
   session = { ...session, token: "customer", user: customer };
   assert.equal(Layout().type, "Stack");
   session = { ...session, token: "provider", user: provider };
-  assert.equal(Layout().props.href, "/(provider)/dashboard");
+  assert.equal(Layout().props.href, "/dashboard");
 });
 
 test("login can resume known customer routes and resolves legacy links by the authenticated role", () => {
-  for (const path of ["/payment/" + firstId, "/chat/" + firstId, "/profile", "/notifications"]) {
-    assert.equal(navigation.resumeAfterSignIn(customer, path), "/(user)/customer" + path);
-    assert.equal(navigation.resumeAfterSignIn(provider, path), "/(provider)" + path);
+  // Role-ambiguous legacy links resolve by the signed-in role.
+  for (const [path, asCustomer, asProvider] of [
+    ["/payment/" + firstId, "/request/" + firstId + "/pay", "/job/" + firstId],
+    ["/chat/" + firstId, "/request/" + firstId + "/chat", "/job/" + firstId + "/chat"],
+    ["/profile", "/account", "/profile"],
+    ["/notifications", "/notifications", "/inbox"]
+  ]) {
+    assert.equal(navigation.resumeAfterSignIn(customer, path), asCustomer);
+    assert.equal(navigation.resumeAfterSignIn(provider, path), asProvider);
   }
-  assert.equal(navigation.resumeAfterSignIn(customer, "/request?category=fuel_delivery"), "/request?category=fuel_delivery");
-  assert.equal(navigation.resumeAfterSignIn(customer, "/customer/payment/" + firstId), "/customer/payment/" + firstId);
+  // Current customer routes resume as-is; legacy customer URLs map onto them.
+  assert.equal(navigation.resumeAfterSignIn(customer, "/request/new/fuel_delivery"), "/request/new/fuel_delivery");
+  assert.equal(navigation.resumeAfterSignIn(customer, "/request/new/teleport"), null);
+  assert.equal(navigation.resumeAfterSignIn(customer, "/request?category=fuel_delivery"), "/request/new/fuel_delivery");
+  assert.equal(navigation.resumeAfterSignIn(customer, "/request/" + firstId + "/pay"), "/request/" + firstId + "/pay");
+  assert.equal(navigation.resumeAfterSignIn(customer, "/customer/payment/" + firstId), "/request/" + firstId + "/pay");
+  assert.equal(navigation.resumeAfterSignIn(customer, "/customer/payment/not-an-id"), null);
   assert.equal(navigation.resumeAfterSignIn(provider, "/customer/payment/" + firstId), null);
-  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=" + firstId), "/tracking?requestId=" + firstId);
-  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=invalid"), "/tracking?requestId=invalid");
-  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=%"), "/tracking?requestId=invalid");
-  assert.equal(navigation.resumeAfterSignIn({ ...customer, phone: null }, "/profile").params.returnTo, "/customer/profile");
+  assert.equal(navigation.resumeAfterSignIn(provider, "/request/" + firstId), null);
+  assert.equal(navigation.resumeAfterSignIn(customer, "/history?view=payments"), "/requests?view=payments");
+  // Malformed tracking IDs stay explicit instead of falling back to another request.
+  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=" + firstId), "/request/" + firstId);
+  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=invalid"), "/request/invalid");
+  assert.equal(navigation.resumeAfterSignIn(customer, "/tracking?requestId=%"), "/request/invalid");
+  assert.equal(navigation.resumeAfterSignIn({ ...customer, phone: null }, "/profile").params.returnTo, "/account");
   for (const value of ["/login", "/(provider)/dashboard", "//evil.example", "https://evil.example", "/%2f%2fevil.example", ["/tracking"]]) {
     assert.equal(navigation.resumeAfterSignIn(customer, value), null);
   }
@@ -154,17 +168,20 @@ test("only a 401 from the current customer bearer session invalidates it", () =>
 test("tracking notifications retain their request ID and malformed links stay explicit", () => {
   const { notificationDestination } = load("src/notifications/notificationDestination.ts", { "../requests/requestId": requestId });
   for (const [route, expectedPath] of [
-    ["/(user)/tracking", "/(user)/tracking"],
-    ["/(user)/chat", "/(user)/customer/chat/[requestId]"],
-    ["/(user)/payment", "/(user)/customer/payment/[requestId]"],
-    ["/(provider)/payment", "/(provider)/payment/[requestId]"]
+    ["/(user)/tracking", "/(user)/request/[id]"],
+    ["/(user)/chat", "/(user)/request/[id]/chat"],
+    ["/(user)/payment", "/(user)/request/[id]/pay"],
+    ["/(provider)/requests", "/(provider)/incoming/[id]"],
+    ["/(provider)/jobs", "/(provider)/job/[id]"],
+    ["/(provider)/payment", "/(provider)/job/[id]"]
   ]) {
     const destination = notificationDestination({ route, requestId: firstId.toUpperCase() });
     assert.equal(destination.pathname, expectedPath);
-    assert.equal(destination.params.requestId, firstId);
+    assert.equal(destination.params.id, firstId);
   }
-  assert.equal(notificationDestination({ route: "/(user)/tracking" }).params.requestId, "invalid");
-  assert.equal(notificationDestination({ route: "/(user)/tracking", requestId: "bad" }).params.requestId, "invalid");
+  assert.equal(notificationDestination({ route: "/(user)/tracking" }).params.id, "invalid");
+  assert.equal(notificationDestination({ route: "/(user)/tracking", requestId: "bad" }).params.id, "invalid");
+  assert.equal(notificationDestination({ route: "/(provider)/jobs" }), "/(provider)/(tabs)/jobs");
 });
 
 test("Activity prefers a current account's active request and explicit requests require matching ID and owner", () => {

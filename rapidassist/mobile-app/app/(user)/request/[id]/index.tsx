@@ -1,27 +1,28 @@
+import { customerRoutes } from "../../../../src/navigation/routes";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
-import { useAuth } from "../../../src/auth/AuthProvider";
-import { LocationMapPreview } from "../../../src/components/LocationMapPreview";
-import { hasOperationalCoordinates, requiresGoogleMap } from "../../../src/services/locationMapPolicy";
-import { ReviewPromptCard, ReviewSummary } from "../../../src/components/ReviewPromptCard";
-import { approveExtraWork, getRequest, listMyRequests, retryDispatch, updateRequestStatus } from "../../../src/requests/requests.api";
-import { useDispatchUpdates } from "../../../src/requests/DispatchProvider";
-import { useActiveLocationRefresh } from "../../../src/requests/useActiveLocationRefresh";
-import { isActiveCustomerRequest, selectActiveCustomerRequest, verifiedCustomerRequest } from "../../../src/requests/customerTrackingSelection";
-import { trackingEmptyTitle, trackingLoadFailure } from "../../../src/requests/trackingLoadState";
-import { parseRequestId } from "../../../src/requests/requestId";
-import type { RequestStatus, ServiceRequest } from "../../../src/requests/requests.types";
-import { getServiceIcon, getServiceTitle } from "../../../src/requests/serviceCatalog";
-import { customerEta, useCustomerRoute } from "../../../src/requests/useCustomerRoute";
-import { Field, NoticeBanner } from "../../../src/ui/components";
+import { useAuth } from "../../../../src/auth/AuthProvider";
+import { LocationMapPreview } from "../../../../src/components/LocationMapPreview";
+import { hasOperationalCoordinates, requiresGoogleMap } from "../../../../src/services/locationMapPolicy";
+import { ReviewPromptCard, ReviewSummary } from "../../../../src/components/ReviewPromptCard";
+import { approveExtraWork, getRequest, listMyRequests, retryDispatch, updateRequestStatus } from "../../../../src/requests/requests.api";
+import { useDispatchUpdates } from "../../../../src/requests/DispatchProvider";
+import { useActiveLocationRefresh } from "../../../../src/requests/useActiveLocationRefresh";
+import { isActiveCustomerRequest, selectActiveCustomerRequest, verifiedCustomerRequest } from "../../../../src/requests/customerTrackingSelection";
+import { trackingEmptyTitle, trackingLoadFailure } from "../../../../src/requests/trackingLoadState";
+import { parseRequestId } from "../../../../src/requests/requestId";
+import type { RequestStatus, ServiceRequest } from "../../../../src/requests/requests.types";
+import { getServiceIcon, getServiceTitle } from "../../../../src/requests/serviceCatalog";
+import { customerEta, useCustomerRoute } from "../../../../src/requests/useCustomerRoute";
+import { Field, NoticeBanner } from "../../../../src/ui/components";
 import {
   AppHeader, CustomerScreen, IconButton, IconTile, MetricStrip, PrimaryButton, SectionHeading, StatusBadge, SummaryCard, Surface,
   customerColors, customerStyles
-} from "../../../src/ui/customer/components";
-import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../../../src/services/requestCache";
-import { formatCurrency } from "../../../src/i18n";
+} from "../../../../src/ui/customer/components";
+import { readCachedRequest, removeCachedRequest, writeCachedRequest } from "../../../../src/services/requestCache";
+import { formatCurrency } from "../../../../src/i18n";
 
 const TRACKING_REFRESH_MS = 5000;
 
@@ -71,7 +72,7 @@ function providerLocationText(request?: ServiceRequest | null) {
 }
 
 export default function UserTracking() {
-  const { requestId: parameter } = useLocalSearchParams<{ requestId?: string | string[] }>();
+  const { id: parameter } = useLocalSearchParams<{ id?: string | string[] }>();
   const { user } = useAuth();
   const requestId = parseRequestId(parameter);
   const invalid = parameter !== undefined && !requestId;
@@ -179,7 +180,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
       setRequest(updated);
       setShowCancel(false);
       if (!requestId && navigation.isFocused()) {
-        router.replace({ pathname: "/(user)/tracking", params: { requestId: request.id } });
+        router.replace(customerRoutes.request(request.id));
       }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to cancel request");
@@ -202,7 +203,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
       loadSequence.current += 1;
       setRequest(updated);
       if (!requestId && navigation.isFocused()) {
-        router.replace({ pathname: "/(user)/tracking", params: { requestId: request.id } });
+        router.replace(customerRoutes.request(request.id));
       }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to complete job");
@@ -247,7 +248,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
   return (
     <CustomerScreen active="Activity" header={
       <AppHeader title="Live tracking" back right={
-        <IconButton icon="time-outline" label="Request history" onPress={() => router.push("/(user)/history")} />
+        <IconButton icon="time-outline" label="Request history" onPress={() => router.push("/requests")} />
       } />
     }>
       {loadState === "failed" && loadError ? (
@@ -316,9 +317,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
                   void Linking.openURL(`tel:${phone}`).catch(() => setError("This device couldn’t open the phone app."));
                 }} />
               <PrimaryButton title="Message" icon="chatbubble-outline" variant="outline" style={customerStyles.action}
-                disabled={!request.providerId} onPress={() => router.push({
-                  pathname: "/(user)/customer/chat/[requestId]", params: { requestId: request.id }
-                })} />
+                disabled={!request.providerId} onPress={() => router.push(customerRoutes.chat(request.id))} />
               <PrimaryButton title="Refresh GPS" icon="refresh" variant="outline" style={customerStyles.action}
                 onPress={() => {
                   if (locationRefreshError) retryLocationRefresh();
@@ -389,9 +388,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
           ) : null}
           {request.status === "completed" ? (
             <PrimaryButton title="View Invoice & Receipt" icon="receipt-outline" style={customerStyles.primary}
-              onPress={() => router.push({
-                pathname: "/(user)/customer/payment/[requestId]", params: { requestId: request.id }
-              })} />
+              onPress={() => router.push(customerRoutes.pay(request.id))} />
           ) : null}
 
           <Progress request={request} />
@@ -431,7 +428,7 @@ function Tracking({ customerId, requestId, invalid }: { customerId?: string; req
           {loadError ? <NoticeBanner tone="danger" title="Tracking unavailable" message={loadError} /> : null}
           {loadState === "empty" && !requestId ? (
             <PrimaryButton title="Request Help" style={customerStyles.primary}
-              onPress={() => router.push("/(user)/request")} />
+              onPress={() => router.push(customerRoutes.home)} />
           ) : null}
         </Surface>
       ) : null}

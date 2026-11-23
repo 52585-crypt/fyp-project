@@ -15,7 +15,7 @@ export default function Index() {
   }
   if (!token) return <Redirect href="/(auth)/welcome" />;
   if (user?.role === "user" && !user.phone) return <Redirect href="/(auth)/complete-profile" />;
-  return <Redirect href={user?.role === "mechanic" ? "/(provider)/dashboard" : "/(user)/home"} />;
+  return <Redirect href={user?.role === "mechanic" ? "/dashboard" : "/home"} />;
 }
 
 const styles = StyleSheet.create({

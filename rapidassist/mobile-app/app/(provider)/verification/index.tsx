@@ -77,7 +77,7 @@ export default function ProviderVerification() {
   const editing = canSubmit && step !== null;
   const reviewing = editing && step === "review";
   const ready = consent && Boolean(photos.profile && photos.cnic);
-  const dashboard = () => router.dismissTo("/(provider)/dashboard");
+  const dashboard = () => router.dismissTo("/dashboard");
 
   useEffect(() => {
     if (!status || canSubmitVerification(status)) return;
@@ -139,7 +139,7 @@ export default function ProviderVerification() {
   }
 
   if (!auth.isLoading && (!auth.token || auth.user?.role !== "mechanic")) {
-    return <Redirect href={auth.token ? "/(user)/home" : "/(auth)/welcome"} />;
+    return <Redirect href={auth.token ? "/home" : "/(auth)/welcome"} />;
   }
 
   const awaitingReview = status?.reviewState === "awaiting_review";

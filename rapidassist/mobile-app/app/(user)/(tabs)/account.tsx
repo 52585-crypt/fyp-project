@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router, type Href } from "expo-router";
-import { useAuth } from "../../../../src/auth/AuthProvider";
-import { AccountModeAction } from "../../../../src/auth/AccountModeAction";
-import { AppShell, BottomNav, Card, IconBox, PrimaryButton } from "../../../../src/ui/components";
-import { ui } from "../../../../src/ui/system";
+import { useAuth } from "../../../src/auth/AuthProvider";
+import { AccountModeAction } from "../../../src/auth/AccountModeAction";
+import { AppShell, BottomNav, Card, IconBox, PrimaryButton } from "../../../src/ui/components";
+import { ui } from "../../../src/ui/system";
 
 const profileRows: Array<{ title: string; icon: React.ComponentProps<typeof Ionicons>["name"]; href?: Href }> = [
-  { title: "Vehicles", icon: "car", href: "/(user)/vehicles" },
-  { title: "Payment history", icon: "card", href: { pathname: "/(user)/history", params: { view: "payments" } } },
+  { title: "Vehicles", icon: "car", href: "/vehicles" },
+  { title: "Payment history", icon: "card", href: { pathname: "/requests", params: { view: "payments" } } },
   { title: "Emergency contacts", icon: "call" },
   { title: "Support center", icon: "headset" }
 ];

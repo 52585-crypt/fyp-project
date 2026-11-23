@@ -1,18 +1,19 @@
+import { providerRoutes } from "../../../src/navigation/routes";
 import React, { useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { useAuth } from "../../src/auth/AuthProvider";
-import { providerOnboardingRoute } from "../../src/auth/auth.api";
+import { useAuth } from "../../../src/auth/AuthProvider";
+import { providerOnboardingRoute } from "../../../src/auth/auth.api";
 import {
   acceptRequest,
   declineRequest,
   getProviderEarnings,
   updateProviderAvailability
-} from "../../src/requests/requests.api";
-import { getProviderServiceTitle, getRequestTitle, getServiceIcon } from "../../src/requests/serviceCatalog";
-import type { ProviderEarnings } from "../../src/requests/requests.types";
+} from "../../../src/requests/requests.api";
+import { getProviderServiceTitle, getRequestTitle, getServiceIcon } from "../../../src/requests/serviceCatalog";
+import type { ProviderEarnings } from "../../../src/requests/requests.types";
 import {
   AppShell,
   BottomNav,
@@ -23,12 +24,12 @@ import {
   PrimaryButton,
   SectionTitle,
   TicketCard
-} from "../../src/ui/components";
-import { tokens } from "../../src/theme/tokens";
-import { useDispatchUpdates, useOfferSeconds } from "../../src/requests/DispatchProvider";
-import { formatCurrency } from "../../src/i18n";
-import { useVerification } from "../../src/verification/VerificationProvider";
-import { canAcceptServiceRequests, canSubmitVerification, verificationPresentation } from "../../src/verification/verification";
+} from "../../../src/ui/components";
+import { tokens } from "../../../src/theme/tokens";
+import { useDispatchUpdates, useOfferSeconds } from "../../../src/requests/DispatchProvider";
+import { formatCurrency } from "../../../src/i18n";
+import { useVerification } from "../../../src/verification/VerificationProvider";
+import { canAcceptServiceRequests, canSubmitVerification, verificationPresentation } from "../../../src/verification/verification";
 
 export default function ProviderDashboard() {
   const { token, user } = useAuth();
@@ -85,7 +86,7 @@ export default function ProviderDashboard() {
       const accepted = await acceptRequest(token, incoming.id, incoming.dispatch?.offerId);
       await refresh();
       router.push({
-        pathname: "/(provider)/jobs",
+        pathname: "/jobs",
         params: { requestId: accepted.id, category: accepted.category }
       });
     } catch (e: any) {
@@ -247,7 +248,7 @@ export default function ProviderDashboard() {
                 variant="success"
                 onPress={() =>
                   router.push({
-                    pathname: "/(provider)/jobs",
+                    pathname: "/jobs",
                     params: { requestId: activeRequest.id, category: activeRequest.category }
                   })
                 }
@@ -307,10 +308,7 @@ export default function ProviderDashboard() {
                 disabled={!incoming}
                 style={{ flex: 1 }}
                 onPress={() => {
-                  router.push({
-                    pathname: "/(provider)/requests/[requestId]",
-                    params: { requestId: incoming.id }
-                  });
+                  router.push(providerRoutes.incoming(incoming.id));
                 }}
               />
               <PrimaryButton
@@ -365,7 +363,7 @@ export default function ProviderDashboard() {
           </View>
         </Card>
         <PrimaryButton title={canContinueVerification ? "Continue verification" : "View verification"} icon="shield-checkmark" variant="outline"
-          onPress={() => router.push(firstSubmission ? providerOnboardingRoute : "/(provider)/verification")} />
+          onPress={() => router.push(firstSubmission ? providerOnboardingRoute : "/verification")} />
       </AppShell>
       <BottomNav role="provider" active="Home" />
     </View>

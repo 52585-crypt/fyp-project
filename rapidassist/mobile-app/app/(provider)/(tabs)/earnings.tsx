@@ -1,3 +1,4 @@
+import { providerRoutes } from "../../../src/navigation/routes";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -33,7 +34,7 @@ export default function ProviderEarnings() {
         </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {(earnings?.recent || []).map((request) => (
-          <Pressable key={request.id} onPress={() => router.push({ pathname: "/(provider)/payment/[requestId]", params: { requestId: request.id } })}>
+          <Pressable key={request.id} onPress={() => router.push(providerRoutes.payment(request.id))}>
           <Card style={styles.row}>
             <IconBox icon="receipt" />
             <View style={{ flex: 1 }}>
