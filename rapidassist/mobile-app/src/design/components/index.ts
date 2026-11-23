@@ -16,6 +16,7 @@ export { InfoRow } from "./InfoRow";
 export { Input, type InputProps } from "./Input";
 export { MapCard } from "./MapCard";
 export { PersonCard } from "./PersonCard";
+export { PhotoUpload } from "./PhotoUpload";
 export { PriceBreakdown, type PriceLineItem } from "./PriceBreakdown";
 export { ProgressStepper } from "./ProgressStepper";
 export { Pulse } from "./Pulse";

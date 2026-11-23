@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { authDestination, loginWithGoogle, type GoogleIntent } from "./auth.api";
 import { resumeAfterSignIn } from "./customerNavigation";
 import type { GoogleMechanicProfile } from "./auth.types";
@@ -8,7 +8,8 @@ import { useAuth } from "./AuthProvider";
 import { getGoogleIdToken } from "./googleSignIn";
 import { getNetworkErrorMessage } from "../config/api";
 import { GoogleSignInButton } from "./GoogleSignInButton";
-import { ui } from "../ui/system";
+import { Text } from "../design/components/Text";
+import { tokens } from "../design/tokens";
 
 export function useGoogleSignIn(
   setError: (message: string | null) => void,
@@ -61,13 +62,16 @@ export function useGoogleSignIn(
 
 export function GoogleSignInOption({ loading, disabled, onPress, onCredential, onError }: { loading: boolean; disabled: boolean; onPress: () => void; onCredential: (credential: string) => void; onError: () => void }) {
   return <>
-    <View style={styles.separator}><View style={styles.separatorLine} /><Text style={styles.separatorText}>OR</Text><View style={styles.separatorLine} /></View>
+    <View style={styles.separator}>
+      <View style={styles.separatorLine} />
+      <Text variant="captionStrong" color="muted">OR</Text>
+      <View style={styles.separatorLine} />
+    </View>
     <GoogleSignInButton loading={loading} disabled={disabled} onPress={onPress} onCredential={onCredential} onError={onError} />
   </>;
 }
 
 const styles = StyleSheet.create({
-  separator: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 4 },
-  separatorLine: { flex: 1, height: 1, backgroundColor: ui.colors.border },
-  separatorText: { color: ui.colors.muted, fontSize: 11, fontWeight: "800" }
+  separator: { flexDirection: "row", alignItems: "center", gap: tokens.space.md, marginVertical: tokens.space.xs },
+  separatorLine: { flex: 1, height: tokens.sizes.hairline, backgroundColor: tokens.color.border }
 });

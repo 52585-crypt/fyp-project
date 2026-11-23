@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { tokens } from "../tokens";
 import { Text } from "./Text";
 
@@ -29,7 +29,11 @@ export const fieldStyles = StyleSheet.create({
   },
   focused: { borderColor: tokens.color.primary, borderWidth: tokens.sizes.border },
   invalid: { borderColor: tokens.color.danger },
-  input: { flex: 1, ...tokens.text.body, color: tokens.color.text, paddingVertical: tokens.space.md }
+  input: {
+    flex: 1, ...tokens.text.body, color: tokens.color.text, paddingVertical: tokens.space.md,
+    // The box border already shows focus; drop the browser's default outline on web.
+    ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null)
+  }
 });
 
 const styles = StyleSheet.create({ wrap: { gap: tokens.space.xs + tokens.space.xxs } });

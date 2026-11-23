@@ -38,7 +38,7 @@ test("shared Google flow exchanges web credentials and native tokens and routes 
     "./googleSignIn": { getGoogleIdToken: async () => { nativeCalls++; return "native-id"; } },
     "../config/api": { getNetworkErrorMessage: (error) => error.message },
     "./GoogleSignInButton": { GoogleSignInButton: () => null },
-    "../ui/system": { ui: { colors: {} } }
+    "../design/components/Text": { Text: "Text" }, "../design/tokens": { tokens: { space: {}, sizes: {}, color: {} } }
   });
   const flow = useGoogleSignIn((error) => errors.push(error));
   await flow.onGoogleCredential("web-id");
@@ -60,7 +60,7 @@ test("web button forwards Google credential and reports missing credential", () 
   const { GoogleSignInButton } = load("src/auth/GoogleSignInButton.web.tsx", {
     "@react-oauth/google": { GoogleLogin },
     "react-native": { Text: "Text", View: "View" },
-    "../ui/components": { PrimaryButton: () => null },
+    "../design/components": { Banner: () => null, Button: () => null },
     "./GoogleOAuthRoot.web": { useGoogleWebStatus: () => "ready" }
   });
   const element = GoogleSignInButton({ loading: false, disabled: false, onCredential: (token) => { received = token; }, onError: () => { failures++; } });
@@ -94,7 +94,7 @@ test("provider Google session routes to the dashboard, while a new identity retu
       assert.equal(selectAccount, true);
       return "android-id";
     } },
-    "../config/api": {}, "./GoogleSignInButton": {}, "../ui/system": { ui: { colors: {} } }
+    "../config/api": {}, "./GoogleSignInButton": {}, "../design/components/Text": { Text: "Text" }, "../design/tokens": { tokens: { space: {}, sizes: {}, color: {} } }
   });
   await useGoogleSignIn(() => {}, "mechanic_register", (...args) => drafts.push(args)).onGoogleCredential("web-id");
   assert.deepEqual(drafts, [[profile, "web-id", undefined]]);
@@ -139,97 +139,94 @@ function mockHooks() {
 for (const method of ["google", "phone", "enrollment", "link", "phone-resume"]) {
   test(`provider ${method} signup collects service, details and documents before creating an account`, async () => {
     const hooks = mockHooks();
-    const GoogleSignInButton = () => null;
-    const RATextInput = () => null;
     const requests = [], enrollments = [], links = [], routes = [], recoveries = [];
     const manual = method === "phone" || method === "phone-resume";
     const upgrading = method === "enrollment" || method === "link";
     const profile = { name: "Google Provider", email: "provider@example.com", profilePictureUrl: null,
       phone: upgrading ? "03001112222" : null };
-    const Signup = load("app/(auth)/signup.tsx", {
+    const { useSignupWizard } = load("src/auth/useSignupWizard.ts", {
       react: hooks.react,
-      "react-native": { StyleSheet: { create: (styles) => styles }, Image: "Image", Platform: { OS: "web" }, Pressable: "Pressable", SafeAreaView: "SafeAreaView", ScrollView: "ScrollView", Text: "Text", View: "View" },
-      "expo-router": { Link: "Link", router: { replace: (route) => routes.push(route) },
+      "expo-router": { router: { replace: (route) => routes.push(route), canGoBack: () => false },
         useLocalSearchParams: () => ({ role: "mechanic", linkGoogle: method === "link" ? "1" : undefined }) },
-      "@expo/vector-icons": { Ionicons: "Ionicons" },
-      "expo-image-picker": { launchImageLibraryAsync: async () => ({ assets: [{ uri: "fixture", base64: "AA", mimeType: "image/jpeg" }] }) },
-      "expo-location": {},
-      "../../src/theme/colors": { colors: {} },
-      "../../src/components/RATextInput": { RATextInput },
-      "../../src/components/RAButton": { RAButton: () => null },
-      "../../src/ui/components": { PrimaryButton: () => null },
-      "../../src/verification/ProviderRegistrationProgress": { ProviderRegistrationProgress: () => null },
-      "../../src/auth/auth.api": {
+      "./signupMedia": {
+        pickDocumentPhoto: async () => "data:image/jpeg;base64,AA",
+        captureDocumentPhoto: async () => null,
+        captureLiveLocation: async () => ({ lat: 1, lng: 2, addressText: null })
+      },
+      "./signupSteps": load("src/auth/signupSteps.ts", {}),
+      "./auth.api": {
         authDestination: (user, onboarding) => onboarding && user.role === "mechanic" ? onboardingRoute : "/home",
+        loginWithGoogle: async () => { throw new Error("unused"); },
         recoverProviderRegistration: async (credentials) => {
           recoveries.push(credentials);
           return { token: "recovered", user: { role: "mechanic" } };
         },
         linkGoogleAccount: async (...args) => { links.push(args); return { profile, enrollmentTicket: "one-time-ticket" }; },
         enrollProvider: async (body) => {
-        enrollments.push(body);
-        return { token: "session", user: { role: "mechanic", roles: ["user", "mechanic"] } };
-      }, register: async (body) => {
-        requests.push(body);
-        if (method === "phone-resume") throw Object.assign(new Error("Phone already registered"), { response: { status: 409 } });
-        return { token: "session", user: { role: "mechanic" } };
-      } },
-      "../../src/auth/AuthProvider": { useAuth: () => ({
+          enrollments.push(body);
+          return { token: "session", user: { role: "mechanic", roles: ["user", "mechanic"] } };
+        },
+        register: async (body) => {
+          requests.push(body);
+          if (method === "phone-resume") throw Object.assign(new Error("Phone already registered"), { response: { status: 409 } });
+          return { token: "session", user: { role: "mechanic" } };
+        }
+      },
+      "./AuthProvider": { useAuth: () => ({
         setSession() {}, updateUser() {},
         ...(method === "link" ? { token: "customer-session", user: { role: "user", authProvider: "local" } } : {})
       }) },
-      "../../src/auth/GoogleSignInOption": { useGoogleSignIn: (_, intent, onDraft, exchange) => {
+      "./GoogleSignInOption": { useGoogleSignIn: (_, intent, onDraft, exchange) => {
         assert.equal(intent, "mechanic_register");
-        return { googleLoading: false, onGoogleCredential: async (token) => {
+        return { googleLoading: false, onGoogleSignIn() {}, onGoogleError() {}, onGoogleCredential: async (token) => {
           const result = exchange ? await exchange(token) : { profile, enrollmentTicket: upgrading ? "one-time-ticket" : undefined };
           onDraft(result.profile, token, result.enrollmentTicket);
         } };
       } },
-      "../../src/auth/GoogleSignInButton": { GoogleSignInButton },
-      "../../src/config/api": { getNetworkErrorMessage: (error) => error.message }
-    }).default;
-    const find = (predicate) => {
-      hooks.reset();
-      return findElement(Signup(), predicate);
-    };
-    const button = (title) => find((el) => el.props.title === title);
-    const field = (label) => find((el) => el.type === RATextInput && el.props.accessibilityLabel === label);
+      "../config/api": { getNetworkErrorMessage: (error) => error.message }
+    });
+    const wizard = () => { hooks.reset(); return useSignupWizard(); };
     if (method === "link") {
-      assert.equal(find((el) => el.type === GoogleSignInButton).props.disabled, true);
-      field("Current password").props.onChangeText("confirmed-password");
+      assert.equal(wizard().googleDisabled, true);
+      wizard().setPassword("confirmed-password");
     }
-    if (!manual) await find((el) => el.type === GoogleSignInButton).props.onCredential("google-id");
-    else button("Continue with Phone").props.onPress();
+    if (!manual) await wizard().onProviderGoogleCredential("google-id");
+    else wizard().choosePhone();
     if (method === "link") assert.deepEqual(links, [["customer-session", "google-id", "confirmed-password"]]);
     if (upgrading) {
-      assert.ok(find((el) => el.props.children === "Welcome Back!"));
-      assert.ok(button("Back to Customer"));
+      assert.equal(wizard().recognized, true);
+      assert.equal(wizard().step, "role");
       assert.equal(enrollments.length, 0);
-      button("Continue as Service Provider").props.onPress();
+      wizard().continueAsProvider();
     }
-    button("Next").props.onPress();
+    assert.equal(wizard().step, "service");
+    wizard().next();
+    assert.equal(wizard().step, "details");
     if (!manual) {
-      assert.equal(field("Full name").props.value, "Google Provider");
-      assert.equal(field("Password"), undefined);
+      assert.equal(wizard().name, "Google Provider");
+      assert.equal(wizard().needsPassword, false);
     } else {
-      field("Full name").props.onChangeText("Manual Provider");
-      field("Password").props.onChangeText("password");
+      wizard().setName("Manual Provider");
+      wizard().setPassword("password");
     }
     if (upgrading) {
-      assert.equal(field("Mobile number").props.value, "03001112222");
-      assert.equal(field("Mobile number").props.editable, false);
+      assert.equal(wizard().phone, "03001112222");
+      assert.equal(wizard().phoneEditable, false);
     } else {
-      assert.equal(button("Next").props.disabled, true);
-      field("Mobile number").props.onChangeText("03001112222");
+      assert.equal(wizard().canMoveNext, false);
+      wizard().setPhone("03001112222");
     }
-    button("Next").props.onPress();
-    assert.equal(button("Continue to identity verification").props.disabled, true);
-    for (const title of ["Workshop photo", "Mechanic certificate"]) {
-      const row = find((el) => el.props.title === title && el.props.onGallery);
-      await row.props.onGallery();
-    }
+    wizard().next();
+    assert.equal(wizard().step, "documents");
+    assert.equal(wizard().canMoveNext, false);
+    await wizard().submit();
+    assert.equal(requests.length + enrollments.length, 0, "no account before documents and location steps");
+    await wizard().pickDocument("workshopPhotoUrl");
+    await wizard().pickDocument("certificateUrl");
+    wizard().next();
+    assert.equal(wizard().step, "location");
     assert.equal(requests.length, 0);
-    const create = button("Continue to identity verification").props.onPress;
+    const create = wizard().submit;
     await Promise.all([create(), create()]);
     if (upgrading) {
       assert.equal(requests.length, 0);
@@ -253,33 +250,28 @@ test("Login restores the existing manual provider session and lets users choose 
   const hooks = mockHooks();
   const requests = [], sessions = [], routes = [];
   let intent;
-  const Login = load("app/(auth)/login.tsx", {
-    "../../src/auth/customerNavigation": navigationHelpers(),
+  const { useLogin } = load("src/auth/useLogin.ts", {
+    "./customerNavigation": navigationHelpers(),
     react: hooks.react,
-    "react-native": { StyleSheet: { create: (s) => s }, Text: "Text", View: "View", ScrollView: "ScrollView", Pressable: "Pressable", Image: "Image" },
-    "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
-    "expo-router": { Link: "Link", useLocalSearchParams: () => ({}), router: { replace: (route) => routes.push(route) } },
-    "../../src/auth/GoogleSignInOption": { useGoogleSignIn: (_, value) => { intent = value; return { googleLoading: false }; } },
-    "../../src/auth/GoogleSignInButton": { GoogleSignInButton: () => null },
-    "../../src/auth/AuthProvider": { useAuth: () => ({ setSession: async (...args) => sessions.push(args) }) },
-    "../../src/auth/auth.api": {
+    "expo-router": { useLocalSearchParams: () => ({}), router: { replace: (route) => routes.push(route) } },
+    "./GoogleSignInOption": { useGoogleSignIn: (_, value) => { intent = value; return { googleLoading: false }; } },
+    "./AuthProvider": { useAuth: () => ({ setSession: async (...args) => sessions.push(args) }) },
+    "./auth.api": {
       authDestination: (user) => user.role === "mechanic" ? "/dashboard" : "/home",
       login: async (body) => { requests.push(body); return { token: "manual-jwt", user: { role: "mechanic" } }; }
     },
-    "../../src/components/RATextInput": { RATextInput: () => null },
-    "../../src/ui/components": { PrimaryButton: () => null },
-    "../../src/config/api": {},
-    "../../src/theme/tokens": { tokens: { colors: {}, borders: {}, radii: {}, typography: { fonts: {} } } },
-    "../../assets/icon.png": "logo"
-  }).default;
-  const find = (predicate) => { hooks.reset(); return findElement(Login(), predicate); };
-  find((el) => el.props.accessibilityLabel === "Mobile number").props.onChangeText(" 03001112222 ");
+    "../config/api": {}
+  });
+  const login = () => { hooks.reset(); return useLogin(); };
+  login().setPhone(" 03001112222 ");
   assert.equal(intent, "customer");
-  find((el) => el.props.accessibilityLabel === "Password").props.onChangeText("password");
-  find((el) => el.props.accessibilityRole === "radio" && el.props.children.props.children === "Provider").props.onPress();
-  const button = find((el) => el.props.title === "Sign in with phone");
+  assert.equal(login().canSubmit, false);
+  login().setPassword("password");
+  login().chooseAccountType(true);
+  const state = login();
   assert.equal(intent, "mechanic_login");
-  await Promise.all([button.props.onPress(), button.props.onPress()]);
+  assert.equal(state.canSubmit, true);
+  await Promise.all([state.signInWithPhone(), state.signInWithPhone()]);
   assert.equal(requests.length, 1);
   assert.equal(requests[0].phone, "03001112222");
   assert.equal(requests[0].password, "password");
