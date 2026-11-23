@@ -63,7 +63,7 @@ export default function AddVehicle() {
         year: Number(year),
         registrationNumber: registrationNumber.trim() ? registrationNumber.trim() : null
       });
-      router.replace("/(app)/vehicles");
+      router.replace("/(user)/vehicles");
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || "Failed to add vehicle");
     } finally {

@@ -217,7 +217,7 @@ test("Profile exposes only supported actions and links the existing Vehicles and
   const pressables = nodes.filter((node) => node.type === "Pressable");
   assert.deepEqual(Array.from(pressables, (node) => node.props.accessibilityLabel), ["Vehicles", "Payment history"]);
   pressables.forEach((node) => node.props.onPress());
-  assert.equal(destinations[0], "/(app)/vehicles");
+  assert.equal(destinations[0], "/(user)/vehicles");
   assert.equal(destinations[1].pathname, "/(user)/history");
   assert.equal(destinations[1].params.view, "payments");
   assert.equal(nodes.filter((node) => node.type === Ionicons && node.props.name === "chevron-forward").length, 2);

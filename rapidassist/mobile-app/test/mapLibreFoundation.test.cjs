@@ -280,7 +280,7 @@ test("shared fallback wrapper reports errors, activates legacy maps, and remount
 });
 
 test("isolated foundation screen demonstrates MapLibre, style failure, camera, route, and legacy modes", () => {
-  const screen = fs.readFileSync(path.resolve(__dirname, "../app/(app)/map-foundation.tsx"), "utf8");
+  const screen = fs.readFileSync(path.resolve(__dirname, "../app/(dev)/map-foundation.tsx"), "utf8");
   assert.match(screen, /RapidAssistMapWithFallback/);
   assert.match(screen, /LocationMapPreviewLegacy/);
   assert.match(screen, /Reload MapLibre/);

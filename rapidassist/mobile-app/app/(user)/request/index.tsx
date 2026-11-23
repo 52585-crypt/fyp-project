@@ -489,7 +489,7 @@ export default function UserRequest() {
           </View>
         ) : null}
         <PrimaryButton title="Add a saved vehicle" icon="add" variant="outline" style={styles.secondaryButton}
-          onPress={() => router.push("/(app)/vehicles/add")} />
+          onPress={() => router.push("/(user)/vehicles/add")} />
       </VehicleCard>
 
       {category === "fuel_delivery" ? (

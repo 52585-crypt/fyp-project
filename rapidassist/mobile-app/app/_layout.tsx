@@ -24,7 +24,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(user)" />
             <Stack.Screen name="(provider)" />
-            <Stack.Screen name="(app)" />
+            <Stack.Screen name="(dev)" />
           </Stack>
           </DispatchProvider>
         </NotificationProvider></AuthProvider></ConnectivityProvider>

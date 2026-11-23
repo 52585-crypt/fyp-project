@@ -8,7 +8,7 @@ import { AppShell, BottomNav, Card, IconBox, PrimaryButton } from "../../../../s
 import { ui } from "../../../../src/ui/system";
 
 const profileRows: Array<{ title: string; icon: React.ComponentProps<typeof Ionicons>["name"]; href?: Href }> = [
-  { title: "Vehicles", icon: "car", href: "/(app)/vehicles" },
+  { title: "Vehicles", icon: "car", href: "/(user)/vehicles" },
   { title: "Payment history", icon: "card", href: { pathname: "/(user)/history", params: { view: "payments" } } },
   { title: "Emergency contacts", icon: "call" },
   { title: "Support center", icon: "headset" }
