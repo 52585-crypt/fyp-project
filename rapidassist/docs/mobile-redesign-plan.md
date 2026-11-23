@@ -12,8 +12,8 @@ rider, tow driver workflows).
 
 | Phase | Status |
 |---|---|
-| 0. Cleanup | in progress |
-| 1. Tokens & fonts | todo |
+| 0. Cleanup | done |
+| 1. Tokens & fonts | done |
 | 2. Component kit + gallery | todo |
 | 3. Navigation (tabs, guards) | todo |
 | 4. Auth redesign | todo |

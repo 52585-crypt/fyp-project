@@ -1,128 +1,67 @@
+/**
+ * @deprecated Legacy token shape kept only so not-yet-redesigned screens compile.
+ * Every value is derived from src/design/tokens.ts. Removed in phase 8.
+ */
 import { Platform } from "react-native";
+import { tokens as t } from "../design/tokens";
+
+const c = t.color;
 
 export const tokens = {
   colors: {
-    // Brand - Highway Green
-    brand: "#006341",
-    brandPressed: "#00482F",
-    brandSoft: "#E8F3EE",
-    brandDark: "#003824",
-
-    // Accent - Signal Amber (caution, ETAs, towing alerts)
-    accent: "#B45309",
-    accentHover: "#92400E",
-    accentSoft: "#FEF3C7",
-
-    // Canvas & Neutral Scale (tinted asphalt & roadway slate, not pure lifeless gray)
-    canvas: "#F4F5F4",
-    canvasSubtle: "#E8EBE9",
-    surface: "#FFFFFF",
-    surfaceRaised: "#FAFBFA",
-    surfaceAlt: "#EFF2F0",
-
-    // Mechanical Borders (crisp keylines for outdoor sunlight)
-    border: "#D1D9D4",
-    borderSubtle: "#E2E7E4",
-    borderStrong: "#9BA8A1",
-    borderFocus: "#006341",
-
-    // Text & Ink (high contrast 98% asphalt black)
-    ink: "#0F1A15",
-    inkMuted: "#4B5E55",
-    inkSubtle: "#71837A",
-    inkInverse: "#FFFFFF",
-
-    // Semantic Status Tokens
-    statusOnWay: "#1D4ED8",
-    statusOnWaySoft: "#DBEAFE",
-    statusArrived: "#6D28D9",
-    statusArrivedSoft: "#EDE9FE",
-    statusSuccess: "#15803D",
-    statusSuccessSoft: "#DCFCE7",
-    statusWarning: "#B45309",
-    statusWarningSoft: "#FEF3C7",
-    statusDanger: "#DC2626",
-    statusDangerSoft: "#FEE2E2",
-
-    // Industrial Dark Accent
-    dark: "#12261E"
+    brand: c.primary,
+    brandPressed: c.primaryDark,
+    brandSoft: c.primarySoft,
+    brandDark: c.primaryDark,
+    accent: c.warning,
+    accentHover: c.warningText,
+    accentSoft: c.warningSoft,
+    canvas: c.bg,
+    canvasSubtle: c.surfaceAlt,
+    surface: c.surface,
+    surfaceRaised: c.surface,
+    surfaceAlt: c.surfaceAlt,
+    border: c.border,
+    borderSubtle: c.border,
+    borderStrong: c.borderStrong,
+    borderFocus: c.primary,
+    ink: c.text,
+    inkMuted: c.muted,
+    inkSubtle: c.subtle,
+    inkInverse: c.onPrimary,
+    statusOnWay: c.info,
+    statusOnWaySoft: c.infoSoft,
+    statusArrived: c.primary,
+    statusArrivedSoft: c.primarySoft,
+    statusSuccess: c.success,
+    statusSuccessSoft: c.successSoft,
+    statusWarning: c.warning,
+    statusWarningSoft: c.warningSoft,
+    statusDanger: c.danger,
+    statusDangerSoft: c.dangerSoft,
+    dark: c.primaryDark
   },
-
-  radii: {
-    none: 0,
-    tag: 4,      // Stamped industrial labels
-    sm: 6,       // Secondary chips
-    md: 8,       // Cards, inputs, sheets
-    button: 10,  // Tactile touch buttons
-    pill: 999
-  },
-
-  borders: {
-    hairline: 1,
-    standard: 1.5, // Distinctive physical keyline
-    heavy: 2
-  },
-
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    hero: 32
-  },
-
+  radii: { none: 0, tag: t.radius.xs, sm: t.radius.sm, md: t.radius.md, button: t.radius.md, pill: t.radius.pill },
+  borders: { hairline: t.sizes.hairline, standard: t.sizes.border, heavy: 2 },
+  spacing: { xs: t.space.xs, sm: t.space.sm, md: t.space.md, lg: t.space.lg, xl: t.space.screen, xxl: t.space.xl, hero: t.space.xxl },
   typography: {
     fonts: {
-      display: Platform.select({
-        ios: "System",
-        android: "Roboto",
-        web: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-      }),
-      body: Platform.select({
-        ios: "System",
-        android: "Roboto",
-        web: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-      }),
-      mono: Platform.select({
-        ios: "Menlo",
-        android: "monospace",
-        web: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-      }),
-      urdu: Platform.select({
-        ios: "Noto Nastaliq Urdu",
-        android: "Noto Nastaliq Urdu",
-        web: "'Noto Nastaliq Urdu', 'Noto Sans Arabic', Tahoma, sans-serif"
-      })
+      display: t.font.bold,
+      body: t.font.regular,
+      mono: Platform.select({ ios: "Menlo", android: "monospace", web: "ui-monospace, Menlo, monospace" }),
+      urdu: Platform.select({ ios: "Noto Nastaliq Urdu", android: "Noto Nastaliq Urdu", web: "'Noto Nastaliq Urdu', Tahoma, sans-serif" })
     },
     sizes: {
-      displayLarge: 28,
-      displayMedium: 22,
-      headline: 17,
-      body: 14,
-      bodySmall: 12,
-      caption: 11
+      displayLarge: t.size.display, displayMedium: t.size.title, headline: t.size.headline,
+      body: t.size.body, bodySmall: t.size.bodySmall, caption: t.size.caption
     },
     lineHeights: {
-      displayLarge: 34,
-      displayMedium: 28,
-      headline: 22,
-      body: 20,
-      bodySmall: 16,
-      caption: 14
+      displayLarge: t.lineHeight.display, displayMedium: t.lineHeight.title, headline: t.lineHeight.headline,
+      body: t.lineHeight.body, bodySmall: t.lineHeight.bodySmall, caption: t.lineHeight.caption
     },
-    letterSpacing: {
-      tight: -0.6,
-      normal: 0,
-      stamped: 0.8 // For uppercase badge marks
-    }
+    letterSpacing: { tight: -0.3, normal: 0, stamped: 0.4 }
   },
-
-  touch: {
-    minTarget: 48,
-    comfortable: 54
-  }
+  touch: { minTarget: t.sizes.touchMin, comfortable: t.sizes.button }
 } as const;
 
 export type ThemeTokens = typeof tokens;

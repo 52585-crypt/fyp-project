@@ -2,7 +2,8 @@ import { Stack } from "expo-router";
 import { Provider as PaperProvider } from "react-native-paper";
 import { Provider as ReduxProvider } from "react-redux";
 import { AuthProvider } from "../src/auth/AuthProvider";
-import { paperTheme } from "../src/constants/theme";
+import { paperTheme } from "../src/design/paperTheme";
+import { useAppFonts } from "../src/design/useAppFonts";
 import { store } from "../src/store";
 import { DispatchProvider } from "../src/requests/DispatchProvider";
 import "../src/services/backgroundLocation";
@@ -14,6 +15,8 @@ import { GoogleOAuthRoot } from "../src/auth/GoogleOAuthRoot";
 import { StripeRoot } from "../src/payments/StripeRoot";
 
 export default function RootLayout() {
+  const fontsReady = useAppFonts();
+  if (!fontsReady) return null;
   return (
     <AppErrorBoundary><StripeRoot><GoogleOAuthRoot><ReduxProvider store={store}>
       <PaperProvider theme={paperTheme}>
