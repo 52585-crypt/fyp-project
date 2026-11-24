@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { acceptRequest, getProviderActiveRequest, getProviderEarnings, listOpenRequests, updateProviderAvailability } from "../../src/requests/requests.api";
 import { getProviderServiceTitle, getRequestTitle, getServiceIcon } from "../../src/requests/serviceCatalog";
@@ -11,6 +11,7 @@ import { AppShell, BottomNav, Card, IconBox, Metric, PrimaryButton, SectionTitle
 import { ui } from "../../src/ui/system";
 
 const AVAILABILITY_LOCATION_SYNC_MS = 2 * 60 * 1000;
+const OPEN_REQUESTS_POLL_MS = 5000;
 
 export default function ProviderDashboard() {
   const { token, user } = useAuth();
@@ -159,6 +160,23 @@ export default function ProviderDashboard() {
   useEffect(() => {
     loadRequests();
   }, [token, online]);
+
+  // Keep polling for new customer requests while the provider is online.
+  // Without this, requests created after the provider went online never appear.
+  useEffect(() => {
+    if (!token || !online) return;
+    const timer = setInterval(() => {
+      loadRequests(true);
+    }, OPEN_REQUESTS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [token, online]);
+
+  // Refresh when the provider returns to this screen (e.g. from jobs/profile).
+  useFocusEffect(
+    useCallback(() => {
+      loadRequests();
+    }, [token, online])
+  );
 
   return (
     <View style={{ flex: 1 }}>
