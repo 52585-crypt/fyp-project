@@ -18,3 +18,6 @@ pnpm-debug.log*
 *.err.log
 rebase-staged-backup.patch
 *.docx
+
+# Locally cached Hugging Face models (downloaded on first use)
+rapidassist/server/assets/hf-models/

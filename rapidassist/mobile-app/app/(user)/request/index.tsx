@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { LocationMapPicker, type LocationTarget } from "../../../src/components/LocationMapPicker";
+import { PhotoIssueDetector } from "../../../src/components/PhotoIssueDetector";
 import { createRequest, listNearbyProviders } from "../../../src/requests/requests.api";
 import type { FuelType, MechanicIssueCategory, NearbyProvider, RequestCategory } from "../../../src/requests/requests.types";
 import {
@@ -408,6 +409,13 @@ export default function UserRequest() {
   return (
     <View style={{ flex: 1 }}>
       <AppShell title="Create Request" subtitle="Choose one of the three RapidAssist services.">
+        <PhotoIssueDetector
+          token={token}
+          onDetected={(nextCategory, issueType) => {
+            setCategory(nextCategory);
+            if (nextCategory === "mechanic" && issueType) setMechanicIssue(issueType);
+          }}
+        />
         <SectionTitle title="Select service" />
         <View style={styles.serviceGrid}>
           {services.map((item) => {

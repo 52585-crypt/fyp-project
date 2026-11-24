@@ -3,6 +3,7 @@ const { User, USER_ROLES, MECHANIC_SERVICE_CATEGORIES } = require("../models/Use
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
 const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
+const { runProviderFaceChecks } = require("../services/providerFaceChecks");
 
 const router = express.Router();
 const MECHANIC_IMAGE_MAX_CHARS = Number(process.env.MECHANIC_IMAGE_MAX_CHARS) || 2500000;
@@ -53,6 +54,8 @@ function validateMechanicProfile(input) {
   }
 
   const selfieUrl = normalizeImageData(input?.selfieUrl, "Real-time selfie");
+  const selfieLeftUrl = normalizeImageData(input?.selfieLeftUrl, "Selfie with head turned left");
+  const selfieRightUrl = normalizeImageData(input?.selfieRightUrl, "Selfie with head turned right");
   const idCardFrontUrl = normalizeImageData(input?.idCardFrontUrl, "ID card front photo");
   const idCardBackUrl = normalizeImageData(input?.idCardBackUrl, "ID card back photo");
   const workshopPhotoUrl = normalizeImageData(input?.workshopPhotoUrl, "Workshop photo", {
@@ -85,6 +88,8 @@ function validateMechanicProfile(input) {
   return {
     serviceCategory,
     selfieUrl,
+    selfieLeftUrl,
+    selfieRightUrl,
     idCardFrontUrl,
     idCardBackUrl,
     workshopPhotoUrl,
@@ -125,6 +130,14 @@ router.post("/register", async (req, res, next) => {
           })
         : null;
 
+    let faceDescriptor;
+    if (normalizedMechanicProfile) {
+      const faceResult = await runProviderFaceChecks(normalizedMechanicProfile);
+      if (faceResult.rejectMessage) throw badRequest(faceResult.rejectMessage);
+      normalizedMechanicProfile.faceChecks = faceResult.faceChecks;
+      faceDescriptor = faceResult.descriptor;
+    }
+
     const user = await User.create({
       role,
       name: String(name).trim(),
@@ -133,7 +146,8 @@ router.post("/register", async (req, res, next) => {
       isCertified: role === "mechanic" ? Boolean(isCertified) : false,
       certificateUrl: normalizedMechanicProfile?.certificateUrl || null,
       verificationStatus: role === "mechanic" ? "pending" : "unverified",
-      mechanicProfile: normalizedMechanicProfile
+      mechanicProfile: normalizedMechanicProfile,
+      faceDescriptor
     });
 
     const token = signAccessToken({ sub: user._id.toString(), role: user.role });

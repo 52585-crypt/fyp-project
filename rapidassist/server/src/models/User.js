@@ -5,6 +5,8 @@ const USER_ROLES = ["user", "mechanic"];
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
 const MECHANIC_SERVICE_CATEGORIES = ["mechanic", "fuel_delivery", "towing"];
 const IDENTITY_MATCH_STATUSES = ["pending", "matched", "mismatch", "manual_review"];
+// passed = liveness ok, no duplicate | flagged = duplicate face found | error = models failed, admin must check manually
+const FACE_CHECK_STATUSES = ["not_run", "passed", "flagged", "error"];
 
 const userSchema = new mongoose.Schema(
   {
@@ -29,6 +31,9 @@ const userSchema = new mongoose.Schema(
         default: null
       },
       selfieUrl: { type: String, default: null },
+      // Head-turn liveness selfies (free local face-api check)
+      selfieLeftUrl: { type: String, default: null },
+      selfieRightUrl: { type: String, default: null },
       idCardFrontUrl: { type: String, default: null },
       idCardBackUrl: { type: String, default: null },
       workshopPhotoUrl: { type: String, default: null },
@@ -49,8 +54,35 @@ const userSchema = new mongoose.Schema(
         score: { type: Number, default: null },
         provider: { type: String, default: null },
         checkedAt: { type: Date, default: null }
+      },
+      // Result of the automatic face checks run at sign-up (shown to admin)
+      faceChecks: {
+        status: { type: String, enum: FACE_CHECK_STATUSES, default: "not_run" },
+        provider: { type: String, default: null },
+        liveness: {
+          passed: { type: Boolean, default: null },
+          reason: { type: String, default: null },
+          yaw: {
+            front: { type: Number, default: null },
+            left: { type: Number, default: null },
+            right: { type: Number, default: null }
+          }
+        },
+        duplicate: {
+          found: { type: Boolean, default: false },
+          matchedUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+          matchedName: { type: String, default: null },
+          matchedPhone: { type: String, default: null },
+          distance: { type: Number, default: null }
+        },
+        error: { type: String, default: null },
+        checkedAt: { type: Date, default: null }
       }
     },
+
+    // 128-number face descriptor of the straight selfie, used to detect the same
+    // person opening several provider accounts. Never sent to clients.
+    faceDescriptor: { type: [Number], default: undefined, select: false },
 
     // Trust signals (kept simple for v1)
     ratingAvg: { type: Number, default: 0 },
@@ -95,13 +127,16 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
       ? {
           serviceCategory: this.mechanicProfile.serviceCategory,
           selfieUrl: this.mechanicProfile.selfieUrl,
+          selfieLeftUrl: this.mechanicProfile.selfieLeftUrl,
+          selfieRightUrl: this.mechanicProfile.selfieRightUrl,
           idCardFrontUrl: this.mechanicProfile.idCardFrontUrl,
           idCardBackUrl: this.mechanicProfile.idCardBackUrl,
           workshopPhotoUrl: this.mechanicProfile.workshopPhotoUrl,
           certificateUrl: this.mechanicProfile.certificateUrl,
           drivingLicenseUrl: this.mechanicProfile.drivingLicenseUrl,
           liveLocation: this.mechanicProfile.liveLocation,
-          identityMatch: this.mechanicProfile.identityMatch
+          identityMatch: this.mechanicProfile.identityMatch,
+          faceChecks: this.mechanicProfile.faceChecks
         }
       : null,
     ratingAvg: this.ratingAvg,

@@ -1,5 +1,5 @@
 import { api } from "../config/api";
-import type { ChatMessage, CreateRequestInput, ExtraWorkInput, NearbyProvider, ProviderEarnings, RequestCategory, RequestLocation, ServiceRequest } from "./requests.types";
+import type { ChatMessage, CreateRequestInput, ExtraWorkInput, MechanicIssueCategory, NearbyProvider, ProviderEarnings, RequestCategory, RequestLocation, ServiceRequest } from "./requests.types";
 
 export async function createRequest(token: string, input: CreateRequestInput) {
   const res = await api.post<{ ok: boolean; request: ServiceRequest }>("/api/requests", input, {
@@ -144,3 +144,22 @@ export async function sendRequestMessage(token: string, id: string, body: string
   return res.data.message;
 }
 
+
+export type VehicleIssueSuggestion = {
+  detected: boolean;
+  category: RequestCategory | null;
+  issueType: MechanicIssueCategory | null;
+  title: string;
+  confidence: number;
+  top: Array<{ title: string; category: RequestCategory | null; issueType: MechanicIssueCategory | null; score: number }>;
+};
+
+// Free on-server CLIP model: suggests the service from a photo of the problem.
+export async function detectVehicleIssue(token: string, image: string) {
+  const res = await api.post<{ ok: boolean; result: VehicleIssueSuggestion }>(
+    "/api/ai/vehicle-issue",
+    { image },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data.result;
+}

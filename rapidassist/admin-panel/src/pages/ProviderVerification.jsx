@@ -18,7 +18,9 @@ function statusTone(status) {
 function providerDocs(provider) {
   const profile = provider?.mechanicProfile || {};
   const docs = [
-    { label: "Selfie", value: profile.selfieUrl },
+    { label: "Selfie (straight)", value: profile.selfieUrl },
+    { label: "Selfie (turned left)", value: profile.selfieLeftUrl },
+    { label: "Selfie (turned right)", value: profile.selfieRightUrl },
     { label: "ID front", value: profile.idCardFrontUrl },
     { label: "ID back", value: profile.idCardBackUrl }
   ];
@@ -34,6 +36,32 @@ function providerDocs(provider) {
 
   return docs;
 }
+
+// Summary of the automatic, free face-api checks done at sign-up.
+function faceCheckSummary(faceChecks) {
+  if (!faceChecks || faceChecks.status === "not_run") {
+    return { tone: "neutral", title: "Not run", text: "This provider signed up before automatic face checks were added." };
+  }
+  if (faceChecks.status === "error") {
+    return { tone: "warning", title: "Check failed", text: `The face models could not run (${faceChecks.error || "unknown error"}). Review the selfies manually.` };
+  }
+  if (faceChecks.status === "flagged") {
+    const dup = faceChecks.duplicate || {};
+    return {
+      tone: "danger",
+      title: "Possible duplicate account",
+      text: `This face closely matches ${dup.matchedName || "another provider"}${dup.matchedPhone ? ` (${dup.matchedPhone})` : ""}. Face distance ${dup.distance ?? "N/A"} (lower = more similar).`
+    };
+  }
+  return { tone: "success", title: "Passed", text: "Head-turn liveness passed and no other provider has the same face." };
+}
+
+const faceToneStyles = {
+  success: { background: "#dcfce7", color: "#166534", borderColor: "#bbf7d0" },
+  warning: { background: "#fef3c7", color: "#92400e", borderColor: "#fde68a" },
+  danger: { background: "#fee2e2", color: "#991b1b", borderColor: "#fecaca" },
+  neutral: { background: "var(--surface)", color: "var(--muted)", borderColor: "var(--border)" }
+};
 
 export function ProviderVerification() {
   const [filter, setFilter] = useState("pending");
@@ -140,6 +168,9 @@ export function ProviderVerification() {
                   <div style={styles.providerName}>{provider.name}</div>
                   <div style={styles.providerMeta}>{serviceTitle(provider.mechanicProfile?.serviceCategory)} - {provider.phone}</div>
                   <span style={{ ...styles.status, ...statusTone(provider.verificationStatus) }}>{provider.verificationStatus}</span>
+                  {provider.mechanicProfile?.faceChecks?.status === "flagged" ? (
+                    <span style={{ ...styles.status, ...faceToneStyles.danger, marginLeft: 6 }}>Duplicate face</span>
+                  ) : null}
                 </button>
               );
             })
@@ -167,6 +198,24 @@ export function ProviderVerification() {
                 <Info label="Live location" value={selected.mechanicProfile?.liveLocation?.addressText || "Not captured"} />
                 <Info label="Joined" value={new Date(selected.createdAt).toLocaleDateString()} />
               </div>
+
+              <div style={styles.sectionTitle}>Automatic face checks</div>
+              {(() => {
+                const faceChecks = selected.mechanicProfile?.faceChecks;
+                const summary = faceCheckSummary(faceChecks);
+                const yaw = faceChecks?.liveness?.yaw;
+                return (
+                  <div style={{ ...styles.faceBox, ...faceToneStyles[summary.tone] }}>
+                    <div style={styles.faceTitle}>{summary.title}</div>
+                    <div style={styles.faceText}>{summary.text}</div>
+                    {yaw && yaw.front != null ? (
+                      <div style={styles.faceMeta}>
+                        Head-turn score: straight {yaw.front}, left {yaw.left}, right {yaw.right}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()}
 
               <div style={styles.sectionTitle}>Documents</div>
               <div style={styles.docs}>
@@ -317,6 +366,10 @@ const styles = {
   docLabel: { color: "var(--text)", fontSize: 12, fontWeight: 900 },
   docImage: { marginTop: 8, width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", background: "white" },
   docLink: { display: "inline-block", marginTop: 8, color: "var(--primary)", fontSize: 12, fontWeight: 900 },
+  faceBox: { marginTop: 10, border: "1px solid", borderRadius: 14, padding: 12 },
+  faceTitle: { fontSize: 14, fontWeight: 900 },
+  faceText: { marginTop: 4, fontSize: 13, fontWeight: 700, lineHeight: 1.45 },
+  faceMeta: { marginTop: 6, fontSize: 11, fontWeight: 800, opacity: 0.8 },
   missing: { marginTop: 8, color: "var(--muted)", fontSize: 12, fontWeight: 800 },
   actions: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
   actionButton: { height: 46, border: 0, borderRadius: 14, color: "white", fontWeight: 900, cursor: "pointer" },

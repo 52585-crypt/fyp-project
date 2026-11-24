@@ -4,6 +4,8 @@ export type MechanicServiceCategory = "mechanic" | "fuel_delivery" | "towing";
 export type MechanicProfile = {
   serviceCategory: MechanicServiceCategory;
   selfieUrl: string;
+  selfieLeftUrl: string;
+  selfieRightUrl: string;
   idCardFrontUrl: string;
   idCardBackUrl: string;
   workshopPhotoUrl: string | null;
@@ -21,6 +23,26 @@ export type MechanicProfile = {
     provider: string | null;
     checkedAt: string | null;
   };
+  faceChecks?: FaceChecks | null;
+};
+
+export type FaceChecks = {
+  status: "not_run" | "passed" | "flagged" | "error";
+  provider: string | null;
+  liveness?: {
+    passed: boolean | null;
+    reason: string | null;
+    yaw?: { front: number | null; left: number | null; right: number | null };
+  };
+  duplicate?: {
+    found: boolean;
+    matchedUserId: string | null;
+    matchedName: string | null;
+    matchedPhone: string | null;
+    distance: number | null;
+  };
+  error?: string | null;
+  checkedAt: string | null;
 };
 
 export type SafeUser = {

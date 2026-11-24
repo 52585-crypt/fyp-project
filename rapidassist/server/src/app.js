@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.routes");
 const vehiclesRoutes = require("./routes/vehicles.routes");
 const requestsRoutes = require("./routes/requests.routes");
+const aiRoutes = require("./routes/ai.routes");
 
 function buildCorsOptions() {
   const allowedOrigins = (process.env.CORS_ORIGIN || "")
@@ -44,6 +45,7 @@ function createApp() {
   app.use("/api/admin", adminRoutes);
   app.use("/api/vehicles", vehiclesRoutes);
   app.use("/api/requests", requestsRoutes);
+  app.use("/api/ai", aiRoutes);
 
   // Basic error handler
   // eslint-disable-next-line no-unused-vars

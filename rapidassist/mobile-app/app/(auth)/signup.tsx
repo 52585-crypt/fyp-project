@@ -14,6 +14,8 @@ import { getNetworkErrorMessage } from "../../src/config/api";
 
 type MechanicPhotoField =
   | "selfieUrl"
+  | "selfieLeftUrl"
+  | "selfieRightUrl"
   | "idCardFrontUrl"
   | "idCardBackUrl"
   | "workshopPhotoUrl"
@@ -66,6 +68,8 @@ function documentRequirement(category: MechanicServiceCategory) {
 
 const initialDocs: MechanicDocs = {
   selfieUrl: "",
+  selfieLeftUrl: "",
+  selfieRightUrl: "",
   idCardFrontUrl: "",
   idCardBackUrl: "",
   workshopPhotoUrl: "",
@@ -210,6 +214,8 @@ export default function Signup() {
     return Boolean(
       serviceCategory &&
         docs.selfieUrl &&
+        docs.selfieLeftUrl &&
+        docs.selfieRightUrl &&
         docs.idCardFrontUrl &&
         docs.idCardBackUrl
     );
@@ -267,13 +273,15 @@ export default function Signup() {
         return;
       }
 
+      const isSelfie = field === "selfieUrl" || field === "selfieLeftUrl" || field === "selfieRightUrl";
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: field === "selfieUrl" ? [1, 1] : [4, 3],
+        // No crop step for selfies: cropping can cut the jaw line that the head-turn check needs.
+        allowsEditing: !isSelfie,
+        aspect: [4, 3],
         quality: 0.2,
         base64: true,
         mediaTypes: ["images"],
-        cameraType: field === "selfieUrl" ? ImagePicker.CameraType.front : ImagePicker.CameraType.back
+        cameraType: isSelfie ? ImagePicker.CameraType.front : ImagePicker.CameraType.back
       });
 
       if (!result.canceled && result.assets?.[0]?.uri) {
@@ -358,6 +366,8 @@ export default function Signup() {
             ? {
                 serviceCategory,
                 selfieUrl: docs.selfieUrl,
+                selfieLeftUrl: docs.selfieLeftUrl,
+                selfieRightUrl: docs.selfieRightUrl,
                 idCardFrontUrl: docs.idCardFrontUrl,
                 idCardBackUrl: docs.idCardBackUrl,
                 workshopPhotoUrl: serviceCategory === "mechanic" ? docs.workshopPhotoUrl : null,
@@ -460,11 +470,29 @@ export default function Signup() {
               {mechanicStep === 2 ? (
                 <>
                   <Text style={styles.sectionTitle}>Identity documents</Text>
+                  <View style={styles.matchBox}>
+                    <Ionicons name="happy" size={18} color={colors.primaryDark} />
+                    <Text style={styles.matchText}>
+                      Liveness check: take 3 selfies - look straight, then turn your head left, then right.
+                    </Text>
+                  </View>
                   <UploadRow
-                    title="Real-time selfie"
+                    title="Selfie 1: look straight"
                     value={docs.selfieUrl}
                     icon="person-circle"
                     onCamera={() => captureImage("selfieUrl")}
+                  />
+                  <UploadRow
+                    title="Selfie 2: turn head left"
+                    value={docs.selfieLeftUrl}
+                    icon="arrow-back-circle"
+                    onCamera={() => captureImage("selfieLeftUrl")}
+                  />
+                  <UploadRow
+                    title="Selfie 3: turn head right"
+                    value={docs.selfieRightUrl}
+                    icon="arrow-forward-circle"
+                    onCamera={() => captureImage("selfieRightUrl")}
                   />
                   <UploadRow
                     title="ID card front"
@@ -483,7 +511,7 @@ export default function Signup() {
                   <View style={styles.matchBox}>
                     <Ionicons name="scan" size={18} color={colors.primaryDark} />
                     <Text style={styles.matchText}>
-                      ID photo and selfie match will be reviewed after submission.
+                      Your selfies are checked automatically for liveness, and the ID photo is reviewed by an admin.
                     </Text>
                   </View>
                 </>
