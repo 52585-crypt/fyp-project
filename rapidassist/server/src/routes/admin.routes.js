@@ -1,15 +1,28 @@
 const express = require("express");
 const { ServiceRequest } = require("../models/ServiceRequest");
 const { User } = require("../models/User");
+const { roleFilter } = require("../utils/accountRoles");
 const { Vehicle } = require("../models/Vehicle");
-const { Payment } = require("../models/Payment");
+const { Payment, recordedCashFilter } = require("../models/Payment");
 const { DispatchOffer } = require("../models/DispatchOffer");
 const { requireAdmin } = require("../middleware/auth.middleware");
+const adminRequests = require("./adminRequests.routes");
+const adminCustomers = require("./adminCustomers.routes");
+const adminProviders = require("./adminProviders.routes");
+const adminFinance = require("./adminFinance.routes");
+const adminActivity = require("./adminActivity.routes");
+const { objectId } = require("../services/adminHistory");
 
 const router = express.Router();
 const PROVIDER_VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
 
+router.use((req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 router.use(...requireAdmin);
+router.use("/requests", adminRequests);
+router.use("/customers", adminCustomers);
+router.use("/provider-directory", adminProviders);
+router.use("/finance", adminFinance);
+router.use("/activity", adminActivity);
 
 function startOfToday() {
   const now = new Date();
@@ -23,26 +36,25 @@ function badRequest(message) {
 }
 
 function providerToAdminJSON(provider) {
+  const profile = provider.mechanicProfile;
   return {
     id: provider._id.toString(),
     name: provider.name,
     phone: provider.phone,
-    role: provider.role,
+    role: "mechanic",
     verificationStatus: provider.verificationStatus,
     isCertified: provider.isCertified,
     ratingAvg: provider.ratingAvg,
     ratingCount: provider.ratingCount,
     completedJobs: provider.completedJobs,
     complaintsCount: provider.complaintsCount,
-    mechanicProfile: provider.mechanicProfile,
-    providerState: provider.providerState
-      ? {
-          isOnline: Boolean(provider.providerState.isOnline),
-          currentLocation: provider.providerState.currentLocation,
-          activeRequestId: provider.providerState.activeRequestId ? provider.providerState.activeRequestId.toString() : null,
-          lastSeenAt: provider.providerState.lastSeenAt
-        }
-      : null,
+    mechanicProfile: profile ? {
+      serviceCategory: profile.serviceCategory,
+      workshopPhotoUrl: profile.workshopPhotoUrl,
+      certificateUrl: profile.certificateUrl,
+      drivingLicenseUrl: profile.drivingLicenseUrl,
+      liveLocation: profile.liveLocation?.addressText ? { addressText: profile.liveLocation.addressText } : null
+    } : null,
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt
   };
@@ -80,6 +92,27 @@ function formatCountBreakdown(rows, defaults = {}) {
   );
 }
 
+router.get("/payments", async (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    const page = Number(req.query.page ?? 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 100000) throw badRequest("Invalid payment page.");
+    const pageSize = 25;
+    const rows = await Payment.find().sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * pageSize).limit(pageSize + 1)
+      .populate("userId providerId", "name");
+    res.json({
+      ok: true,
+      hasNext: rows.length > pageSize,
+      payments: rows.slice(0, pageSize).map((payment) => ({
+        ...payment.toJSONSafe(),
+        customer: payment.userId?.name ?? null,
+        provider: payment.providerId?.name ?? null
+      }))
+    });
+  } catch (error) { next(error); }
+});
+
 router.get("/dashboard", async (req, res, next) => {
   try {
     const today = startOfToday();
@@ -97,34 +130,37 @@ router.get("/dashboard", async (req, res, next) => {
       pendingProviderList,
       categoryBreakdownRows,
       statusBreakdownRows,
-      onlineProviders
+      onlineProviders,
+      unverifiedCashPayments
     ] = await Promise.all([
-      User.countDocuments({ role: "user" }),
-      User.countDocuments({ role: "mechanic" }),
+      User.countDocuments(roleFilter("user")),
+      User.countDocuments(roleFilter("mechanic")),
       Vehicle.countDocuments({}),
       ServiceRequest.countDocuments({ status: { $nin: ["completed", "cancelled"] } }),
       ServiceRequest.countDocuments({ status: "completed" }),
       ServiceRequest.countDocuments({ status: "cancelled" }),
-      User.countDocuments({ role: "mechanic", verificationStatus: "pending" }),
+      User.countDocuments({ ...roleFilter("mechanic"), verificationStatus: "pending" }),
       ServiceRequest.countDocuments({ createdAt: { $gte: today } }),
       ServiceRequest.find({})
         .sort({ createdAt: -1 })
         .limit(8)
         .populate({ path: "userId", select: "name phone role" })
         .populate({ path: "providerId", select: "name phone role" }),
-      User.find({ role: "mechanic", verificationStatus: "pending" })
+      User.find({ ...roleFilter("mechanic"), verificationStatus: "pending" })
         .sort({ createdAt: -1 })
+        .select("name phone createdAt mechanicProfile.serviceCategory")
         .limit(5),
       ServiceRequest.aggregate([{ $group: { _id: "$category", count: { $sum: 1 } } }]),
       ServiceRequest.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
-      User.countDocuments({ role: "mechanic", "providerState.isOnline": true })
+      User.countDocuments({ ...roleFilter("mechanic"), "providerState.isOnline": true }),
+      Payment.countDocuments({ method: "cash", status: "paid", $nor: [recordedCashFilter] })
     ]);
 
     const totalRevenueResult = await Payment.aggregate([
-      { $match: { status: "paid" } },
+      { $match: recordedCashFilter },
       { $lookup: { from: "invoices", localField: "invoiceId", foreignField: "_id", as: "invoice" } },
-      { $unwind: "$invoice" },
-      { $group: { _id: null, grossMinor: { $sum: "$amountMinor" }, serviceFeeMinor: { $sum: "$invoice.serviceFeeMinor" }, providerEarningsMinor: { $sum: "$invoice.providerEarningsMinor" } } }
+      { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
+      { $group: { _id: null, grossMinor: { $sum: "$amountMinor" }, serviceFeeMinor: { $sum: "$invoice.serviceFeeMinor" }, providerEarningsMinor: { $sum: { $ifNull: ["$providerNetMinor", "$invoice.providerEarningsMinor"] } } } }
     ]);
     const ratingSummaryResult = await ServiceRequest.aggregate([
       { $match: { "review.rating": { $gte: 1, $lte: 5 } } },
@@ -154,6 +190,7 @@ router.get("/dashboard", async (req, res, next) => {
         revenue: (totalRevenueResult[0]?.grossMinor || 0) / 100,
         serviceFeeRevenue: (totalRevenueResult[0]?.serviceFeeMinor || 0) / 100,
         providerEarnings: (totalRevenueResult[0]?.providerEarningsMinor || 0) / 100,
+        unverifiedCashPayments,
         reviewedRequests: ratingSummary.reviewedRequests || 0,
         averageRating: ratingSummary.averageRating ? Math.round(ratingSummary.averageRating * 10) / 10 : 0
       },
@@ -161,7 +198,10 @@ router.get("/dashboard", async (req, res, next) => {
         byCategory: formatCountBreakdown(categoryBreakdownRows, emptyRequestCategoryBreakdown()),
         byStatus: formatCountBreakdown(statusBreakdownRows, emptyRequestStatusBreakdown())
       },
-      pendingProvidersList: pendingProviderList.map(providerToAdminJSON),
+      pendingProvidersList: pendingProviderList.map(provider => ({
+        id: provider.id, name: provider.name, phone: provider.phone, createdAt: provider.createdAt,
+        mechanicProfile: { serviceCategory: provider.mechanicProfile?.serviceCategory ?? null }
+      })),
       recentRequests: requests.map((request) => ({
         ...request.toJSONSafe(),
         user: request.userId
@@ -186,16 +226,21 @@ router.get("/dashboard", async (req, res, next) => {
 });
 
 router.get("/providers", async (req, res, next) => {
+  res.set("Cache-Control", "no-store");
   try {
     const status = String(req.query.status || "pending").trim();
-    const query = { role: "mechanic" };
+    const query = roleFilter("mechanic");
+    if (req.query.id !== undefined) {
+      query._id = objectId(req.query.id);
+      if (!query._id) throw badRequest("Invalid provider ID");
+    }
 
     if (status !== "all") {
       if (!PROVIDER_VERIFICATION_STATUSES.includes(status)) throw badRequest("Invalid provider status");
       query.verificationStatus = status;
     }
 
-    const providers = await User.find(query).sort({ createdAt: -1 }).limit(100);
+    const providers = await User.find(query, "name phone verificationStatus isCertified ratingAvg ratingCount completedJobs complaintsCount createdAt updatedAt mechanicProfile.serviceCategory mechanicProfile.workshopPhotoUrl mechanicProfile.certificateUrl mechanicProfile.drivingLicenseUrl mechanicProfile.liveLocation.addressText").sort({ createdAt: -1 }).limit(100);
     res.json({ ok: true, providers: providers.map(providerToAdminJSON) });
   } catch (err) {
     next(err);
@@ -274,36 +319,6 @@ router.get("/active-jobs", async (req, res, next) => {
       jobs
     });
   } catch (err) { next(err); }
-});
-
-router.patch("/providers/:id/verification", async (req, res, next) => {
-  try {
-    const status = String(req.body?.status || "").trim();
-    if (!["pending", "verified", "rejected"].includes(status)) {
-      throw badRequest("status must be pending, verified, or rejected");
-    }
-
-    const provider = await User.findOneAndUpdate(
-      { _id: req.params.id, role: "mechanic" },
-      {
-        $set: {
-          verificationStatus: status,
-          isCertified: status === "verified"
-        }
-      },
-      { new: true }
-    );
-
-    if (!provider) {
-      const err = new Error("Provider not found");
-      err.statusCode = 404;
-      throw err;
-    }
-
-    res.json({ ok: true, provider: providerToAdminJSON(provider) });
-  } catch (err) {
-    next(err);
-  }
 });
 
 module.exports = router;

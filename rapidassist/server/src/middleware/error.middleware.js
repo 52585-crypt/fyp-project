@@ -9,6 +9,7 @@ function errorHandler(err, req, res, next) {
   let status = Number.isInteger(suppliedStatus) && suppliedStatus >= 400 && suppliedStatus <= 599
     ? suppliedStatus : 500;
   let message = "Something went wrong. Please try again.";
+  let code;
 
   if (err.type === "entity.parse.failed") {
     status = 400;
@@ -25,17 +26,20 @@ function errorHandler(err, req, res, next) {
   } else if (err.name === "VersionError") {
     status = 409;
     message = "This record has changed. Refresh and try again.";
-  } else if (["MongoNetworkError", "MongoNetworkTimeoutError", "MongoServerSelectionError", "MongooseServerSelectionError"].includes(err.name)) {
+  } else if (["MongoNetworkError", "MongoNetworkTimeoutError", "MongoServerSelectionError", "MongooseServerSelectionError"].includes(err.name)
+    || (err.name === "MongooseError" && / buffering timed out after \d+ms$/.test(err.message))) {
     status = 503;
-    message = "Service temporarily unavailable. Please try again shortly.";
+    code = "DATABASE_UNAVAILABLE";
+    message = "The database is temporarily unavailable. Please try again shortly.";
   } else if (status < 500) {
     message = typeof err.message === "string" && err.message ? err.message : "Request could not be processed.";
   } else if (err.expose === true && typeof err.publicMessage === "string") {
     message = err.publicMessage;
+    code = err.publicCode;
   }
 
-  if (status >= 500) console.error("API error:", req.method, req.path, err);
-  res.status(status).json({ ok: false, message });
+  if (status >= 500) console.error("API error:", req.method, req.route?.path ?? "(unmatched)", status, code ?? "INTERNAL_ERROR");
+  res.status(status).json({ ok: false, message, ...(code && { code }) });
 }
 
 module.exports = { errorHandler, notFound };

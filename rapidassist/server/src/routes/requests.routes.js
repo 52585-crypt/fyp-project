@@ -6,6 +6,7 @@ const {
   retryDispatch,
   approveExtraWork,
   createRequest,
+  refreshRequestLocation,
   getRequest,
   getProviderActiveRequest,
   getProviderEarnings,
@@ -36,6 +37,7 @@ router.get("/provider/earnings", getProviderEarnings);
 router.patch("/provider/availability", updateProviderAvailability);
 router.patch("/provider/location", updateProviderLocation);
 router.get("/:id", getRequest);
+router.post("/:id/location/:field/refresh", refreshRequestLocation);
 router.patch("/:id/accept", acceptRequest);
 router.patch("/:id/decline", declineRequest);
 router.post("/:id/dispatch/retry", retryDispatch);

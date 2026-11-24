@@ -28,7 +28,7 @@ chatMessageSchema.methods.toJSONSafe = function toJSONSafe() {
           id: this.senderId._id.toString(),
           name: this.senderId.name,
           phone: this.senderId.phone,
-          role: this.senderId.role
+          role: this.senderRole
         }
       : null,
     body: this.body,

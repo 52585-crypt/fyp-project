@@ -1,6 +1,7 @@
 const { describe, it, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { createServer } = require("node:http");
+const { once } = require("node:events");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const { io: connectSocket } = require("socket.io-client");
@@ -16,10 +17,14 @@ const { ChatMessage } = require("../src/models/ChatMessage");
 const { Notification } = require("../src/models/Notification");
 const { DeviceToken } = require("../src/models/DeviceToken");
 const { signAccessToken } = require("../src/utils/jwt");
-const { newDispatch, advanceDispatch, acceptOffer, declineOffer, recoverReservations, runDispatchBatch, startDispatchWorker } = require("../src/services/dispatch");
+const { newDispatch, advanceDispatch, acceptOffer, declineOffer, recoverReservations, runDispatchBatch, startDispatchWorker, distanceKm, withinDispatchRadius } = require("../src/services/dispatch");
+const { ensureOperationalLocation } = require("../src/services/operationalLocation");
+const { fallbackBlock } = require("../src/services/travelTimeMatrix");
+const { cleanupGoogleLocations } = require("../src/services/googleLocationCleanup");
 
 process.env.JWT_SECRET = "isolated-dispatch-test-secret";
 process.env.NODE_ENV = "test";
+delete process.env.DISPATCH_TEST_BYPASS_RADIUS;
 let db, server, realtime, base, customer, sequence = 0;
 const pickup = { lat: 31.52, lng: 74.35, addressText: "Test pickup" };
 async function provider(overrides = {}) {
@@ -30,8 +35,9 @@ async function provider(overrides = {}) {
 async function request() {
   return ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: pickup, dispatch: newDispatch("mechanic"), estimate: { currency: "PKR", total: 1250 }, status: "searching_provider" });
 }
-async function api(actor, path, method = "GET", body) {
-  const response = await fetch(base + path, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${signAccessToken({ sub: actor.id })}` }, body: body ? JSON.stringify(body) : undefined });
+async function api(actor, path, method = "GET", body, origin, activeRole) {
+  const auth = actor ? { Authorization: `Bearer ${signAccessToken({ sub: actor.id, role: activeRole })}` } : {};
+  const response = await fetch(base + path, { method, headers: { "Content-Type": "application/json", ...auth, ...(origin ? { Origin: origin } : {}) }, body: body ? JSON.stringify(body) : undefined });
   return { status: response.status, data: await response.json() };
 }
 async function socketFor(actor) {
@@ -39,6 +45,38 @@ async function socketFor(actor) {
   await new Promise((resolve, reject) => { socket.once("connect", resolve); socket.once("connect_error", reject); });
   return socket;
 }
+function withRadiusBypass(t) {
+  const previous = process.env.DISPATCH_TEST_BYPASS_RADIUS;
+  process.env.DISPATCH_TEST_BYPASS_RADIUS = "true";
+  t.after(() => {
+    if (previous === undefined) delete process.env.DISPATCH_TEST_BYPASS_RADIUS;
+    else process.env.DISPATCH_TEST_BYPASS_RADIUS = previous;
+  });
+}
+
+function mockRadiusTestRouting(t) {
+  const originalFetch = global.fetch;
+  t.mock.method(global, "fetch", (url, options) => {
+    if (String(url).startsWith(base + "/")) return originalFetch(url, options);
+    if (String(url).includes("/route/v1/")) {
+      return Promise.resolve(Response.json({ code: "Ok", routes: [{ distance: 2500, duration: 300 }] }));
+    }
+    return Promise.reject(new Error("Use the dispatch matrix fallback in this test."));
+  });
+}
+
+function equatorialLocation(distance) {
+  return { lat: 0, lng: distance / (6371 * (Math.PI / 180)), updatedAt: new Date() };
+}
+
+function radiusTestRequest(category) {
+  return {
+    category, pickupLocation: { lat: 0, lng: 0 },
+    destinationLocation: { lat: 0, lng: 0.02 }, mechanicDetails: { issueCategory: "tyre" },
+    fuelDetails: { fuelType: "petrol", liters: 5 }, vehicleInfo: { type: "car", model: "Test car" }
+  };
+}
+
 async function waitForOffer(id) {
   const deadline = Date.now() + 6000;
   while (Date.now() < deadline) {
@@ -66,6 +104,260 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     customer = await User.create({ name: "Test customer", phone: "customer", passwordHash: "test-only", role: "user" });
   });
   after(async () => { if (realtime) await new Promise((resolve) => realtime.close(resolve)); await mongoose.disconnect(); if (db) await db.stop(); });
+
+  it("cleans expired Google locations independently and protects customer, provider and admin history", async () => {
+    const p = await provider();
+    const admin = await User.create({ name: "Admin", phone: "admin", passwordHash: "test-only", role: "admin" });
+    const job = await request();
+    const old = new Date(Date.now() - 31 * 86400000);
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { providerId: p._id, status: "provider_assigned", pickupLocation: { ...pickup, source: "google_places", placeId: "pickup-id", googleContentCachedAt: old }, destinationLocation: { ...pickup, source: "photon" } } });
+    const adminLiveJobs = await api(admin, "/api/admin/active-jobs");
+    assert.equal(adminLiveJobs.data.jobs[0].pickupLocation.lat, null);
+    assert.equal(adminLiveJobs.data.jobs[0].pickupLocation.addressText, null);
+    assert.equal(adminLiveJobs.data.jobs[0].pickupLocation.placeId, "pickup-id");
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { status: "completed" } });
+    const customerHistory = await api(customer, "/api/requests");
+    const providerHistory = await api(p, "/api/requests/provider/history");
+    const adminDashboard = await api(admin, "/api/admin/dashboard");
+    for (const value of [customerHistory.data.requests[0], providerHistory.data.requests[0], adminDashboard.data.recentRequests[0]]) {
+      assert.equal(value.pickupLocation.lat, null);
+      assert.equal(value.pickupLocation.addressText, null);
+      assert.equal(value.pickupLocation.placeId, "pickup-id");
+      assert.equal(value.destinationLocation.lat, pickup.lat);
+    }
+    await cleanupGoogleLocations();
+    await cleanupGoogleLocations();
+    const cleaned = await ServiceRequest.findById(job.id);
+    assert.equal(cleaned.pickupLocation.lat, undefined);
+    assert.equal(cleaned.pickupLocation.lng, undefined);
+    assert.equal(cleaned.pickupLocation.placeId, "pickup-id");
+    assert.equal(cleaned.destinationLocation.lat, pickup.lat);
+    const second = await request();
+    await ServiceRequest.updateOne({ _id: second._id }, { $set: { destinationLocation: { ...pickup, source: "google_places", placeId: "dropoff-id", googleContentCachedAt: old } } });
+    await cleanupGoogleLocations();
+    const secondCleaned = await ServiceRequest.findById(second.id);
+    assert.equal(secondCleaned.pickupLocation.lat, pickup.lat);
+    assert.equal(secondCleaned.destinationLocation.lat, undefined);
+    assert.equal(secondCleaned.destinationLocation.placeId, "dropoff-id");
+
+    const untouched = await Promise.all([
+      ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: { ...pickup, source: "gps" } }),
+      ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: { ...pickup, source: "manual_map" } }),
+      ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: { ...pickup, source: "photon" } }),
+      ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: pickup })
+    ]);
+    await cleanupGoogleLocations();
+    for (const original of untouched) {
+      const saved = await ServiceRequest.findById(original.id);
+      assert.equal(saved.pickupLocation.lat, pickup.lat);
+      assert.equal(saved.pickupLocation.lng, pickup.lng);
+      assert.equal(saved.pickupLocation.addressText, pickup.addressText);
+    }
+  });
+
+  it("cleans an expired location, hides it in history, refreshes it and dispatches with fresh coordinates", async (t) => {
+    const job = await request();
+    const p = await provider();
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { pickupLocation: { ...pickup, source: "google_places", placeId: "lifecycle-id", googleContentCachedAt: new Date(Date.now() - 31 * 86400000) } } });
+    await cleanupGoogleLocations();
+    const history = await api(customer, "/api/requests");
+    assert.equal(history.data.requests[0].pickupLocation.lat, null);
+    assert.equal(history.data.requests[0].pickupLocation.placeId, "lifecycle-id");
+    const originalFetch = global.fetch;
+    const previousKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
+    t.mock.method(global, "fetch", async (url, options) => String(url).startsWith(base) ? originalFetch(url, options) : ({ ok: true, json: async () => ({ id: "lifecycle-id", location: { latitude: 31.52, longitude: 74.35 } }) }));
+    try {
+      const refreshed = await api(customer, `/api/requests/${job.id}/location/pickup/refresh`, "POST", {});
+      assert.equal(refreshed.status, 200);
+      assert.equal(refreshed.data.request.pickupLocation.lat, 31.52);
+      assert.ok(new Date(refreshed.data.request.pickupLocation.googleContentCachedAt).getTime() > Date.now() - 60000);
+      const persisted = await ServiceRequest.findById(job.id);
+      assert.equal(fallbackBlock([p], [persisted]).size, 1);
+      await runDispatchBatch();
+      assert.equal(String((await ServiceRequest.findById(job.id)).dispatch.offeredProviderId), p.id);
+    } finally {
+      if (previousKey === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+      else process.env.GOOGLE_MAPS_SERVER_API_KEY = previousKey;
+    }
+  });
+
+  it("refreshes an expired Google location and never routes or falls back to stale coordinates", async () => {
+    const job = await request();
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { pickupLocation: { ...pickup, source: "google_places", placeId: "place-123", googleContentCachedAt: new Date("2000-01-01") } } });
+    const expired = await ServiceRequest.findById(job.id);
+    const p = await provider();
+    assert.equal(fallbackBlock([p], [expired]).size, 0);
+    await assert.rejects(ensureOperationalLocation(job.id, "pickupLocation", { resolve: async () => { throw new Error("offline"); } }), /offline/);
+    const removed = await ServiceRequest.findById(job.id);
+    assert.equal(removed.pickupLocation.lat, undefined);
+    assert.equal(removed.pickupLocation.placeId, "place-123");
+    const refreshed = await ensureOperationalLocation(job.id, "pickupLocation", { resolve: async (id) => ({ source: "google_places", placeId: id, lat: 31.53, lng: 74.36 }) });
+    assert.equal(refreshed.pickupLocation.lat, 31.53);
+    assert.equal(fallbackBlock([p], [refreshed]).size, 1);
+    const again = await ensureOperationalLocation(job.id, "pickupLocation", { resolve: async () => { throw new Error("unnecessary lookup"); } });
+    assert.equal(again.pickupLocation.lat, 31.53);
+  });
+
+  it("requires request authorization before refreshing a stored location", async () => {
+    const job = await request();
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { pickupLocation: { ...pickup, source: "google_places", placeId: "place-123", googleContentCachedAt: new Date("2000-01-01") } } });
+    const stranger = await User.create({ name: "Other", phone: "other", passwordHash: "test-only", role: "user" });
+    const denied = await api(stranger, `/api/requests/${job.id}/location/pickup/refresh`, "POST", { placeId: "attacker-value" });
+    assert.equal(denied.status, 403);
+    assert.equal((await ServiceRequest.findById(job.id)).pickupLocation.placeId, "place-123");
+    const p = await provider();
+    const admin = await User.create({ name: "Admin", phone: "refresh-admin", passwordHash: "test-only", role: "admin" });
+    await ServiceRequest.updateOne({ _id: job.id }, { $set: { providerId: p._id, "pickupLocation.googleContentCachedAt": new Date() } });
+    assert.equal((await api(p, `/api/requests/${job.id}/location/pickup/refresh`, "POST", { placeId: "ignored" })).status, 200);
+    assert.equal((await api(admin, `/api/requests/${job.id}/location/pickup/refresh`, "POST", { placeId: "ignored" })).status, 200);
+    assert.equal((await ServiceRequest.findById(job.id)).pickupLocation.placeId, "place-123");
+  });
+
+  it("exposes a narrow authenticated Places session from autocomplete through selection", async (t) => {
+    const originalFetch = global.fetch;
+    const previousKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
+    const googleCalls = [];
+    let startSelection, releaseSelection;
+    const selectionStarted = new Promise(resolve => { startSelection = resolve; });
+    const selectionReleased = new Promise(resolve => { releaseSelection = resolve; });
+    let detailCalls = 0;
+    t.mock.method(global, "fetch", async (url, options) => {
+      if (String(url).startsWith(base)) return originalFetch(url, options);
+      googleCalls.push({ url: String(url), options });
+      if (String(url).endsWith("places:autocomplete")) return { ok: true, json: async () => ({ suggestions: [{ placePrediction: {
+        placeId: "place-1",
+        structuredFormat: { mainText: { text: "Faisal Mosque" }, secondaryText: { text: "Islamabad" } }
+      } }] }) };
+      detailCalls += 1;
+      if (detailCalls === 1) return { ok: false };
+      if (detailCalls === 2) {
+        startSelection();
+        await selectionReleased;
+      }
+      return { ok: true, json: async () => ({ id: "place-1", location: { latitude: 33.7294, longitude: 73.0372 }, formattedAddress: "Faisal Mosque, Islamabad" }) };
+    });
+    try {
+      const unauthorized = await originalFetch(`${base}/api/locations/autocomplete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: "Faisal", sessionToken: "session-token-0001" }) });
+      assert.equal(unauthorized.status, 401);
+      const predictions = await api(customer, "/api/locations/autocomplete", "POST", { input: "Faisal", sessionToken: "session-token-0001", near: { latitude: 33.7, longitude: 73.1 } });
+      assert.equal(predictions.status, 200);
+      assert.deepEqual(predictions.data.suggestions, [{ provider: "google_places", id: "place-1", primaryText: "Faisal Mosque", secondaryText: "Islamabad" }]);
+      const arbitrary = await api(customer, "/api/locations/details", "POST", { placeId: "other-place", sessionToken: "session-token-0001" });
+      assert.equal(arbitrary.status, 400);
+      const validSelection = { placeId: "place-1", sessionToken: "session-token-0001" };
+      const unauthorizedDetails = await originalFetch(`${base}/api/locations/details`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(validSelection)
+      });
+      assert.equal(unauthorizedDetails.status, 401);
+      assert.equal(detailCalls, 0);
+      const upstreamFailure = await api(customer, "/api/locations/details", "POST", validSelection);
+      assert.equal(upstreamFailure.status, 503);
+      const selecting = api(customer, "/api/locations/details", "POST", validSelection);
+      try {
+        await Promise.race([selectionStarted, selecting.then(() => assert.fail("Expected a pending Google Details lookup"))]);
+        const concurrent = await api(customer, "/api/locations/details", "POST", validSelection);
+        assert.equal(concurrent.status, 400);
+      } finally {
+        releaseSelection();
+      }
+      const selected = await selecting;
+      assert.equal(selected.status, 200);
+      assert.equal(selected.data.location.latitude, 33.7294);
+      const reused = await api(customer, "/api/locations/details", "POST", { placeId: "place-1", sessionToken: "session-token-0001" });
+      assert.equal(reused.status, 400);
+      assert.equal(googleCalls.length, 3);
+      assert.match(googleCalls[2].url, /sessionToken=session-token-0001$/);
+    } finally {
+      if (previousKey === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+      else process.env.GOOGLE_MAPS_SERVER_API_KEY = previousKey;
+    }
+  });
+
+  it("rejects expired Places selections and starts fresh without stale suggestions", async (t) => {
+    let now = Date.now();
+    t.mock.method(Date, "now", () => now);
+    const originalFetch = global.fetch;
+    const previousKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
+    let searches = 0, details = 0;
+    t.mock.method(global, "fetch", async (url, options) => {
+      if (String(url).startsWith(base)) return originalFetch(url, options);
+      if (String(url).endsWith("places:autocomplete")) {
+        const placeId = searches++ === 0 ? "expired-place" : "fresh-place";
+        return { ok: true, json: async () => ({ suggestions: [{ placePrediction: {
+          placeId, structuredFormat: { mainText: { text: "Test suggestion" } }
+        } }] }) };
+      }
+      details += 1;
+      return { ok: true, json: async () => ({ id: "fresh-place", location: { latitude: 33.7, longitude: 73.1 } }) };
+    });
+    const origin = "http://localhost:8081";
+    const sessionToken = "session-expiry-0001";
+    const search = () => api(customer, "/api/locations/autocomplete", "POST", { input: "Faisal", sessionToken }, origin);
+    const select = placeId => api(customer, "/api/locations/details", "POST", { placeId, sessionToken }, origin);
+    try {
+      assert.equal((await search()).status, 200);
+      now += 3 * 60 * 1000;
+      assert.equal((await select("expired-place")).status, 400);
+      assert.equal(details, 0);
+      assert.equal((await search()).status, 200);
+      assert.equal((await select("expired-place")).status, 400);
+      assert.equal((await select("fresh-place")).status, 200);
+      assert.equal(details, 1);
+    } finally {
+      if (previousKey === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+      else process.env.GOOGLE_MAPS_SERVER_API_KEY = previousKey;
+    }
+  });
+
+  it("refreshes a towing destination without modifying the pickup", async () => {
+    const job = await request();
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { category: "car_towing", destinationLocation: { lat: 31.4, lng: 74.2, source: "google_places", placeId: "dropoff", googleContentCachedAt: new Date("2000-01-01") } } });
+    const updated = await ensureOperationalLocation(job.id, "destinationLocation", { resolve: async (id) => ({ source: "google_places", placeId: id, lat: 31.45, lng: 74.25 }) });
+    assert.equal(updated.pickupLocation.lat, pickup.lat);
+    assert.equal(updated.destinationLocation.lat, 31.45);
+  });
+
+  it("dispatch never matches an expired Google pickup when refresh fails, and uses a successful refresh", async (t) => {
+    const job = await request();
+    const p = await provider();
+    await ServiceRequest.updateOne({ _id: job._id }, { $set: { pickupLocation: { ...pickup, source: "google_places", placeId: "place-123", googleContentCachedAt: new Date("2000-01-01") } } });
+    const previousKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
+    let succeeds = false;
+    t.mock.method(global, "fetch", async () => succeeds
+      ? { ok: true, json: async () => ({ id: "place-123", location: { latitude: 31.52, longitude: 74.35 } }) }
+      : { ok: false });
+    try {
+      const failed = await runDispatchBatch();
+      assert.equal(failed.assignments.length, 0);
+      assert.equal((await ServiceRequest.findById(job.id)).pickupLocation.lat, undefined);
+      succeeds = true;
+      await runDispatchBatch();
+      const refreshed = await ServiceRequest.findById(job.id);
+      assert.equal(refreshed.pickupLocation.lat, 31.52);
+      assert.equal(String(refreshed.dispatch.offeredProviderId), p.id);
+    } finally {
+      if (previousKey === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+      else process.env.GOOGLE_MAPS_SERVER_API_KEY = previousKey;
+    }
+  });
+
+  it("preserves non-Google location provenance and accepts older payloads", async () => {
+    const body = { category: "mechanic", mechanicDetails: { issueCategory: "tyre" } };
+    const legacy = await api(customer, "/api/requests", "POST", { ...body, pickupLocation: pickup });
+    assert.equal(legacy.status, 201);
+    assert.equal(legacy.data.request.pickupLocation.source, null);
+    const sourced = await api(customer, "/api/requests", "POST", { ...body, pickupLocation: { ...pickup, source: "gps" } });
+    assert.equal(sourced.status, 201);
+    assert.equal(sourced.data.request.pickupLocation.source, "gps");
+    assert.equal((await ServiceRequest.findById(sourced.data.request.id)).pickupLocation.source, "gps");
+    const google = await api(customer, "/api/requests", "POST", { ...body, pickupLocation: { ...pickup, source: "google_places", placeId: "example" } });
+    assert.equal(google.status, 400);
+    assert.equal(await ServiceRequest.countDocuments({ "pickupLocation.source": "google_places" }), 0);
+  });
 
   it("regression: API requests wait for the worker and compete in the same batch", async () => {
     const p = await provider();
@@ -188,6 +480,214 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const own = await api(best, "/api/requests/open");
     assert.equal(own.data.requests.length, 1);
   });
+
+  for (const category of ["mechanic", "fuel_delivery", "car_towing"]) {
+    const boundaries = [[7.99, true], [8, true], [8.01, false]];
+    if (category === "fuel_delivery") boundaries.push([2, true], [7.9, true], [8.1, false], [10.73, false]);
+    for (const [distance, eligible] of boundaries) {
+      it(`uses the same fixed radius for ${category} preview and dispatch at ${distance} km`, async (t) => {
+        mockRadiusTestRouting(t);
+        const origin = { lat: 0, lng: 0 };
+        const location = equatorialLocation(distance);
+        assert.ok(Math.abs(distanceKm(origin, location) - distance) < 1e-10);
+        if (distance === 8) assert.equal(distanceKm(origin, location), 8);
+        const candidate = await provider({
+          mechanicProfile: { serviceCategory: category === "car_towing" ? "towing" : category },
+          providerState: { isOnline: true, currentLocation: location, lastSeenAt: new Date() }
+        });
+        const created = await api(customer, "/api/requests", "POST", radiusTestRequest(category));
+        assert.equal(created.status, 201);
+        // Query before the offer reservation so it doesn't change preview eligibility.
+        for (const suffix of ["", "&radiusKm=50"]) {
+          const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=0&lng=0${suffix}`);
+          assert.equal(preview.status, 200);
+          assert.deepEqual(preview.data.providers.map(item => item.id), eligible ? [candidate.id] : []);
+          assert.equal(preview.data.radiusKm, 8);
+        }
+        const saved = await advanceDispatch(created.data.request.id);
+        assert.equal(saved.dispatch.radiusKm, 8);
+        assert.equal(String(saved.dispatch.offeredProviderId), eligible ? candidate.id : "null");
+        assert.equal(await DispatchOffer.countDocuments({ requestId: saved._id }), eligible ? 1 : 0);
+      });
+    }
+    for (const distance of [3, 7.9, 8.1, 15, 30]) {
+      it(`bypasses the distance cap for ${category} preview and dispatch at ${distance} km in test mode`, async (t) => {
+        withRadiusBypass(t);
+        mockRadiusTestRouting(t);
+        const candidate = await provider({
+          mechanicProfile: { serviceCategory: category === "car_towing" ? "towing" : category },
+          providerState: { isOnline: true, currentLocation: equatorialLocation(distance) }
+        });
+        const created = await api(customer, "/api/requests", "POST", radiusTestRequest(category));
+        assert.equal(created.status, 201);
+        const id = created.data.request.id;
+        assert.equal(created.data.request.dispatch.radiusKm, 8);
+        const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=0&lng=0`);
+        assert.equal(preview.status, 200);
+        assert.equal(preview.data.radiusKm, 8);
+        assert.deepEqual(preview.data.providers.map(({ id }) => id), [candidate.id]);
+
+        if (distance === 30) {
+          // At the fallback speed, a fresh 30 km request costs more to match than to wait.
+          assert.equal((await advanceDispatch(id)).dispatch.state, "searching");
+          assert.equal(await DispatchOffer.countDocuments({ requestId: id }), 0);
+          // Age only the fixture so the unchanged solver prefers this eligible edge.
+          await ServiceRequest.collection.updateOne({ _id: new mongoose.Types.ObjectId(id) }, {
+            $set: { createdAt: new Date(Date.now() - 30 * 60 * 1000) }
+          });
+        }
+        const offered = await advanceDispatch(id);
+        assert.equal(offered.dispatch.radiusKm, 8);
+        assert.equal(offered.dispatch.state, "offered");
+        assert.equal(String(offered.dispatch.offeredProviderId), candidate.id);
+        const offer = await DispatchOffer.findOne({ requestId: id });
+        assert.equal(offer.algorithmVersion, "batch-mincost-v1");
+        assert.ok(Math.abs(offer.distanceKm - distance) < 1e-10);
+        assert.equal((await api(candidate, "/api/requests/open")).data.requests[0].id, id);
+      });
+    }
+
+  }
+
+  it("ignores the radius bypass outside test mode and restores the cap when disabled", async (t) => {
+    withRadiusBypass(t);
+    mockRadiusTestRouting(t);
+    const previousMode = process.env.NODE_ENV;
+    t.after(() => { process.env.NODE_ENV = previousMode; });
+    await provider({ providerState: { isOnline: true, currentLocation: equatorialLocation(15) } });
+    const created = await api(customer, "/api/requests", "POST", radiusTestRequest("mechanic"));
+    assert.equal(created.status, 201);
+    assert.equal(withinDispatchRadius(NaN, 8), false);
+    for (const mode of ["production", "development", "test"]) {
+      process.env.NODE_ENV = mode;
+      if (mode === "test") delete process.env.DISPATCH_TEST_BYPASS_RADIUS;
+      assert.equal(withinDispatchRadius(15, 8), false);
+      const preview = await api(customer, "/api/requests/nearby-providers?category=mechanic&lat=0&lng=0");
+      assert.equal(preview.status, 200);
+      assert.deepEqual(preview.data.providers, []);
+      const job = await advanceDispatch(created.data.request.id);
+      assert.equal(job.dispatch.radiusKm, 8);
+      assert.equal(job.dispatch.state, "searching");
+    }
+    assert.equal(await DispatchOffer.countDocuments({}), 0);
+  });
+
+  it("keeps other eligibility gates and the no-provider timeout with bypass enabled", async (t) => {
+    withRadiusBypass(t);
+    const now = new Date();
+    const old = new Date(+now - 4 * 60 * 1000);
+    const base = { isOnline: true, currentLocation: { ...pickup, capturedAt: now, updatedAt: now }, lastSeenAt: now };
+    const mechanicProfile = { serviceCategory: "fuel_delivery" };
+    await provider({ mechanicProfile, providerState: { ...base, isOnline: false } });
+    await provider({ mechanicProfile, providerState: base, verificationStatus: "pending" });
+    await provider({ mechanicProfile, providerState: { ...base, currentLocation: { ...base.currentLocation, updatedAt: old } } });
+    await provider({ mechanicProfile, providerState: { ...base, currentLocation: { ...base.currentLocation, capturedAt: old } } });
+    await provider({ mechanicProfile, providerState: { ...base, reservedOfferId: "reserved", reservedUntil: new Date(+now + 20000) } });
+    await provider({ mechanicProfile, providerState: { ...base, activeRequestId: new mongoose.Types.ObjectId() } });
+    await provider({ providerState: base });
+    const preview = await api(customer, `/api/requests/nearby-providers?category=fuel_delivery&lat=${pickup.lat}&lng=${pickup.lng}`);
+    assert.equal(preview.status, 200);
+    const created = await api(customer, "/api/requests", "POST", {
+      category: "fuel_delivery", pickupLocation: pickup,
+      fuelDetails: { fuelType: "petrol", liters: 5 }, vehicleInfo: { type: "car", model: "Test car" }
+    });
+    assert.equal(created.status, 201);
+    const job = await advanceDispatch(created.data.request.id);
+    assert.equal(job.dispatch.state, "searching");
+    assert.deepEqual(preview.data.providers, []);
+    assert.equal(await DispatchOffer.countDocuments({ requestId: job._id }), 0);
+    assert.equal((await advanceDispatch(job.id, new Date(+job.dispatch.deadline + 1))).dispatch.state, "unavailable");
+  });
+
+  it("limits coordinate-free preview to customer mode and preserves authorized assigned GPS", async () => {
+    const candidate = await provider();
+    await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.53, updatedAt: new Date() } } });
+    const admin = await User.create({ name: "Admin", role: "admin", phone: "gps-admin", passwordHash: "test-only" });
+    const dual = await User.create({ name: "Dual", role: "user", roles: ["user", "mechanic"], phone: "gps-dual", passwordHash: "test-only" });
+    const preview = `/api/requests/nearby-providers?category=mechanic&lat=${pickup.lat}&lng=${pickup.lng}`;
+    assert.equal((await api(null, preview)).status, 401);
+    for (const actor of [candidate, admin]) assert.equal((await api(actor, preview)).status, 403);
+    assert.equal((await api(dual, preview, "GET", undefined, undefined, "mechanic")).status, 403);
+    for (const actor of [customer, dual]) {
+      const result = await api(actor, preview, "GET", undefined, undefined, "user");
+      assert.equal(result.status, 200);
+      assert.deepEqual(Object.keys(result.data).sort(), ["ok", "providers", "radiusKm"]);
+      assert.equal(result.data.providers.length, 2);
+      assert.equal(result.data.providers[0].id, candidate.id);
+      for (const row of result.data.providers) {
+        assert.deepEqual(Object.keys(row).sort(), ["completedJobs", "id", "name", "ratingAvg", "ratingCount", "serviceCategory"]);
+      }
+    }
+
+    const job = await request();
+    const offered = await advanceDispatch(job.id);
+    await acceptOffer(job.id, candidate.id, offered.dispatch.offerId);
+    const fix = { lat: 31.523, lng: 74.351, addressText: "Authorized tracking", capturedAt: new Date() };
+    assert.equal((await api(candidate, "/api/requests/provider/location", "PATCH", { location: { ...fix, lat: 91 } })).status, 400);
+    assert.equal((await api(customer, "/api/requests/provider/location", "PATCH", { location: fix })).status, 403);
+    assert.equal((await api(candidate, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
+    const url = `/api/requests/${job.id}`;
+    assert.equal((await api(dual, url)).status, 403);
+    for (const actor of [customer, candidate]) {
+      assert.equal((await api(actor, url)).data.request.providerLocation.lat, fix.lat);
+    }
+    assert.equal((await api(customer, "/api/admin/active-jobs")).status, 403);
+    assert.equal((await api(admin, "/api/admin/active-jobs")).data.jobs[0].provider.location.lng, fix.lng);
+  });
+
+  it("keeps a newer GPS fix when an older availability update arrives", async () => {
+    const p = await provider();
+    const current = new Date();
+    const fix = { ...pickup, lat: 31.53, accuracy: 8, capturedAt: current.toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
+    assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: false })).status, 200);
+    const stale = { ...fix, capturedAt: new Date(+current - 240000).toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: true, location: stale })).status, 400);
+    const older = { ...fix, lat: 31.54, accuracy: 20, capturedAt: new Date(+current - 10000).toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: true, location: older })).status, 200);
+    const { isOnline, currentLocation: saved } = (await User.findById(p.id)).providerState;
+    assert.equal(isOnline, true);
+    assert.equal(saved.lat, fix.lat);
+    assert.equal(saved.lng, fix.lng);
+    assert.equal(saved.accuracy, fix.accuracy);
+    assert.equal(saved.capturedAt.toISOString(), fix.capturedAt);
+  });
+
+  it("persists and privately offers fuel and towing requests to the matching service category", async (t) => {
+    const actualFetch = global.fetch;
+    t.mock.method(global, "fetch", (url, options) => {
+      if (String(url).includes("/route/v1/driving/")) {
+        return Promise.resolve(Response.json({ code: "Ok", routes: [{ distance: 2600, duration: 300 }] }));
+      }
+      return actualFetch(url, options);
+    });
+    await provider();
+    const fuel = await provider({ mechanicProfile: { serviceCategory: "fuel_delivery" } });
+    const towing = await provider({ mechanicProfile: { serviceCategory: "towing" } });
+    const shared = { pickupLocation: pickup, vehicleInfo: { type: "car", model: "Test car" } };
+    const cases = [
+      { category: "fuel_delivery", fuelDetails: { fuelType: "petrol", liters: 5 }, provider: fuel },
+      { category: "car_towing", destinationLocation: { lat: 31.54, lng: 74.36 }, provider: towing }
+    ];
+    for (const { provider: expected, ...details } of cases) {
+      const created = await api(customer, "/api/requests", "POST", { ...shared, ...details });
+      assert.equal(created.status, 201);
+      const saved = await ServiceRequest.findById(created.data.request.id);
+      assert.equal(saved.category, details.category);
+      assert.equal(saved.pickupLocation.lat, pickup.lat);
+      const offered = await advanceDispatch(saved.id);
+      assert.equal(String(offered.dispatch.offeredProviderId), expected.id);
+      const own = await api(expected, "/api/requests/open");
+      assert.equal(own.data.requests[0].id, saved.id);
+      const other = await api(expected.id === fuel.id ? towing : fuel, "/api/requests/open");
+      assert.equal(other.data.requests.length, 0);
+      assert.equal((await api(expected, `/api/requests/${saved.id}/accept`, "PATCH", {
+        offerId: offered.dispatch.offerId
+      })).status, 200);
+      const tracked = await api(customer, `/api/requests/${saved.id}`);
+      assert.equal(tracked.data.request.status, "provider_assigned");
+    }
+  });
   it("ranks candidates and advances to the next one after a decline", async () => {
     const first = await provider();
     const second = await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.54, updatedAt: new Date() } } });
@@ -252,6 +752,27 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     assert.equal(result.data.request.dispatch.state, "searching");
     assert.equal((await advanceDispatch(job.id)).dispatch.state, "offered");
   });
+  it("keeps historical radii on idempotent creation and retry, including the legacy fallback", async () => {
+    for (const [category, radius] of [["mechanic", 5], ["car_towing", 15], ["fuel_delivery", undefined]]) {
+      const clientRequestId = `legacy-radius-${category}`;
+      const job = await ServiceRequest.create({
+        userId: customer.id, clientRequestId, category, pickupLocation: pickup,
+        dispatch: { ...newDispatch(category), state: "unavailable", radiusKm: radius },
+        status: "searching_provider"
+      });
+      if (radius === undefined) {
+        await ServiceRequest.collection.updateOne({ _id: job._id }, { $unset: { "dispatch.radiusKm": 1 } });
+      }
+      const duplicate = await api(customer, "/api/requests", "POST", { clientRequestId });
+      assert.equal(duplicate.status, 200);
+      assert.equal(duplicate.data.request.id, job.id);
+      assert.equal(duplicate.data.request.dispatch.radiusKm, radius ?? 5);
+      const retried = await api(customer, `/api/requests/${job.id}/dispatch/retry`, "POST", {});
+      assert.equal(retried.status, 200);
+      assert.equal(retried.data.request.dispatch.radiusKm, radius ?? 5);
+      assert.equal((await ServiceRequest.findById(job.id)).dispatch.radiusKm, radius ?? 5);
+    }
+  });
   it("releases abandoned provider reservations but keeps a live assignment", async () => {
     const p = await provider(); const job = await request();
     await User.updateOne({ _id: p.id }, { $set: { "providerState.activeRequestId": job.id, "providerState.claimedAt": new Date(Date.now() - 60000) } });
@@ -284,6 +805,61 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       assert.ok(events.some((event) => event.kind === "assigned")); assert.ok(events.some((event) => event.kind === "arrived")); assert.ok(events.some((event) => event.kind === "location"));
       assert.ok(providerEvents.some((event) => event.kind === "offer")); assert.equal(privateEvents.length, 0);
     } finally { cs.disconnect(); ps.disconnect(); os.disconnect(); }
+  });
+
+  it("delivers distant offers, reassigns after rejection and synchronizes tracking after Socket.IO reconnect", { timeout: 8000 }, async (t) => {
+    withRadiusBypass(t);
+    const nearest = await provider({ providerState: { isOnline: true, currentLocation: equatorialLocation(8.1) } });
+    const next = await provider({ providerState: { isOnline: true, currentLocation: equatorialLocation(15) } });
+    const customerSocket = await socketFor(customer);
+    t.after(() => customerSocket.disconnect());
+    const nextSocket = await socketFor(next);
+    t.after(() => nextSocket.disconnect());
+
+    const created = await api(customer, "/api/requests", "POST", radiusTestRequest("mechanic"));
+    assert.equal(created.status, 201);
+    const id = created.data.request.id;
+    const first = await advanceDispatch(id);
+    assert.equal(String(first.dispatch.offeredProviderId), nearest.id);
+    assert.equal((await api(nearest, "/api/requests/open")).data.requests[0].id, id);
+    assert.equal((await api(next, "/api/requests/open")).data.requests.length, 0);
+
+    const declined = await api(nearest, `/api/requests/${id}/decline`, "PATCH", { offerId: first.dispatch.offerId });
+    assert.equal(declined.status, 200);
+    const delivered = once(nextSocket, "request:changed");
+    const nextOffer = await advanceDispatch(id);
+    assert.equal(String(nextOffer.dispatch.offeredProviderId), next.id);
+    const [offeredEvent] = await delivered;
+    assert.equal(offeredEvent.kind, "offer");
+    assert.equal(offeredEvent.requestId, id);
+
+    const accept = (actor, offerId) => api(actor, `/api/requests/${id}/accept`, "PATCH", { offerId });
+    const [wrongProvider, assigned] = await Promise.all([
+      accept(nearest, nextOffer.dispatch.offerId), accept(next, nextOffer.dispatch.offerId)
+    ]);
+    assert.equal(wrongProvider.status, 409);
+    assert.equal(assigned.status, 200);
+    assert.equal(String(assigned.data.request.providerId), next.id);
+    assert.equal(await ServiceRequest.countDocuments({ _id: id, providerId: next.id, assignmentActive: true }), 1);
+    assert.equal(await DispatchOffer.countDocuments({ requestId: id, outcome: "accepted" }), 1);
+    assert.equal(await DispatchOffer.countDocuments({ requestId: id, outcome: "declined" }), 1);
+
+    const originalSocketId = customerSocket.id;
+    const reconnected = once(customerSocket, "connect");
+    realtime.sockets.sockets.get(originalSocketId).conn.close();
+    await reconnected;
+    assert.notEqual(customerSocket.id, originalSocketId);
+    const onWay = once(customerSocket, "request:changed");
+    assert.equal((await api(next, `/api/requests/${id}/status`, "PATCH", { status: "provider_on_way" })).status, 200);
+    const [event] = await onWay;
+    assert.equal(event.requestId, id);
+    assert.equal(event.status, "provider_on_way");
+    const tracked = await api(customer, `/api/requests/${id}`);
+    assert.equal(tracked.status, 200);
+    assert.equal(tracked.data.request.status, event.status);
+    assert.equal(tracked.data.request.provider.id, next.id);
+    assert.equal(tracked.data.request.providerLocation.lng, equatorialLocation(15).lng);
+    assert.equal(tracked.data.request.dispatch.radiusKm, 8);
   });
 
   it("repeated submissions create one job, including concurrent retries", async () => {

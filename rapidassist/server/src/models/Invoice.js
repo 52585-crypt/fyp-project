@@ -20,17 +20,21 @@ const invoiceSchema = new mongoose.Schema(
     serviceFeeMinor: { type: Number, default: 0, min: 0 },
     providerEarningsMinor: { type: Number, required: true, min: 0 },
     status: { type: String, enum: ["finalized", "void"], default: "finalized" },
+    stripePaidAt: Date,
+    stripePaymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     finalizedAt: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );
+
+invoiceSchema.index({ createdAt: -1, _id: -1 });
 
 invoiceSchema.methods.toJSONSafe = function toJSONSafe() {
   return {
     id: this._id.toString(), requestId: this.requestId.toString(), invoiceNumber: this.invoiceNumber,
     currency: this.currency, lines: this.lines, totalMinor: this.totalMinor,
     serviceFeeMinor: this.serviceFeeMinor, providerEarningsMinor: this.providerEarningsMinor,
-    status: this.status, finalizedAt: this.finalizedAt
+    status: this.status, finalizedAt: this.finalizedAt, stripePaidAt: this.stripePaidAt || null
   };
 };
 

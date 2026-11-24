@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { PUBLIC_USER_ROLES, accountRoles } = require("../utils/accountRoles");
 
 const USER_ROLES = ["user", "mechanic", "admin"];
 const AUTH_PROVIDERS = ["local", "google"];
@@ -7,15 +8,44 @@ const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
 const MECHANIC_SERVICE_CATEGORIES = ["mechanic", "fuel_delivery", "towing"];
 const IDENTITY_MATCH_STATUSES = ["pending", "matched", "mismatch", "manual_review"];
 
+const verificationImageSchema = new mongoose.Schema({
+  key: { type: String, required: true },
+  versionId: String
+}, { _id: false });
+
+const mechanicVerificationSchema = new mongoose.Schema({
+  submissionId: String,
+  reviewState: { type: String, enum: ["awaiting_review", "approved", "rejected", "resubmission_requested"] },
+  consent: {
+    version: String,
+    grantedAt: Date
+  },
+  images: {
+    profile: verificationImageSchema,
+    cnic: verificationImageSchema
+  },
+  cnicPortraitRegion: { left: Number, top: Number, width: Number, height: Number },
+  retiredImages: { type: [verificationImageSchema], default: undefined },
+  reviewedAt: Date,
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  reviewNote: String
+}, { _id: false });
+
 const userSchema = new mongoose.Schema(
   {
     role: { type: String, enum: USER_ROLES, required: true },
+    roles: { type: [{ type: String, enum: PUBLIC_USER_ROLES }], default: undefined },
+    providerEnrollment: {
+      type: new mongoose.Schema({ digest: String, expiresAt: Date }, { _id: false }),
+      default: undefined,
+      select: false
+    },
 
     name: { type: String, required: true, trim: true },
     phone: {
       type: String,
       default: null,
-      required() { return this.authProvider !== "google"; },
+      required() { return accountRoles(this).includes("mechanic") || this.authProvider !== "google"; },
       trim: true
     },
     email: {
@@ -32,6 +62,8 @@ const userSchema = new mongoose.Schema(
       select: false
     },
     authProvider: { type: String, enum: AUTH_PROVIDERS, default: "local", required: true },
+    googleLinkedAt: { type: Date, default: null },
+    profilePictureUrl: { type: String, default: null },
     passwordHash: {
       type: String,
       default: null,
@@ -47,6 +79,7 @@ const userSchema = new mongoose.Schema(
       enum: VERIFICATION_STATUSES,
       default: "unverified"
     },
+    mechanicVerification: { type: mechanicVerificationSchema, select: false, default: undefined },
     mechanicProfile: {
       serviceCategory: {
         type: String,
@@ -113,7 +146,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.methods.verifyPassword = async function verifyPassword(password) {
-  if (!this.passwordHash) return false;
+  if (this.authProvider === "google" || !this.passwordHash) return false;
   return bcrypt.compare(password, this.passwordHash);
 };
 
@@ -136,15 +169,22 @@ userSchema.index(
   { googleId: 1 },
   { name: "google_id_present_unique", unique: true, partialFilterExpression: { googleId: { $type: "string" } } }
 );
+// Support stable registration-date paging in the admin customer directory.
+userSchema.index({ createdAt: -1, _id: -1 });
 
-userSchema.methods.toSafeJSON = function toSafeJSON() {
+userSchema.methods.toSafeJSON = function toSafeJSON(activeRole = this.role) {
+  const identityMatch = this.mechanicProfile?.identityMatch;
   return {
     id: this._id.toString(),
-    role: this.role,
+    role: activeRole,
+    activeRole,
+    roles: accountRoles(this),
     name: this.name,
     phone: this.phone,
     email: this.email,
     authProvider: this.authProvider || "local",
+    hasGoogleSignIn: this.authProvider === "google" || Boolean(this.googleLinkedAt),
+    profilePictureUrl: this.profilePictureUrl ?? null,
     isCertified: this.isCertified,
     certificateUrl: this.certificateUrl,
     verificationStatus: this.verificationStatus,
@@ -158,7 +198,11 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
           certificateUrl: this.mechanicProfile.certificateUrl,
           drivingLicenseUrl: this.mechanicProfile.drivingLicenseUrl,
           liveLocation: this.mechanicProfile.liveLocation,
-          identityMatch: this.mechanicProfile.identityMatch
+          identityMatch: identityMatch ? {
+            status: identityMatch.status,
+            provider: identityMatch.provider,
+            checkedAt: identityMatch.checkedAt
+          } : null
         }
       : null,
     ratingAvg: this.ratingAvg,

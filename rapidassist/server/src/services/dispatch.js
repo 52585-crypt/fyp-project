@@ -7,19 +7,27 @@ const { solveAssignment, waitingCostFor } = require("./assignmentSolver");
 const { getTravelTimeMatrix } = require("./travelTimeMatrix");
 const { createNotificationSafely } = require("./notifications");
 const { notifyRequest, notifyUser } = require("./realtime");
+const { ensureOperationalLocation } = require("./operationalLocation");
+const { isGoogleLocationExpired } = require("./googleLocationPolicy");
+const { roleFilter } = require("../utils/accountRoles");
 
 const OFFER_MS = 20000;
 const SEARCH_MS = 180000;
 const FRESH_MS = 180000;
 const BATCH_WINDOW_MS = 2000;
 const categoryFor = (category) => category === "car_towing" ? "towing" : category;
-const radiusFor = (category) => category === "car_towing" ? 15 : category === "fuel_delivery" ? 8 : 5;
+const radiusFor = () => 8;
 const conflict = (message) => Object.assign(new Error(message), { statusCode: 409 });
 
 function distanceKm(a, b) {
   const rad = Math.PI / 180;
   const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lng - a.lng) * rad / 2) ** 2;
   return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+function withinDispatchRadius(distance, radius) {
+  const bypass = process.env.NODE_ENV === "test" && process.env.DISPATCH_TEST_BYPASS_RADIUS === "true";
+  return Number.isFinite(distance) && (bypass || distance <= radius);
 }
 
 function scoreBreakdown(provider, distance, radius) {
@@ -51,14 +59,23 @@ function scoreProvider(provider, distance, radius) {
   return scoreBreakdown(provider, distance, radius).score;
 }
 
+function isFreshProviderLocation(location, now = new Date()) {
+  const cutoff = new Date(+now - FRESH_MS);
+  return location?.updatedAt >= cutoff && (location.capturedAt == null || location.capturedAt >= cutoff);
+}
+
 function baseEligibleQuery(category, now = new Date()) {
+  const cutoff = new Date(+now - FRESH_MS);
   return {
-    role: "mechanic",
+    $and: [roleFilter("mechanic"), { $or: [
+      { "providerState.currentLocation.capturedAt": null },
+      { "providerState.currentLocation.capturedAt": { $gte: cutoff } }
+    ] }],
     verificationStatus: "verified",
     ...(category ? { "mechanicProfile.serviceCategory": categoryFor(category) } : {}),
     "providerState.isOnline": true,
     "providerState.activeRequestId": null,
-    "providerState.currentLocation.updatedAt": { $gte: new Date(+now - FRESH_MS) }
+    "providerState.currentLocation.updatedAt": { $gte: cutoff }
   };
 }
 
@@ -142,14 +159,14 @@ async function releaseOfferReservation(providerId, offerId) {
   );
 }
 
-function newDispatch(category, now = new Date()) {
+function newDispatch(_category, now = new Date()) {
   return {
     enabled: true,
     state: "searching",
     version: 0,
     deadline: new Date(+now + SEARCH_MS),
     nextAttemptAt: now,
-    radiusKm: radiusFor(category),
+    radiusKm: radiusFor(),
     attemptedProviderIds: []
   };
 }
@@ -166,7 +183,7 @@ function providerStillOwnsOffer(provider, request, now) {
     && provider.providerState?.isOnline
     && !provider.providerState?.activeRequestId
     && categoryFor(request.category) === provider.mechanicProfile?.serviceCategory
-    && provider.providerState?.currentLocation?.updatedAt >= new Date(+now - FRESH_MS)
+    && isFreshProviderLocation(provider.providerState?.currentLocation, now)
     && provider.providerState?.reservedOfferId === request.dispatch.offerId
     && String(provider.providerState?.reservedRequestId) === String(request._id)
     && provider.providerState?.reservedUntil > now
@@ -224,15 +241,17 @@ async function expireSearches(now) {
 function candidatePairs(requests, providers) {
   const pairs = new Map();
   for (const request of requests) {
+    if (isGoogleLocationExpired(request.pickupLocation)) continue;
     const attempted = new Set((request.dispatch.attemptedProviderIds || []).map(String));
     const requestPairs = [];
     for (const provider of providers) {
+      if (provider.id === String(request.userId)) continue;
       if (provider.mechanicProfile?.serviceCategory !== categoryFor(request.category)) continue;
       if (attempted.has(provider.id)) continue;
       const location = provider.providerState?.currentLocation;
       if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) continue;
       const directDistanceKm = distanceKm(request.pickupLocation, location);
-      if (directDistanceKm > request.dispatch.radiusKm) continue;
+      if (!withinDispatchRadius(directDistanceKm, request.dispatch.radiusKm)) continue;
       const pair = { request, provider, directDistanceKm };
       requestPairs.push(pair);
       pairs.set(`${provider.id}:${request.id}`, pair);
@@ -300,7 +319,7 @@ async function createOffer(request, selected, batchId, now) {
 async function runDispatchBatchCore(now = new Date()) {
   await reconcileOffers(now);
   await expireSearches(now);
-  const requests = await ServiceRequest.find({
+  const pendingRequests = await ServiceRequest.find({
     "dispatch.enabled": true,
     status: "searching_provider",
     providerId: null,
@@ -309,11 +328,22 @@ async function runDispatchBatchCore(now = new Date()) {
     // The worker's shared interval throttles rounds for all requests together.
     "dispatch.deadline": { $gt: now }
   }).sort({ priority: -1, createdAt: 1 });
-  if (!requests.length) return { assignments: [], unassignedRequestIds: [], totalCost: 0 };
+  if (!pendingRequests.length) return { assignments: [], unassignedRequestIds: [], totalCost: 0 };
+  const requests = [];
+  const unavailableRequestIds = [];
+  for (const request of pendingRequests) {
+    try {
+      requests.push(request.pickupLocation?.source === "google_places" ? await ensureOperationalLocation(request.id, "pickupLocation") : request);
+    } catch (error) {
+      unavailableRequestIds.push(request.id);
+      console.warn("Dispatch location unavailable:", request.id, error.message);
+    }
+  }
+  if (!requests.length) return { assignments: [], unassignedRequestIds: unavailableRequestIds, totalCost: 0 };
 
-  const providers = await User.find({ ...baseEligibleQuery(null, now), ...reservationAvailable(now) });
+  const providers = await User.find(eligibleQuery(null, now));
   if (!providers.length) {
-    return { assignments: [], unassignedRequestIds: requests.map((request) => request.id), totalCost: 0 };
+    return { assignments: [], unassignedRequestIds: [...unavailableRequestIds, ...requests.map((request) => request.id)], totalCost: 0 };
   }
 
   const pairs = candidatePairs(requests, providers);
@@ -341,7 +371,7 @@ async function runDispatchBatchCore(now = new Date()) {
     }, batchId, now);
   }
 
-  return { ...solution, batchId };
+  return { ...solution, unassignedRequestIds: [...solution.unassignedRequestIds, ...unavailableRequestIds], batchId };
 }
 
 let activeBatch = null;
@@ -358,7 +388,7 @@ async function advanceDispatch(id, now = new Date()) {
 
 async function acceptOffer(id, providerId, offerId) {
   const existing = await ServiceRequest.findById(id);
-  if (!existing) throw conflict("Request is no longer available.");
+  if (!existing || String(existing.userId) === String(providerId)) throw conflict("Request is no longer available.");
   if (String(existing.providerId) === String(providerId) && existing.assignmentActive) return existing;
   if (!offerId || existing.dispatch?.offerId !== offerId || String(existing.dispatch.offeredProviderId) !== String(providerId)) {
     throw conflict("This offer is no longer available to you.");
@@ -522,9 +552,13 @@ module.exports = {
   cancelDispatchOffer,
   declineOffer,
   distanceKm,
+  eligibleQuery,
+  isFreshProviderLocation,
   newDispatch,
+  radiusFor,
   recoverReservations,
   runDispatchBatch,
   scoreProvider,
-  startDispatchWorker
+  startDispatchWorker,
+  withinDispatchRadius
 };

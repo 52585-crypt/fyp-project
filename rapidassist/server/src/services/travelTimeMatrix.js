@@ -1,4 +1,5 @@
 const DEFAULT_TABLE_URL = "https://router.project-osrm.org/table/v1/driving";
+const { isGoogleLocationExpired } = require("./googleLocationPolicy");
 const DEFAULT_SPEED_KMH = 25;
 const CACHE_MS = 20000;
 const MAX_POINTS_PER_REQUEST = 90;
@@ -10,6 +11,7 @@ function idOf(value) {
 
 function coordinatesOf(value) {
   const location = value.location || value.pickupLocation || value.providerState?.currentLocation || value;
+  if (!location || isGoogleLocationExpired(location) || location.lat == null || location.lng == null) return null;
   const lat = Number(location?.lat);
   const lng = Number(location?.lng);
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;

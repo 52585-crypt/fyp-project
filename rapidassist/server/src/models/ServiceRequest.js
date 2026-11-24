@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { serializeLocation } = require("../services/googleLocationPolicy");
 
 const REQUEST_CATEGORIES = ["car_towing", "fuel_delivery", "mechanic"];
 
@@ -27,9 +28,15 @@ const REQUEST_PRIORITIES = ["normal", "high", "urgent"];
 
 const locationSchema = new mongoose.Schema(
   {
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
-    addressText: { type: String, default: null, trim: true }
+    // Compliant cleanup deliberately removes cached Google coordinates while
+    // retaining the place ID. Every other location source still requires a
+    // complete coordinate pair.
+    lat: { type: Number, required() { return this.source !== "google_places"; } },
+    lng: { type: Number, required() { return this.source !== "google_places"; } },
+    addressText: { type: String, default: null, trim: true },
+    source: { type: String, enum: ["gps", "manual_map", "google_places", "photon"], default: null },
+    placeId: { type: String, default: null, trim: true, maxlength: 512 },
+    googleContentCachedAt: { type: Date, default: null }
   },
   { _id: false }
 );
@@ -140,6 +147,8 @@ const serviceRequestSchema = new mongoose.Schema(
 serviceRequestSchema.index({ providerId: 1, assignmentActive: 1 }, { unique: true, partialFilterExpression: { assignmentActive: true } });
 serviceRequestSchema.index({ userId: 1, clientRequestId: 1 }, { unique: true, partialFilterExpression: { clientRequestId: { $type: "string" } } });
 serviceRequestSchema.index({ "dispatch.enabled": 1, status: 1, "dispatch.nextAttemptAt": 1 });
+// Support deterministic newest-first pagination and UTC date filtering.
+serviceRequestSchema.index({ createdAt: -1, _id: -1 });
 
 serviceRequestSchema.methods.addStatus = function addStatus(status, byUserId, note) {
   this.status = status;
@@ -166,8 +175,8 @@ serviceRequestSchema.methods.toJSONSafe = function toJSONSafe() {
     category: this.category,
     priority: this.priority,
     vehicleInfo: this.vehicleInfo,
-    pickupLocation: this.pickupLocation,
-    destinationLocation: this.destinationLocation,
+    pickupLocation: serializeLocation(this.pickupLocation),
+    destinationLocation: serializeLocation(this.destinationLocation),
     issueType: this.issueType,
     description: this.description,
     photos: this.photos || [],

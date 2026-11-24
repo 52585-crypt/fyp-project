@@ -9,17 +9,26 @@ const {
 } = require("../models/ServiceRequest");
 const { Vehicle } = require("../models/Vehicle");
 const { User } = require("../models/User");
+const { attachCustomerForAssignedProvider } = require("../utils/requestCustomer");
 const { ChatMessage } = require("../models/ChatMessage");
-const { Payment } = require("../models/Payment");
+const { Payment, recordedCashFilter } = require("../models/Payment");
 const {
   newDispatch,
   acceptOffer,
   cancelDispatchOffer,
-  declineOffer
+  declineOffer,
+  distanceKm,
+  eligibleQuery,
+  isFreshProviderLocation,
+  radiusFor,
+  withinDispatchRadius
 } = require("../services/dispatch");
 const { notifyRequest, notifyUser } = require("../services/realtime");
 const { createNotificationSafely } = require("../services/notifications");
 const { ensureFinalizedInvoice } = require("../services/payments");
+const { recordActivity, recordRejectedAction } = require("../services/adminActivity");
+const { ensureOperationalLocation } = require("../services/operationalLocation");
+const { getDrivingRouteMetrics } = require("../services/roadRouting");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -40,7 +49,7 @@ function forbidden(message) {
 }
 
 function requireProvider(req) {
-  if (req.user?.role !== "mechanic") throw forbidden("Provider account required");
+  if (req.authRole !== "mechanic") throw forbidden("Provider account required");
 }
 
 function normalizeStr(v) {
@@ -53,23 +62,6 @@ function parseNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function toRadians(degrees) {
-  return degrees * (Math.PI / 180);
-}
-
-function distanceKm(from, to) {
-  const earthRadiusKm = 6371;
-  const dLat = toRadians(to.lat - from.lat);
-  const dLng = toRadians(to.lng - from.lng);
-  const lat1 = toRadians(from.lat);
-  const lat2 = toRadians(to.lat);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-}
-
 function normalizeCategory(category) {
   const aliases = {
     towing: "car_towing",
@@ -80,28 +72,13 @@ function normalizeCategory(category) {
   return aliases[category] || category;
 }
 
-function providerCategoryForRequest(category) {
-  if (category === "car_towing") return "towing";
-  return category;
-}
-
-function defaultSearchRadiusKm(category) {
-  if (category === "car_towing") return 15;
-  if (category === "fuel_delivery") return 8;
-  return 5;
-}
-
-function estimateArrivalMinutes(distance) {
-  return Math.max(3, Math.round((distance / 25) * 60));
-}
-
 function nearbyProviderScore(provider, distance) {
   const rating = Number(provider.ratingAvg || 0);
   const completedJobs = Number(provider.completedJobs || 0);
   const distanceScore = Math.max(0, 50 - distance * 3);
   const ratingScore = rating * 8;
   const experienceScore = Math.min(15, completedJobs / 4);
-  return Math.round((distanceScore + ratingScore + experienceScore) * 10) / 10;
+  return distanceScore + ratingScore + experienceScore;
 }
 
 function canAccessRequestChat(request, user) {
@@ -111,12 +88,12 @@ function canAccessRequestChat(request, user) {
   return Boolean(request.providerId && request.providerId.toString() === userId);
 }
 
-function canAccessRequestDetails(request, user) {
+function canAccessRequestDetails(request, user, role) {
   const userId = user?._id?.toString();
   if (!userId) return false;
   if (request.userId?.toString() === userId) return true;
   if (request.providerId && request.providerId.toString() === userId) return true;
-  if (user.role !== "mechanic") return false;
+  if (role !== "mechanic") return false;
 
   return (
     request.status === "searching_provider" &&
@@ -160,10 +137,19 @@ function normalizeLocation(input, label) {
   const lat = parseNum(input?.lat);
   const lng = parseNum(input?.lng);
   if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest(`${label} valid lat/lng required`);
+  const source = input?.source == null ? null : normalizeStr(input.source);
+  if (source && !["gps", "manual_map", "google_places", "photon"].includes(source)) throw badRequest(`${label} invalid source`);
+  const placeId = input?.placeId == null ? null : normalizeStr(input.placeId);
+  if (placeId && (source !== "google_places" || placeId.length > 512)) throw badRequest(`${label} invalid place ID`);
+  // Google-derived locations must not enter the existing indefinite-retention
+  // and CARTO map paths until those consumers have provenance enforcement.
+  if (source === "google_places") throw badRequest("Google Places locations are not available yet. Select a location on the map or use Photon search.");
   return {
     lat,
     lng,
-    addressText: normalizeStr(input?.addressText) || null
+    addressText: normalizeStr(input?.addressText) || null,
+    source,
+    placeId
   };
 }
 
@@ -191,6 +177,15 @@ function optionalLocation(input) {
     capturedAt,
     receivedAt: now,
     updatedAt: now
+  };
+}
+
+function newerProviderLocationQuery(location) {
+  return {
+    $or: [
+      { "providerState.currentLocation.capturedAt": null },
+      { "providerState.currentLocation.capturedAt": { $lt: location.capturedAt } }
+    ]
   };
 }
 
@@ -253,6 +248,13 @@ async function attachProviderLocations(requests) {
   }));
 }
 
+/** Serialized requests for `req`'s caller; the assigned provider also receives customer name/phone. */
+async function serializeForViewer(req, requests) {
+  const payloads = await attachProviderLocations(requests);
+  return attachCustomerForAssignedProvider(requests, payloads, req.user, req.authRole,
+    (ids) => User.find({ _id: { $in: ids } }).select("name phone"));
+}
+
 function activeStatuses() {
   return [
     "provider_assigned",
@@ -270,9 +272,12 @@ function activeStatuses() {
   ];
 }
 
-function estimateFor(category, body) {
+function estimateFor(category, body, roadDistanceKm = null) {
   if (category === "car_towing") {
-    const distanceKm = Math.max(1, parseNum(body.distanceKm) || 8);
+    if (!Number.isFinite(roadDistanceKm) || roadDistanceKm <= 0) {
+      throw badRequest("A valid road route is required for a towing estimate");
+    }
+    const distanceKm = Math.max(1, Math.round(roadDistanceKm * 10) / 10);
     const lines = [
       { label: "Base towing fee", amount: 1200 },
       { label: `Distance charge (${distanceKm} km)`, amount: Math.round(distanceKm * 180) },
@@ -352,7 +357,7 @@ async function buildVehicleData(req, vehicleId, vehicleInfo) {
 
 async function createRequest(req, res, next) {
   try {
-    if (req.user.role !== "user") throw forbidden("Customer account required");
+    if (req.authRole !== "user") throw forbidden("Customer account required");
     const body = req.body || {};
     const clientRequestId = typeof body.clientRequestId === "string" ? body.clientRequestId.trim() : null;
     if (clientRequestId && (clientRequestId.length < 12 || clientRequestId.length > 100)) throw badRequest("Invalid submission ID");
@@ -372,9 +377,15 @@ async function createRequest(req, res, next) {
 
     const pickupLocation = normalizeLocation(body.pickupLocation || body.location, "Pickup location");
     validateServiceDetails(category, body);
+    const destinationLocation = category === "car_towing"
+      ? normalizeLocation(body.destinationLocation, "Destination location")
+      : null;
 
     const vehicleData = await buildVehicleData(req, body.vehicleId, body.vehicleInfo);
-    const estimate = estimateFor(category, body);
+    const roadRoute = category === "car_towing"
+      ? await getDrivingRouteMetrics(pickupLocation, destinationLocation)
+      : null;
+    const estimate = estimateFor(category, body, roadRoute?.distanceKm);
     const issueType =
       category === "mechanic"
         ? normalizeStr(body.mechanicDetails?.issueCategory || body.issueType).toLowerCase()
@@ -388,7 +399,7 @@ async function createRequest(req, res, next) {
       category,
       priority,
       pickupLocation,
-      destinationLocation: category === "car_towing" ? normalizeLocation(body.destinationLocation, "Destination location") : null,
+      destinationLocation,
       issueType,
       description: normalizeStr(body.description) || null,
       photos: Array.isArray(body.photos) ? body.photos.filter(Boolean).map(String).slice(0, 5) : [],
@@ -441,10 +452,31 @@ async function getRequest(req, res, next) {
 
     const request = await ServiceRequest.findById(req.params.id);
     if (!request) throw notFound("Request not found");
-    if (!canAccessRequestDetails(request, req.user)) throw forbidden("Forbidden");
+    if (!canAccessRequestDetails(request, req.user, req.authRole)) throw forbidden("Forbidden");
 
-    res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
+    res.json({ ok: true, request: (await serializeForViewer(req, [request]))[0] });
   } catch (err) {
+    next(err);
+  }
+}
+
+async function refreshRequestLocation(req, res, next) {
+  const event = req.authRole === "admin" ? { action: "request.location_refresh", resourceId: req.params.id } : null;
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) throw badRequest("Invalid request id");
+    const field = req.params.field === "pickup" ? "pickupLocation" : req.params.field === "destination" ? "destinationLocation" : null;
+    if (!field) throw badRequest("Invalid location field");
+    const existing = await ServiceRequest.findById(req.params.id);
+    if (!existing) throw notFound("Request not found");
+    if (req.authRole !== "admin" && !canAccessRequestDetails(existing, req.user, req.authRole)) throw forbidden("Forbidden");
+    if (existing[field]?.source !== "google_places") throw badRequest("This location does not need Google refresh");
+    const refreshed = await ensureOperationalLocation(existing.id, field);
+    if (req.authRole !== "admin" && !canAccessRequestDetails(refreshed, req.user, req.authRole)) throw forbidden("Forbidden");
+    const [request] = await attachProviderLocations([refreshed]);
+    if (event) await recordActivity(req, res, event, "success", 200);
+    res.json({ ok: true, request });
+  } catch (err) {
+    await recordRejectedAction(req, res, event, err, [400, 404, 503]);
     next(err);
   }
 }
@@ -465,6 +497,7 @@ async function listProviderRequests(req, res, next) {
 
 async function listNearbyProviders(req, res, next) {
   try {
+    if (req.authRole !== "user") throw forbidden("Customer account required");
     const category = normalizeCategory(req.query?.category);
     if (!category || !REQUEST_CATEGORIES.includes(category)) {
       throw badRequest(`category must be one of: ${REQUEST_CATEGORIES.join(", ")}`);
@@ -474,50 +507,41 @@ async function listNearbyProviders(req, res, next) {
       lat: parseNum(req.query?.lat),
       lng: parseNum(req.query?.lng)
     };
-    if (origin.lat == null || origin.lng == null) throw badRequest("lat and lng are required");
+    if (origin.lat == null || origin.lng == null || Math.abs(origin.lat) > 90 || Math.abs(origin.lng) > 180) {
+      throw badRequest("Valid lat and lng are required");
+    }
 
-    const requestedRadius = parseNum(req.query?.radiusKm);
-    const radiusKm = Math.min(50, Math.max(1, requestedRadius || defaultSearchRadiusKm(category)));
-    const staleAfter = new Date(Date.now() - 30 * 60 * 1000);
-
+    const radiusKm = radiusFor();
     const candidates = await User.find({
-      role: "mechanic",
-      verificationStatus: "verified",
-      "mechanicProfile.serviceCategory": providerCategoryForRequest(category),
-      "providerState.isOnline": true,
-      "providerState.activeRequestId": null,
+      ...eligibleQuery(category),
+      _id: { $ne: req.user._id },
       "providerState.currentLocation.lat": { $type: "number" },
-      "providerState.currentLocation.lng": { $type: "number" },
-      "providerState.lastSeenAt": { $gte: staleAfter }
+      "providerState.currentLocation.lng": { $type: "number" }
     })
       .select("name mechanicProfile.serviceCategory providerState ratingAvg ratingCount completedJobs")
       .limit(100);
 
     const providers = candidates
-      .map((provider) => {
+      .flatMap((provider) => {
         const location = provider.providerState?.currentLocation;
         const distance = distanceKm(origin, { lat: location.lat, lng: location.lng });
-        return {
-          id: provider._id.toString(),
-          name: provider.name,
-          serviceCategory: provider.mechanicProfile?.serviceCategory || null,
-          ratingAvg: provider.ratingAvg || 0,
-          ratingCount: provider.ratingCount || 0,
-          completedJobs: provider.completedJobs || 0,
-          distanceKm: Math.round(distance * 10) / 10,
-          etaMinutes: estimateArrivalMinutes(distance),
+        if (!withinDispatchRadius(distance, radiusKm)) return [];
+        return [{
+          distance,
           score: nearbyProviderScore(provider, distance),
-          location: {
-            lat: location.lat,
-            lng: location.lng,
-            addressText: location.addressText || null,
-            updatedAt: location.updatedAt || provider.providerState?.lastSeenAt || null
+          summary: {
+            id: provider.id,
+            name: provider.name,
+            serviceCategory: provider.mechanicProfile?.serviceCategory || null,
+            ratingAvg: provider.ratingAvg || 0,
+            ratingCount: provider.ratingCount || 0,
+            completedJobs: provider.completedJobs || 0
           }
-        };
+        }];
       })
-      .filter((provider) => provider.distanceKm <= radiusKm)
-      .sort((a, b) => b.score - a.score || a.distanceKm - b.distanceKm)
-      .slice(0, 20);
+      .sort((a, b) => b.score - a.score || a.distance - b.distance)
+      .slice(0, 20)
+      .map(({ summary }) => summary);
 
     res.json({ ok: true, radiusKm, providers });
   } catch (err) {
@@ -529,7 +553,7 @@ async function acceptRequest(req, res, next) {
   try {
     requireProvider(req);
     const request = await acceptOffer(req.params.id, req.user._id, req.body?.offerId);
-    res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
+    res.json({ ok: true, request: (await serializeForViewer(req, [request]))[0] });
   } catch (err) { next(err); }
 }
 
@@ -549,7 +573,11 @@ async function retryDispatch(req, res, next) {
       _id: req.params.id, userId: req.user._id, providerId: null,
       status: "searching_provider", "dispatch.version": existing.dispatch.version,
       $or: [{ "dispatch.state": "unavailable" }, { "dispatch.enabled": { $ne: true } }]
-    }, { $set: { dispatch: { ...newDispatch(existing.category), version: existing.dispatch.version + 1 } } }, { new: true });
+    }, { $set: { dispatch: {
+      ...newDispatch(existing.category),
+      radiusKm: existing.dispatch.radiusKm,
+      version: existing.dispatch.version + 1
+    } } }, { new: true });
     if (!request) throw badRequest("Only the customer can restart an exhausted search.");
     notifyRequest(request, "dispatch");
     res.json({ ok: true, request: request.toJSONSafe() });
@@ -562,9 +590,9 @@ async function updateRequestStatus(req, res, next) {
     if (!request) throw notFound("Request not found");
     const status = normalizeStr(req.body?.status);
     const isOwner = String(request.userId) === String(req.user._id);
-    const isProvider = String(request.providerId) === String(req.user._id);
+    const isProvider = req.authRole === "mechanic" && String(request.providerId) === String(req.user._id);
     if (!isOwner && !isProvider) throw forbidden("Only the customer or assigned provider can update this job");
-    if (request.status === status) return res.json({ ok: true, request: (await attachProviderLocations([request]))[0] });
+    if (request.status === status) return res.json({ ok: true, request: (await serializeForViewer(req, [request]))[0] });
     if (["completed", "cancelled"].includes(request.status)) throw badRequest("This job is already closed.");
     if (status === "completed") {
       if (!isOwner || request.status !== "service_finished") throw forbidden("Customer confirmation is required after service finishes");
@@ -616,7 +644,7 @@ async function updateRequestStatus(req, res, next) {
       body: status === "provider_arrived" ? "Your provider is now at the pickup point." : `The job is now ${statusText}.`,
       data: { requestId: updated.id, status, route: isProvider ? "/(user)/tracking" : "/(provider)/jobs" }
     });
-    res.json({ ok: true, request: (await attachProviderLocations([updated]))[0] });
+    res.json({ ok: true, request: (await serializeForViewer(req, [updated]))[0] });
   } catch (err) { next(err); }
 }
 
@@ -659,16 +687,28 @@ async function updateProviderAvailability(req, res, next) {
     const isOnline = Boolean(req.body?.isOnline);
     if (isOnline && req.user.verificationStatus !== "verified") throw forbidden("Complete provider verification before going online.");
     const location = optionalLocation(req.body?.location);
-    if (isOnline && !location) throw badRequest("A fresh GPS location is required to go online.");
+    if (isOnline && !isFreshProviderLocation(location)) throw badRequest("A fresh GPS location is required to go online.");
 
     const $set = {
       "providerState.isOnline": isOnline,
       "providerState.lastSeenAt": new Date()
     };
-    if (location) $set["providerState.currentLocation"] = location;
-
-    const provider = await User.findByIdAndUpdate(req.user._id, { $set }, { new: true });
-    res.json({ ok: true, provider: provider.toSafeJSON() });
+    const filter = { _id: req.user._id, ...(isOnline ? { verificationStatus: "verified" } : {}) };
+    let provider;
+    if (location) {
+      provider = await User.findOneAndUpdate(
+        { ...filter, ...newerProviderLocationQuery(location) },
+        { $set: { ...$set, "providerState.currentLocation": location } },
+        { new: true }
+      );
+    }
+    // A newer fix can arrive while the provider is changing availability.
+    if (!provider) provider = await User.findOneAndUpdate(filter, { $set }, { new: true });
+    if (!provider) {
+      if (isOnline) throw forbidden("Complete provider verification before going online.");
+      throw notFound("Mechanic not found.");
+    }
+    res.json({ ok: true, provider: provider.toSafeJSON(req.authRole) });
   } catch (err) {
     next(err);
   }
@@ -687,10 +727,7 @@ async function updateProviderLocation(req, res, next) {
     const provider = await User.findOneAndUpdate(
       {
         _id: req.user._id,
-        $or: [
-          { "providerState.currentLocation.capturedAt": null },
-          { "providerState.currentLocation.capturedAt": { $lt: location.capturedAt } }
-        ]
+        ...newerProviderLocationQuery(location)
       },
       {
         $set: {
@@ -711,7 +748,7 @@ async function updateProviderLocation(req, res, next) {
       const request = await ServiceRequest.findOne({ _id: provider.providerState.activeRequestId, providerId: provider._id, status: { $nin: ["completed", "cancelled"] } });
       if (request) notifyRequest(request, "location");
     }
-    res.json({ ok: true, provider: provider.toSafeJSON() });
+    res.json({ ok: true, provider: provider.toSafeJSON(req.authRole) });
   } catch (err) {
     next(err);
   }
@@ -725,7 +762,7 @@ async function getProviderActiveRequest(req, res, next) {
       status: { $in: activeStatuses() }
     }).sort({ updatedAt: -1 });
 
-    res.json({ ok: true, request: request ? (await attachProviderLocations([request]))[0] : null });
+    res.json({ ok: true, request: request ? (await serializeForViewer(req, [request]))[0] : null });
   } catch (err) {
     next(err);
   }
@@ -750,7 +787,7 @@ async function getProviderHistory(req, res, next) {
 async function getProviderEarnings(req, res, next) {
   try {
     requireProvider(req);
-    const payments = await Payment.find({ providerId: req.user._id, status: "paid" })
+    const payments = await Payment.find({ providerId: req.user._id, ...recordedCashFilter })
       .sort({ paidAt: -1 })
       .populate("invoiceId");
 
@@ -761,7 +798,7 @@ async function getProviderEarnings(req, res, next) {
 
     const totals = payments.reduce(
       (acc, payment) => {
-        const amount = Number(payment.invoiceId?.providerEarningsMinor || 0) / 100;
+        const amount = Number(payment.providerNetMinor ?? payment.invoiceId?.providerEarningsMinor ?? 0) / 100;
         const paidAt = payment.paidAt || payment.updatedAt;
         acc.total += amount;
         if (paidAt >= todayStart) acc.today += amount;
@@ -831,7 +868,7 @@ async function requestExtraWork(req, res, next) {
       data: { requestId: request.id, route: "/(user)/tracking" }
     });
 
-    res.json({ ok: true, request: request.toJSONSafe() });
+    res.json({ ok: true, request: (await serializeForViewer(req, [request]))[0] });
   } catch (err) {
     next(err);
   }
@@ -908,10 +945,11 @@ async function sendRequestMessage(req, res, next) {
     if (!request.providerId) throw badRequest("Chat is available after provider assignment");
 
     if (clientMessageId && (clientMessageId.length < 8 || clientMessageId.length > 100)) throw badRequest("Invalid message ID");
+    const senderRole = String(request.userId) === String(req.user._id) ? "user" : "mechanic";
     let message;
     let createdNew = true;
     try {
-      message = await ChatMessage.create({ requestId: request._id, senderId: req.user._id, senderRole: req.user.role, clientMessageId, body });
+      message = await ChatMessage.create({ requestId: request._id, senderId: req.user._id, senderRole, clientMessageId, body });
     } catch (error) {
       if (error.code !== 11000 || !clientMessageId) throw error;
       message = await ChatMessage.findOne({ requestId: request._id, senderId: req.user._id, clientMessageId });
@@ -921,15 +959,15 @@ async function sendRequestMessage(req, res, next) {
 
     await message.populate({ path: "senderId", select: "name phone role" });
     const safeMessage = message.toJSONSafe();
-    const recipientId = String(request.userId) === String(req.user._id) ? request.providerId : request.userId;
+    const recipientId = senderRole === "user" ? request.providerId : request.userId;
     if (createdNew) {
       notifyUser(recipientId, { requestId: request.id, message: safeMessage }, "chat:message");
       createNotificationSafely({
         userId: recipientId,
         type: "chat_message",
-        title: req.user.role === "mechanic" ? "Message from provider" : "Message from customer",
+        title: senderRole === "mechanic" ? "Message from provider" : "Message from customer",
         body: body.length > 100 ? `${body.slice(0, 97)}...` : body,
-        data: { requestId: request.id, route: req.user.role === "mechanic" ? "/(user)/chat" : "/(provider)/chat" }
+        data: { requestId: request.id, route: senderRole === "mechanic" ? "/(user)/chat" : "/(provider)/chat" }
       });
     }
     res.status(createdNew ? 201 : 200).json({ ok: true, message: safeMessage });
@@ -940,6 +978,7 @@ async function sendRequestMessage(req, res, next) {
 
 module.exports = {
   createRequest,
+  refreshRequestLocation,
   getRequest,
   listMyRequests,
   listNearbyProviders,
