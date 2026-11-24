@@ -33,6 +33,15 @@ async function main() {
   await connectDB(process.env.MONGODB_URI);
   await ensureAdminAccount();
   await ensurePendingOfferIndex(); // never throws; logs a warning and keeps serving if duplicates block it
+  // Warm up the free local AI models in the background so the first request is fast (AI_PRELOAD=false skips).
+  if (process.env.AI_PRELOAD !== "false") {
+    require("./services/faceVerification.service").loadModels()
+      .then(() => console.log("Face models ready"))
+      .catch((err) => console.warn("Face models failed to load:", err.message));
+    require("./services/vehicleIssueClassifier.service").loadClassifier()
+      .then(() => console.log("Vehicle issue (CLIP) model ready"))
+      .catch((err) => console.warn("CLIP model failed to load:", err.message));
+  }
   const stopLocationCleanup = await startGoogleLocationCleanup();
   attachRealtime(server);
   const stopDispatch = startDispatchWorker();

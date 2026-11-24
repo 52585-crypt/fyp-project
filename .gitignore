@@ -22,3 +22,6 @@ rebase-staged-backup.patch
 # Google OAuth client secrets (downloaded credential files) must never be committed
 client_secret_*.json
 *.apps.googleusercontent.com.json
+
+# Locally cached Hugging Face models (downloaded on first use)
+rapidassist/server/assets/hf-models/
