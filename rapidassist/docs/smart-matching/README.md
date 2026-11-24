@@ -13,6 +13,7 @@ RapidAssist's batch dispatcher can match waiting requests to providers with a mu
 | 7 | [07-benchmark.md](07-benchmark.md) | Four approaches on seeded data: single batch, runtime, multi-round simulation, honest findings ([raw results](benchmark-results/)) |
 | 8 | [08-limitations.md](08-limitations.md) | ETA, cold start, myopic batches, strict priority, single worker, no transactions, … |
 | 9 | [09-enable-locally.md](09-enable-locally.md) | Enable, configure, verify, roll back; what stays after rollback |
+| 10 | [10-manual-test-checklist.md](10-manual-test-checklist.md) | Manual Android checklist: enable, request, decline → re-offer, accept, tracking, cancel during search, disable |
 
 ## Results in one paragraph
 
