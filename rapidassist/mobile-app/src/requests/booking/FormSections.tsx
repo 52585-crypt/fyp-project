@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
-import { Button, Card, ChipGroup, HeroCard, Input, Select, ServiceTile, Text, TextArea } from "../../design/components";
+import { Button, Card, ChipGroup, Input, Select, ServiceTile, Text, TextArea } from "../../design/components";
 import { tokens } from "../../design/tokens";
 import { customerRoutes } from "../../navigation/routes";
 import { fuelQuantities, fuelTypes, mechanicServices, towingProblems, vehicleTypes } from "./options";
@@ -33,10 +33,7 @@ export function VehicleSection({ b, compact }: { b: BookingState; compact?: bool
 
 export function TowingFields({ b }: { b: BookingState }) {
   return (
-    <View style={styles.gap}>
-      <Text variant="bodySmallStrong">Why do you need towing?</Text>
-      <ChipGroup columns={2} options={towingProblems} value={b.problem} onChange={b.setProblem} accessibilityLabel="Problem type" />
-    </View>
+    <ChipGroup columns={2} options={towingProblems} value={b.problem} onChange={b.setProblem} accessibilityLabel="Problem type" />
   );
 }
 
@@ -61,15 +58,12 @@ export function FuelFields({ b }: { b: BookingState }) {
 
 export function MechanicFields({ b }: { b: BookingState }) {
   return (
-    <>
-      <HeroCard title="What do you need help with?" subtitle="Select a service" art="construct" />
-      <View style={styles.grid}>
-        {mechanicServices.map((s) => (
-          <ServiceTile key={s.value} title={s.label} subtitle={s.subtitle} icon={s.icon}
-            selected={b.mechanicIssue === s.value} onPress={() => b.setMechanicIssue(s.value)} />
-        ))}
-      </View>
-    </>
+    <View style={styles.grid}>
+      {mechanicServices.map((s) => (
+        <ServiceTile key={s.value} title={s.label} subtitle={s.subtitle} icon={s.icon}
+          selected={b.mechanicIssue === s.value} onPress={() => b.setMechanicIssue(s.value)} />
+      ))}
+    </View>
   );
 }
 

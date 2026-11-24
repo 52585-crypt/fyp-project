@@ -12,6 +12,7 @@ export const customerRoutes = {
   vehicles: "/vehicles" as Href,
   addVehicle: "/vehicles/add" as Href,
   newRequest: (service: RequestCategory) => ({ pathname: "/request/new/[service]", params: { service } }) as Href,
+  /** Problem & fare step (route name kept for existing links). */
   estimate: "/request/estimate" as Href,
   request: (id: string) => ({ pathname: "/request/[id]", params: { id } }) as Href,
   chat: (id: string) => ({ pathname: "/request/[id]/chat", params: { id } }) as Href,
