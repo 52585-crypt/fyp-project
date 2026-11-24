@@ -70,7 +70,7 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
     if (focus) {
       map.current.setZoom(MAP_CANVAS_FOCUS_ZOOM);
       map.current.panTo(at(focus.coordinate));
-      map.current.panBy(0, (inset.bottom - inset.top) / 2);
+      if (!onCenterChange) map.current.panBy(0, (inset.bottom - inset.top) / 2);
       return;
     }
     if (onCenterChange) return;

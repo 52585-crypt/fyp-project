@@ -22,7 +22,7 @@ export type MapCanvasProps = {
   route?: Coordinate[];
   /** Explicit camera target; bump `requestId` to re-centre. Otherwise the camera fits markers + route. */
   focus?: MapCanvasFocus | null;
-  /** Pixels covered by overlays (top bar, bottom sheet) that the camera keeps content clear of. */
+  /** Pixels covered by overlays (top bar, bottom sheet) that the camera keeps content clear of. In pin mode it only moves controls. */
   inset?: { top: number; bottom: number };
   /** Pin mode: called with the map centre after each user pan (never for programmatic moves). */
   onCenterChange?: (center: Coordinate) => void;

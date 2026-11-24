@@ -4,6 +4,7 @@ export { Banner, type BannerTone } from "./Banner";
 export { BottomSheet } from "./BottomSheet";
 export { Button, type ButtonVariant } from "./Button";
 export { Card } from "./Card";
+export { CenterPin } from "./CenterPin";
 export { Checkbox } from "./Checkbox";
 export { ChipGroup, type Chip } from "./ChipGroup";
 export { EmptyState } from "./EmptyState";

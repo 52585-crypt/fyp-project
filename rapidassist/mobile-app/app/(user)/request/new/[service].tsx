@@ -1,70 +1,131 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ServiceSuggestionCard } from "../../../../src/ai/ServiceSuggestionCard";
-import { selectionFromSuggestion } from "../../../../src/ai/serviceSuggestion.integration";
-import { Banner, Button, Card, Header, Screen, Text } from "../../../../src/design/components";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { LocationAutocompleteField } from "../../../../src/components/LocationAutocompleteField";
+import { MapCanvas, type MapCanvasMarker } from "../../../../src/components/maps/MapCanvas";
+import { Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, Text } from "../../../../src/design/components";
+import { tokens } from "../../../../src/design/tokens";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
-import { FuelFields, MechanicFields, NotesField, TowingFields, VehicleSection } from "../../../../src/requests/booking/FormSections";
-import { LocationSection } from "../../../../src/requests/booking/LocationSection";
-import { bookingCopy, mechanicServices } from "../../../../src/requests/booking/options";
 import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
+import { mechanicServices } from "../../../../src/requests/booking/options";
+import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
+import { applyNormalizedLocationTarget, normalizeLocation, type NormalizedLocation } from "../../../../src/services/normalizedLocation";
 
-/** Service request form (Towing / Fuel / Mechanic). Next step: request/estimate. */
-export default function NewRequest() {
-  const { service, issue } = useLocalSearchParams<{ service?: string; issue?: string }>();
+type Step = "pickup" | "destination";
+
+/** Pickup pin: the map moves under a fixed centre pin. Towing adds a drop-off step. Next: request/estimate. */
+export default function PickupPin() {
+  const { service, issue, step: stepParam } = useLocalSearchParams<{ service?: string; issue?: string; step?: string }>();
   const b = useBooking();
   const category = normalizeBookingCategory(service);
-  const copy = bookingCopy[category];
-  const [aiOpen, setAiOpen] = useState(false);
-  const [manualVersion, setManualVersion] = useState(0);
+  const towing = category === "car_towing";
+  const [step, setStep] = useState<Step>(towing && stepParam === "destination" ? "destination" : "pickup");
+  const [search, setSearch] = useState("");
 
   useEffect(() => { b.setCategory(category); b.setError(null); }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const preset = mechanicServices.find((s) => s.value === issue);
     if (preset) b.setMechanicIssue(preset.value);
   }, [issue]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!b.pickup) void b.useCurrentLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function next() {
-    const problem = b.validate();
-    if (problem) return b.setError(problem);
+  const value = step === "pickup" ? b.pickup : b.destination;
+  const pinned = value?.source === "manual_map" && /^Pinned /.test(value.address ?? "");
+  const markers: MapCanvasMarker[] = step === "destination" && b.pickup
+    ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }] : [];
+  const tow = towing && step === "destination" && b.route.route ? `${b.route.route.distanceKm.toFixed(1)} km tow · ${b.route.route.durationMinutes} min` : null;
+
+  function choose(loc: NormalizedLocation) {
+    applyNormalizedLocationTarget(step, loc, { pickup: b.setPickup, destination: b.setDestination });
+    b.focusOn(loc);
+    setSearch("");
+    b.setError(null);
+  }
+
+  function goTo(next: Step) {
+    setStep(next);
+    setSearch("");
+    const target = next === "destination" ? b.destination ?? b.pickup : b.pickup;
+    if (target) b.focusOn(target);
+  }
+
+  function confirm() {
+    if (!value) return b.setError(step === "pickup" ? "Move the map to your location, or search for it." : "Move the map to where the vehicle should be towed.");
+    if (step === "pickup" && towing) return goTo("destination");
     b.setError(null);
     router.push(customerRoutes.estimate);
   }
 
+  const title = step === "pickup" ? (category === "fuel_delivery" ? "Where should we deliver?" : "Where are you?") : "Where to tow?";
+
   return (
-    <Screen header={<Header title={copy.title} />}
-      footer={<Button title={copy.action} icon="arrow-forward" disabled={b.locating} onPress={next} />}>
-      {category === "mechanic" ? <MechanicFields b={b} /> : null}
-      {category === "fuel_delivery" ? <LocationSection b={b} target="pickup" title={copy.location} /> : null}
-      {category === "fuel_delivery" ? <FuelFields b={b} /> : <VehicleSection b={b} />}
-      {category === "car_towing" ? <TowingFields b={b} /> : null}
-      {category !== "fuel_delivery" ? <LocationSection b={b} target="pickup" title={copy.location} /> : null}
-      {category === "car_towing" ? <LocationSection b={b} target="destination" title="Destination (Drop-off)" /> : null}
-      {b.pickup && b.nearby !== null ? (
-        <Text variant="caption" color="muted" accessibilityLiveRegion="polite">{b.nearby} providers available nearby</Text>
-      ) : null}
-      <NotesField b={b} />
-      {category === "mechanic" ? (
-        <Card tone="soft">
-          <Button title={aiOpen ? "Hide AI diagnostic assist" : "Not sure? Try AI diagnostic assist"} icon="sparkles-outline"
-            variant="ghost" size="small" onPress={() => setAiOpen((v) => !v)} />
-          {aiOpen ? (
-            <ServiceSuggestionCard token={b.token} description={b.description} onDescriptionChange={b.setDescription}
-              manualSelectionVersion={manualVersion}
-              onSuggestionAccepted={(s) => {
-                const pick = selectionFromSuggestion(s);
-                if (!pick) return;
-                setManualVersion((v) => v + 1);
-                if (pick.mechanicIssue) b.setMechanicIssue(pick.mechanicIssue);
-                if (pick.category !== category) router.setParams({ service: pick.category });
-                setAiOpen(false);
-              }}
-              onSignInRequested={() => router.replace("/(auth)/login")} />
-          ) : null}
-        </Card>
-      ) : null}
-      {b.error ? <Banner tone="danger" message={b.error} /> : null}
-    </Screen>
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <View style={styles.map}>
+        <MapCanvas accessibilityLabel={`Map. Drag to set the ${step === "pickup" ? "pickup" : "drop-off"} point`}
+          focus={b.cameraFocus} markers={markers} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)} />
+        <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
+      </View>
+
+      <MapTopBar
+        left={<IconButton icon="arrow-back" label="Back" onPress={() => (step === "destination" ? goTo("pickup") : router.back())} />}
+        center={<MapPill title={getServiceTitle(category)} subtitle={towing ? `Step ${step === "pickup" ? 1 : 2} of 2` : "Set location"} />}
+        right={<IconButton icon="locate" label="Use my current location" disabled={b.locating}
+          onPress={() => (step === "pickup" ? void b.useCurrentLocation() : void b.recenter())} />} />
+
+      <BottomSheet fixed footer={
+        <Button title={step === "pickup" ? (towing ? "Confirm pickup" : "Confirm location") : "Confirm drop-off"}
+          icon="arrow-forward" disabled={b.locating || !value} onPress={confirm} />
+      }>
+        <Text variant="title">{title}</Text>
+        <View style={styles.address}>
+          <View style={[styles.addressIcon, step === "destination" && styles.addressIconDrop]}>
+            <Icon name={step === "pickup" ? "location" : "flag"} color={step === "pickup" ? "primary" : "red"} size={tokens.sizes.icon} />
+          </View>
+          <View style={styles.flex}>
+            <Text variant="bodyStrong" numberOfLines={2} accessibilityLiveRegion="polite">
+              {b.locating && !value ? "Finding you…" : value ? value.address || "Pinned location" : "Drag the map to place the pin"}
+            </Text>
+            <Text variant="caption" color="muted" numberOfLines={1}>
+              {tow ?? (pinned && value ? `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : value ? "Drag the map to fine-tune" : "Or search below")}
+            </Text>
+          </View>
+        </View>
+
+        <LocationAutocompleteField token={b.token} icon="search" variant="compact" value={search} onChangeText={setSearch}
+          placeholder={step === "pickup" ? "Search street, area or landmark" : "Search workshop or drop-off"} onSelect={choose}
+          near={b.pickup ?? undefined} />
+
+        {step === "pickup" && b.favorites.favoriteLocations.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {b.favorites.favoriteLocations.filter((f) => f.latitude != null && f.longitude != null).map((f) => (
+              <Button key={f.id} title={f.label} icon="bookmark-outline" size="small" variant="secondary" fullWidth={false}
+                onPress={() => choose(normalizeLocation({ latitude: f.latitude!, longitude: f.longitude!, address: f.addressText,
+                  source: f.source || "unknown", placeId: f.placeId }))} />
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {b.error ? <Banner tone="danger" message={b.error} /> : null}
+      </BottomSheet>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: tokens.color.surface },
+  map: { flex: 1 },
+  flex: { flex: 1 },
+  address: {
+    flexDirection: "row", alignItems: "center", gap: tokens.space.md, padding: tokens.space.md,
+    borderRadius: tokens.radius.control, backgroundColor: tokens.color.cloud
+  },
+  addressIcon: {
+    width: tokens.sizes.buttonSmall, height: tokens.sizes.buttonSmall, borderRadius: tokens.radius.control,
+    alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.mist
+  },
+  addressIconDrop: { backgroundColor: tokens.color.dangerSoft },
+  chips: { gap: tokens.space.sm }
+});

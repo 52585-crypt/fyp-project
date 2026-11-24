@@ -12,7 +12,7 @@ type Props = {
   peek?: number;
   /** Expanded height as a fraction of the window. */
   maxRatio?: number;
-  /** Fixed sheets have no drag handle and stay at `peek` (or their content height when `fit`). */
+  /** Fixed sheets have no drag handle, size to their content and sit in the layout flow (docked under a map). */
   fixed?: boolean;
   /** Sit flush on top of a tab bar instead of the screen bottom (skips the safe-area inset). */
   aboveTabBar?: boolean;
@@ -63,7 +63,7 @@ export function BottomSheet({
   }), [fixed, high, low, height]);
 
   return (
-    <Animated.View testID={testID} style={[styles.sheet, { height: fixed ? undefined : height, paddingBottom: bottomInset }]}>
+    <Animated.View testID={testID} style={[styles.sheet, fixed ? styles.docked : { height }, { paddingBottom: bottomInset }]}>
       {fixed ? <View style={styles.fixedTop} /> : (
         <View {...pan.panHandlers}>
           <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${accessibilityLabel.toLowerCase()}`}
@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: tokens.radius.sheet, borderTopRightRadius: tokens.radius.sheet, overflow: "hidden",
     width: "100%", maxWidth: tokens.sizes.maxContent, alignSelf: "center", ...tokens.shadow.sheet
   },
+  docked: { position: "relative", marginTop: -tokens.radius.sheet },
   flex: { flex: 1 },
   handleArea: { alignItems: "center", paddingTop: tokens.space.md, paddingBottom: tokens.space.sm, minHeight: tokens.space.xl },
   handle: { width: tokens.sizes.sheetHandle, height: tokens.sizes.sheetHandleHeight, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.line },

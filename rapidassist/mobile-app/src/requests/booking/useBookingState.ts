@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { successFeedback } from "../../design/haptics";
 import { customerRoutes } from "../../navigation/routes";
 import { getCurrentForegroundLocation } from "../../services/currentLocation";
+import { readableAddress } from "../../services/reverseGeocode";
 import { manualMapLocation, normalizeLocation, selectedRequestLocations, type NormalizedLocation } from "../../services/normalizedLocation";
 import { useFavoriteLocations } from "../../services/useFavoriteLocations";
 import { coordinatesFromUnknown, type Coordinate } from "../../utils/distance";
@@ -86,6 +87,23 @@ export function useBookingState() {
     setError(null);
   }
 
+  /** Pin screen: the map centre is now this target's location. The street address resolves in the background. */
+  function pinLocation(target: "pickup" | "destination", coordinate: Coordinate) {
+    const loc = manualMapLocation(coordinate, target === "pickup" ? "Pinned pickup" : "Pinned drop-off");
+    if (!loc) return setError("The map returned invalid coordinates. Your location was not changed.");
+    const set = target === "pickup" ? setPickup : setDestination;
+    set(loc);
+    setError(null);
+    void readableAddress(coordinate).then((text) => {
+      if (text) set((v) => v && v.latitude === loc.latitude && v.longitude === loc.longitude ? { ...v, address: text } : v);
+    });
+  }
+
+  /** Moves the booking map camera to a point (search result, step change). */
+  function focusOn(coordinate: Coordinate) {
+    setCameraFocus((v) => ({ coordinate, requestId: (v?.requestId || 0) + 1 }));
+  }
+
   async function recenter() {
     try {
       const { coordinate } = await getCurrentForegroundLocation();
@@ -156,7 +174,7 @@ export function useBookingState() {
     problem, setProblem, fuelType, setFuelType, liters, setLiters, litersNumber, mechanicIssue, setMechanicIssue,
     priority, setPriority, description, setDescription, locating, currentLocation, cameraFocus, nearby,
     error, setError, submitting, favorites, route, estimate, waitingForRoute,
-    setFromMap, recenter, useCurrentLocation, validate, submit
+    setFromMap, pinLocation, focusOn, recenter, useCurrentLocation, validate, submit
   };
 }
 

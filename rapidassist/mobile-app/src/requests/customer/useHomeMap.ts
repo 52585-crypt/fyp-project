@@ -1,19 +1,7 @@
-import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 import { getCurrentForegroundLocation } from "../../services/currentLocation";
+import { readableAddress } from "../../services/reverseGeocode";
 import type { Coordinate } from "../../utils/distance";
-
-/** Best-effort street address. Android uses the platform geocoder; web has none, so it returns null. */
-export async function readableAddress(c: Coordinate): Promise<string | null> {
-  if (Platform.OS === "web") return null;
-  try {
-    const [a] = await Location.reverseGeocodeAsync(c);
-    return a ? [a.name, a.street, a.city].filter(Boolean).filter((v, i, all) => all.indexOf(v) === i).join(", ") || null : null;
-  } catch {
-    return null;
-  }
-}
 
 /** Home map: the customer's GPS position (asked once on open) plus a recentre action. */
 export function useHomeMap() {

@@ -42,7 +42,8 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
     <View style={[styles.fill, style]} testID={testID} accessibilityLabel={accessibilityLabel}>
       <MapView ref={map} provider={PROVIDER_GOOGLE} style={styles.fill} onMapReady={place}
         initialRegion={{ ...start, latitudeDelta: DELTA, longitudeDelta: DELTA }}
-        mapPadding={{ top: inset.top, bottom: inset.bottom, left: 0, right: 0 }}
+        // Pin mode: no padding, so the map centre stays exactly under the fixed pin.
+        mapPadding={onCenterChange ? undefined : { top: inset.top, bottom: inset.bottom, left: 0, right: 0 }}
         toolbarEnabled={false} showsCompass={false} showsMyLocationButton={false}
         onRegionChangeComplete={onCenterChange ? (region: Region, details?: Details) => {
           if (details?.isGesture) onCenterChange({ latitude: region.latitude, longitude: region.longitude });

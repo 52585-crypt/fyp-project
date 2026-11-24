@@ -49,7 +49,8 @@ function px(lat,lng,z){const s=Math.sin(Math.max(-85,Math.min(85,lat))*Math.PI/1
 function ll(x,y,z){const n=256*Math.pow(2,z),lng=x/n*360-180,k=Math.PI-2*Math.PI*y/n;return{lat:180/Math.PI*Math.atan(0.5*(Math.exp(k)-Math.exp(-k))),lng};}
 function send(m){m.id=boot.id;const t=JSON.stringify(m);if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(t);else parent.postMessage({rapidassistMap:t},'*');}
 function pts(){return st.markers.map(m=>m.coordinate).concat(st.route);}
-function centerOn(lat,lng,z){const o=px(lat,lng,z);const c=ll(o.x,o.y+(st.inset.bottom-st.inset.top)/2,z);cam={lat:c.lat,lng:c.lng,z};}
+// Pin mode keeps the target under the fixed centre pin; otherwise centre it in the gap between overlays.
+function centerOn(lat,lng,z){const o=px(lat,lng,z);const c=ll(o.x,o.y+(st.pinMode?0:(st.inset.bottom-st.inset.top)/2),z);cam={lat:c.lat,lng:c.lng,z};}
 function fit(){const p=pts();const top=st.inset.top+${MAP_CANVAS_EDGE},bot=st.inset.bottom+${MAP_CANVAS_EDGE};
  if(p.length===0)return;if(p.length===1){centerOn(p[0].latitude,p[0].longitude,${MAP_CANVAS_FOCUS_ZOOM});return;}
  else{let z=17;for(;z>3;z--){const q=p.map(c=>px(c.latitude,c.longitude,z));const w=Math.max(...q.map(a=>a.x))-Math.min(...q.map(a=>a.x)),h=Math.max(...q.map(a=>a.y))-Math.min(...q.map(a=>a.y));if(w<W()-2*${MAP_CANVAS_EDGE}&&h<H()-top-bot)break;}

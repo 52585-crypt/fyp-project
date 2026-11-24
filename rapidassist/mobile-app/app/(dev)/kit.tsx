@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import {
-  Badge, Banner, BottomSheet, Button, Card, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
+  Badge, Banner, BottomSheet, Button, Card, CenterPin, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
   PersonCard, PriceBreakdown, ProgressStepper, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader,
   Select, ServiceTile, SkeletonCard, StatTile, StatusTimeline, SuccessHero, Text, TextArea
 } from "../../src/design/components";
@@ -115,6 +115,7 @@ export default function KitGallery() {
           { id: "a", kind: "pickup", coordinate: { latitude: 31.5204, longitude: 74.3587 }, label: "Pickup" },
           { id: "b", kind: "provider", coordinate: { latitude: 31.5304, longitude: 74.3487 } }
         ]} />
+        <CenterPin label="Help here" />
         <BottomSheet fixed>
           <Text variant="headline">Where do you need help?</Text>
           <Text variant="bodySmall" color="muted">Sheet radius 28 · card radius 20 · controls 14</Text>
