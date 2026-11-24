@@ -5,6 +5,7 @@ const { roleFilter } = require("../utils/accountRoles");
 const { Vehicle } = require("../models/Vehicle");
 const { Payment, recordedCashFilter } = require("../models/Payment");
 const { DispatchOffer } = require("../models/DispatchOffer");
+const { matchingExplanation } = require("../services/matchingExplanation");
 const { requireAdmin } = require("../middleware/auth.middleware");
 const adminRequests = require("./adminRequests.routes");
 const adminCustomers = require("./adminCustomers.routes");
@@ -297,9 +298,7 @@ router.get("/active-jobs", async (req, res, next) => {
           components: offer.components,
           outcome: offer.outcome,
           responseSeconds: offer.responseSeconds,
-          explanation: offer.algorithmVersion === "batch-mincost-v1"
-            ? `Selected by the batch optimizer using ${offer.priority} priority and ${Math.max(1, Math.round((offer.travelDurationSeconds || 0) / 60))}-minute travel time (${offer.routeSource}).`
-            : `Selected using proximity ${Math.round(offer.components.proximity * 100)}%, adjusted rating ${Math.round(offer.components.rating * 100)}%, experience ${Math.round(offer.components.experience * 100)}%, and response speed ${Math.round(offer.components.responseSpeed * 100)}%.`
+          explanation: matchingExplanation(offer)
         } : null
       };
     });

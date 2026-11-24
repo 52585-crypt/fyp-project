@@ -48,6 +48,12 @@ function forbidden(message) {
   return err;
 }
 
+function conflict(message) {
+  const err = new Error(message);
+  err.statusCode = 409;
+  return err;
+}
+
 function requireProvider(req) {
   if (req.authRole !== "mechanic") throw forbidden("Provider account required");
 }
@@ -868,30 +874,43 @@ async function requestExtraWork(req, res, next) {
     const description = normalizeStr(req.body?.description) || null;
     if (!description && !partName) throw badRequest("Extra work description or partName is required");
 
-    request.mechanicDetails.extraWork = {
-      partName: partName || null,
-      partPrice,
-      laborCharge,
-      estimatedTime,
-      description,
-      approvedByUser: false,
-      status: "pending",
-      requestedAt: new Date(),
-      decidedAt: null
-    };
-    request.addStatus("extra_work_requested", req.user._id, "Provider requested extra work approval");
-    await request.save();
+    const now = new Date();
+    // One conditional write: applies only if the job is still this provider's mechanic job in inspection_started,
+    // so a cancellation (or any other status change) committed after the read above is never overwritten.
+    const updated = await ServiceRequest.findOneAndUpdate(
+      { _id: request._id, providerId: req.user._id, category: "mechanic", status: "inspection_started" },
+      {
+        $set: {
+          status: "extra_work_requested",
+          "mechanicDetails.extraWork": {
+            partName: partName || null,
+            partPrice,
+            laborCharge,
+            estimatedTime,
+            description,
+            approvedByUser: false,
+            status: "pending",
+            requestedAt: now,
+            decidedAt: null
+          }
+        },
+        $push: { statusTimeline: { status: "extra_work_requested", byUserId: req.user._id, at: now, note: "Provider requested extra work approval" } },
+        $inc: { "dispatch.version": 1, __v: 1 }
+      },
+      { new: true }
+    );
+    if (!updated) throw conflict("Request changed. Refresh and try again.");
 
-    notifyRequest(request, "extra-work");
+    notifyRequest(updated, "extra-work");
     createNotificationSafely({
-      userId: request.userId,
+      userId: updated.userId,
       type: "extra_work_requested",
       title: "Extra work approval needed",
       body: `${description || partName}: PKR ${(partPrice + laborCharge).toLocaleString()}`,
-      data: { requestId: request.id, route: "/(user)/tracking" }
+      data: { requestId: updated.id, route: "/(user)/tracking" }
     });
 
-    res.json({ ok: true, request: (await serializeForViewer(req, [request]))[0] });
+    res.json({ ok: true, request: (await serializeForViewer(req, [updated]))[0] });
   } catch (err) {
     next(err);
   }
@@ -908,27 +927,48 @@ async function approveExtraWork(req, res, next) {
     }
 
     const approved = Boolean(req.body?.approved ?? true);
-    request.mechanicDetails.extraWork.approvedByUser = approved;
-    request.mechanicDetails.extraWork.status = approved ? "approved" : "rejected";
-    request.mechanicDetails.extraWork.decidedAt = new Date();
-    if (approved) {
-      const amount = Number(request.mechanicDetails.extraWork.partPrice || 0) + Number(request.mechanicDetails.extraWork.laborCharge || 0);
-      request.estimate.lines.push({ label: "Approved extra work", amount });
-      request.estimate.total += amount;
-    }
-    request.addStatus(approved ? "work_started" : "inspection_started", req.user._id, approved ? "User approved extra work" : "User rejected extra work");
-    await request.save();
+    const extraWork = request.mechanicDetails.extraWork;
+    const amount = Number(extraWork.partPrice || 0) + Number(extraWork.laborCharge || 0);
+    const nextStatus = approved ? "work_started" : "inspection_started";
+    const now = new Date();
+    // One conditional write on the exact pending extra-work request that was read: a cancellation or another
+    // decision committed in between makes this a 409 instead of being overwritten (and never double-charges).
+    const updated = await ServiceRequest.findOneAndUpdate(
+      {
+        _id: request._id,
+        userId: req.user._id,
+        category: "mechanic",
+        status: "extra_work_requested",
+        "mechanicDetails.extraWork.status": "pending",
+        "mechanicDetails.extraWork.requestedAt": extraWork.requestedAt
+      },
+      {
+        $set: {
+          status: nextStatus,
+          "mechanicDetails.extraWork.approvedByUser": approved,
+          "mechanicDetails.extraWork.status": approved ? "approved" : "rejected",
+          "mechanicDetails.extraWork.decidedAt": now
+        },
+        $push: {
+          statusTimeline: { status: nextStatus, byUserId: req.user._id, at: now, note: approved ? "User approved extra work" : "User rejected extra work" },
+          ...(approved ? { "estimate.lines": { label: "Approved extra work", amount } } : {})
+        },
+        $inc: { "dispatch.version": 1, __v: 1, ...(approved ? { "estimate.total": amount } : {}) }
+      },
+      { new: true }
+    );
+    if (!updated) throw conflict("Request changed. Refresh and try again.");
 
-    notifyRequest(request, "extra-work-decision");
+    notifyRequest(updated, "extra-work-decision");
     createNotificationSafely({
-      userId: request.providerId,
+      userId: updated.providerId,
       type: "extra_work_decision",
-      title: request.mechanicDetails.extraWork.approvedByUser ? "Extra work approved" : "Extra work rejected",
-      body: request.mechanicDetails.extraWork.approvedByUser ? "The customer approved the additional repair." : "The customer declined the additional repair.",
-      data: { requestId: request.id, route: "/(provider)/jobs" }
+      title: approved ? "Extra work approved" : "Extra work rejected",
+      body: approved ? "The customer approved the additional repair." : "The customer declined the additional repair.",
+      data: { requestId: updated.id, route: "/(provider)/jobs" }
     });
 
-    res.json({ ok: true, request: request.toJSONSafe() });
+    res.json({ ok: true, request: updated.toJSONSafe() });
   } catch (err) {
     next(err);
   }
