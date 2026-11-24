@@ -38,6 +38,26 @@ describe("matching benchmark (quick mode)", () => {
     for (const dir of [first.dir, second.dir]) fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it("multi-seed sensitivity: seed 0 reproduces the single-seed run and every seed is aggregated", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "benchmark-sensitivity-"));
+    for (const extra of [[], ["--seeds=3"]]) {
+      const result = spawnSync(process.execPath, [SCRIPT, "--quick", "--only=sensitivity", ...extra, `--out=${dir}`], { encoding: "utf8" });
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const single = JSON.parse(fs.readFileSync(path.join(dir, "sensitivity.json"), "utf8")).results;
+    const multi = JSON.parse(fs.readFileSync(path.join(dir, "sensitivity-multiseed.json"), "utf8"));
+    assert.equal(multi.seeds, 3);
+    assert.equal(multi.perSeed.length, 3);
+    assert.deepEqual(multi.perSeed[0], single, "seed 0 is the original seed");
+    assert.notDeepEqual(multi.perSeed[1], single, "other seeds generate different worlds");
+    const defaultRow = multi.aggregated[0];
+    assert.match(defaultRow.variant, /default/);
+    assert.equal(defaultRow.metrics.meanEta.values.length, 3);
+    assert.equal(defaultRow.metrics.meanEta.diffVsDefault.mean, 0);
+    assert.ok(fs.existsSync(path.join(dir, "sensitivity-multiseed-summary.md")));
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it("computes Gini and nearest-rank percentiles correctly", () => {
     assert.equal(gini([1, 1, 1, 1]), 0);
     assert.ok(Math.abs(gini([0, 0, 0, 4]) - 0.75) < 1e-12);

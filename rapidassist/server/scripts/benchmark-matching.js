@@ -25,6 +25,10 @@ const { planSmartBatch } = require("../src/matching/smartBatch");
 const args = process.argv.slice(2);
 const QUICK = args.includes("--quick");
 const ONLY = args.find((arg) => arg.startsWith("--only="))?.slice(7) || null; // "sensitivity": skip the main benchmark
+// Sensitivity only: number of seeds per scenario. Seed 0 is the original seed (reproduces the single-seed results).
+const SEEDS = Number(args.find((arg) => arg.startsWith("--seeds="))?.slice(8) || 1);
+if (!Number.isInteger(SEEDS) || SEEDS < 1 || SEEDS > 100) throw new Error("--seeds must be an integer between 1 and 100");
+const seeded = (name, seedIndex) => (seedIndex === 0 ? name : `${name}#seed${seedIndex}`);
 const OUT_DIR = path.resolve(args.find((arg) => arg.startsWith("--out="))?.slice(6) || path.join(__dirname, "..", "..", "docs", "smart-matching", "benchmark-results"));
 
 const CONFIG = getMatchingConfig({}); // production defaults: weights .30/.20/.15/.10/.10/.15, U 150, ×1/2/4
@@ -295,7 +299,7 @@ function evaluateBatch(input, assignments) {
   };
 }
 
-function singleBatchCases() {
+function singleBatchCases(seedIndex = 0) {
   const base = [
     ["balanced", [[10, 10], [50, 50], [100, 100], [300, 300]], "default", "single"],
     ["scarce", [[100, 20], [300, 60]], "default", "single"],
@@ -308,7 +312,7 @@ function singleBatchCases() {
     for (const geo of ["uniform", "clustered"]) {
       for (const [requests, providers] of QUICK ? sizes.slice(0, 1).map(([r, p]) => [Math.min(r, 12), Math.min(p, 12)]) : sizes) {
         const name = `${scenario}/${geo}/${requests}x${providers}`;
-        cases.push({ name, scenario, geo, requests, providers, priorityMix, categoryMix, seed: hashString(name) });
+        cases.push({ name, scenario, geo, requests, providers, priorityMix, categoryMix, seed: hashString(seeded(name, seedIndex)) });
       }
     }
   }
@@ -604,7 +608,7 @@ function aggregateBatches(rows, filter = () => true) {
   };
 }
 
-function runSensitivity() {
+function runSensitivity(seedIndex = 0) {
   const now = new Date("2026-11-24T12:00:00Z");
   const variants = [
     ...WEIGHT_SETS.map((set) => {
@@ -614,7 +618,7 @@ function runSensitivity() {
     { label: "(c) existing min-cost flow (reference)", weights: null, solve: APPROACH_FNS["existing-mcf"] },
     { label: "(b) greedy new-cost (reference)", weights: null, solve: APPROACH_FNS["greedy-cost"] }
   ];
-  const cases = singleBatchCases().map((spec) => {
+  const cases = singleBatchCases(seedIndex).map((spec) => {
     const world = generateBatch(spec, now);
     const { pairs, travelTimes } = eligibility(world.requests, world.providers);
     return { spec, input: { ...world, pairs, travelTimes, now }, maxPossibleMatches: maximumMatching(world.requests, world.providers, pairs) };
@@ -624,7 +628,8 @@ function runSensitivity() {
       case: spec.name, scenario: spec.scenario, requests: spec.requests, maxPossibleMatches, ...evaluateBatch(input, variant.solve(input))
     }));
     const simulations = simulationSpecs().map((spec) => {
-      const result = simulate({ ...spec, seed: hashString(spec.name) }, variant.label, variant.solve);
+      // The simulation name also seeds the offer answers, so it changes with the seed too.
+      const result = simulate({ ...spec, name: seeded(spec.name, seedIndex), seed: hashString(seeded(spec.name, seedIndex)) }, variant.label, variant.solve);
       return { scenario: spec.name, arrivals: result.arrivals, served: result.served, servedRate: result.servedRate, urgentServed: result.perPriority.urgent.served,
         urgentArrivals: result.perPriority.urgent.arrivals, meanWaitSeconds: result.meanWaitSeconds, meanEtaSeconds: result.meanEtaSeconds,
         gini: result.jobsPerProvider.gini, jobsStdDev: result.jobsPerProvider.stdDev };
@@ -655,6 +660,55 @@ function summarizeSensitivity(results) {
   out.push(table(["variant", ...sims], results.map((row) => [row.variant, ...row.simulations.map((sim) => fmt(sim.gini, 3))])), "");
   out.push("## Simulation: served / mean ETA (s) / urgent served", "");
   out.push(table(["variant", ...sims], results.map((row) => [row.variant, ...row.simulations.map((sim) => `${sim.served} / ${fmt(sim.meanEtaSeconds, 0)} / ${sim.urgentServed}/${sim.urgentArrivals}`)])), "");
+  return out.join("\n");
+}
+
+
+// ---------------------------------------------------------------- multi-seed sensitivity
+const MULTI_METRICS = [
+  ["meanEta", "mean ETA (s)", (row) => row.singleBatch.all.meanEta, 0],
+  ["urgentEta", "urgent ETA (s)", (row) => row.singleBatch.all.urgentEta, 0],
+  ["abundantEta", "abundant-supply ETA (s)", (row) => row.singleBatch.abundant.meanEta, 0],
+  ["giniUniform", "Gini, uniform normal load", (row) => row.simulations.find((sim) => sim.scenario.startsWith("sim/uniform/normal-load"))?.gini ?? null, 3],
+  ["giniClustered", "Gini, clustered normal load", (row) => row.simulations.find((sim) => sim.scenario.startsWith("sim/clustered/normal-load"))?.gini ?? null, 3],
+  ["overloadServed", "overloaded: served", (row) => row.simulations.find((sim) => sim.scenario.startsWith("sim/uniform/large-overload"))?.served ?? null, 1]
+];
+
+/**
+ * Per variant and metric: mean and sample std-dev over seeds, plus the paired difference to the default
+ * (same seed, so city and offer answers are identical). "significant" = |mean paired difference| > its std-dev.
+ */
+function aggregateSeeds(perSeed) {
+  const variants = perSeed[0].map((row) => row.variant);
+  const sampleSd = (values) => {
+    if (values.length < 2) return 0;
+    const m = mean(values);
+    return Math.sqrt(values.reduce((sum, value) => sum + (value - m) ** 2, 0) / (values.length - 1));
+  };
+  return variants.map((variant, index) => {
+    const metrics = {};
+    for (const [key, , pickValue] of MULTI_METRICS) {
+      const values = perSeed.map((seedRows) => pickValue(seedRows[index]));
+      const defaults = perSeed.map((seedRows) => pickValue(seedRows[0]));
+      if (values.some((value) => value == null)) { metrics[key] = null; continue; }
+      const diffs = values.map((value, seed) => value - defaults[seed]);
+      const diffMean = mean(diffs);
+      const diffSd = sampleSd(diffs);
+      metrics[key] = { mean: mean(values), sd: sampleSd(values), values, diffVsDefault: { mean: diffMean, sd: diffSd, significant: index > 0 && Math.abs(diffMean) > diffSd && diffMean !== 0 } };
+    }
+    return { variant, weights: perSeed[0][index].weights, metrics };
+  });
+}
+
+function summarizeMultiSeed(aggregated, seeds) {
+  const out = [`# Weight sensitivity of (d): ${seeds} seeds per scenario (generated)`, "",
+    "Each cell: mean ± sample std-dev over seeds. † = the mean paired difference to the default (same seed) is larger than its std-dev; Δ shows that difference.", ""];
+  out.push(table(["variant", ...MULTI_METRICS.map(([, label]) => label)], aggregated.map((row) => [row.variant, ...MULTI_METRICS.map(([key, , , digits]) => {
+    const metric = row.metrics[key];
+    if (!metric) return "–";
+    const delta = row.variant.startsWith("(d) default") ? "" : ` (Δ ${metric.diffVsDefault.mean >= 0 ? "+" : ""}${fmt(metric.diffVsDefault.mean, digits)}${metric.diffVsDefault.significant ? " †" : ""})`;
+    return `${fmt(metric.mean, digits)} ± ${fmt(metric.sd, digits)}${delta}`;
+  })])), "");
   return out.join("\n");
 }
 
@@ -691,6 +745,22 @@ function main() {
     ])));
     fs.writeFileSync(path.join(OUT_DIR, "sensitivity-summary.md"), `${summarizeSensitivity(sensitivity)}\n`);
   };
+  if (ONLY === "sensitivity" && SEEDS > 1) {
+    const perSeed = [];
+    for (let seedIndex = 0; seedIndex < SEEDS; seedIndex += 1) {
+      perSeed.push(runSensitivity(seedIndex));
+      console.log(`sensitivity seed ${seedIndex + 1}/${SEEDS} (${((Date.now() - started) / 1000).toFixed(1)} s)`);
+    }
+    const aggregated = aggregateSeeds(perSeed);
+    fs.writeFileSync(path.join(OUT_DIR, "sensitivity-multiseed.json"), `${JSON.stringify({ environment, seeds: SEEDS, aggregated, perSeed }, null, 2)}\n`);
+    fs.writeFileSync(path.join(OUT_DIR, "sensitivity-multiseed.csv"), toCsv(aggregated.flatMap((row) => MULTI_METRICS.filter(([key]) => row.metrics[key]).map(([key, label]) => {
+      const metric = row.metrics[key];
+      return { variant: row.variant, metric: label, mean: metric.mean, sd: metric.sd, diffVsDefaultMean: metric.diffVsDefault.mean, diffVsDefaultSd: metric.diffVsDefault.sd, significant: metric.diffVsDefault.significant, values: metric.values.join(" ") };
+    }))));
+    fs.writeFileSync(path.join(OUT_DIR, "sensitivity-multiseed-summary.md"), `${summarizeMultiSeed(aggregated, SEEDS)}\n`);
+    console.log(`wrote multi-seed sensitivity files to ${OUT_DIR}`);
+    return;
+  }
   if (ONLY === "sensitivity") {
     writeSensitivity();
     console.log(`wrote sensitivity files to ${OUT_DIR}`);
@@ -714,4 +784,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { APPROACH_FNS, WEIGHT_SETS, scaledWeights, evaluateBatch, eligibility, generateBatch, gini, maximumMatching, percentile, simulate };
+module.exports = { APPROACH_FNS, WEIGHT_SETS, aggregateSeeds, scaledWeights, evaluateBatch, eligibility, generateBatch, gini, maximumMatching, percentile, simulate };

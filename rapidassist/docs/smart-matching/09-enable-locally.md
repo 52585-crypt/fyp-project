@@ -86,6 +86,6 @@ A full code rollback (reverting the smart-matching files) would leave the index 
 
 ```
 cd rapidassist/server
-npm test                      # 273 tests, 272 pass, 1 skipped (Stripe CLI) at the time of writing
+npm test                      # 274 tests, 273 pass, 1 skipped (Stripe CLI) at the time of writing
 npm run benchmark:matching    # optional, ~25 s, rewrites docs/smart-matching/benchmark-results/
 ```

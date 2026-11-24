@@ -12,7 +12,9 @@ Runner: `node:test` (`cd rapidassist/server && npm test`). Integration tests use
 | Phase 4: dispatcher branch | 248 | 247 | 0 | 1 | +12 `smartMatching`, +10 `smartBatch` |
 | Phase 5: pending-offer index | 259 | 258 | 0 | 1 | +10 `pendingOffers`, +1 `smartMatching` |
 | Phase 6: fixes | 271 | 270 | 0 | 1 | +8 `requestLifecycleRaces`, +1 `dispatchPriorityOrder`, +3 `matchingExplanation` |
-| **Phase 7: benchmark (final)** | **273** | **272** | **0** | **1** | +2 `benchmarkMatching` |
+| Phase 7: benchmark | 273 | 272 | 0 | 1 | +2 `benchmarkMatching` |
+| Phase 7b: weight sensitivity | 273 | 272 | 0 | 1 | sensitivity files asserted in the existing smoke test |
+| **Multi-seed sensitivity (final)** | **274** | **273** | **0** | **1** | +1 `benchmarkMatching` (multi-seed run) |
 
 The one skipped test is the pre-existing Stripe CLI sandbox test (`stripePayments.test.js`), skipped by design without the Stripe CLI. The full run takes about 13 s.
 
@@ -28,7 +30,7 @@ The one skipped test is the pre-existing Stripe CLI sandbox test (`stripePayment
 | `requestLifecycleRaces.test.js` | 8 | Extra-work request and approval racing a cancellation (deterministic interleaving and a 30-round stress test). Single-write response time for decline, expiry and acceptance, with a simulated crash before any second write. The plain extra-work and approval flows still work. |
 | `dispatchPriorityOrder.test.js` | 1 | Batch order urgent > high > normal, then oldest, then id. |
 | `matchingExplanation.test.js` | 3 | Admin explanation text for smart offers. The other two wordings are unchanged. |
-| `benchmarkMatching.test.js` | 2 | `--quick` benchmark run succeeds, is deterministic apart from timings, never makes an invalid assignment, and Hungarian reaches the maximum matches. Gini and percentile helpers. |
+| `benchmarkMatching.test.js` | 3 | `--quick` benchmark run succeeds (including the sensitivity files), is deterministic apart from timings, never makes an invalid assignment, and Hungarian reaches the maximum matches. The multi-seed sensitivity run reproduces the single-seed results for seed 0 and aggregates every seed. Gini and percentile helpers. |
 
 The existing `dispatch.test.js` (71 tests) runs with the pending-offer index built in its setup (+3 lines). Nothing else in it was changed.
 
