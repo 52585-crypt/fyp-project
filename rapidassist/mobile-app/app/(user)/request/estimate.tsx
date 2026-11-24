@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PhotoIssueCard } from "../../../src/ai/PhotoIssueCard";
 import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
 import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
 import { MapCanvas, type MapCanvasMarker } from "../../../src/components/maps/MapCanvas";
@@ -67,6 +68,14 @@ export default function ProblemAndFare() {
             {b.category === "car_towing" ? <TowingFields b={b} /> : null}
             {b.category === "fuel_delivery" ? <FuelFields b={b} /> : null}
           </Section>
+
+          <Card tone="soft">
+            <PhotoIssueCard token={b.token} onApply={(pick) => {
+              setManualVersion((v) => v + 1);
+              if (pick.mechanicIssue) b.setMechanicIssue(pick.mechanicIssue);
+              if (pick.category !== b.category) b.setCategory(pick.category);
+            }} />
+          </Card>
 
           {b.category === "mechanic" ? (
             <Card tone="soft">
