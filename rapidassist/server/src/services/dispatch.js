@@ -238,6 +238,68 @@ async function expireSearches(now) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Diagnostics: why a searching request found nobody. Mirrors eligibleQuery() + candidatePairs() condition by
+// condition. On by default in development; in production/test only with DISPATCH_DEBUG=true. Provider ids only.
+const DIAGNOSTIC_INTERVAL_MS = 30000;
+const lastDiagnostic = new Map();
+const diagnosticsEnabled = () => process.env.DISPATCH_DEBUG === "true"
+  || (process.env.DISPATCH_DEBUG !== "false" && !["production", "test"].includes(process.env.NODE_ENV));
+const ageSeconds = (date, now) => Math.round((+now - +new Date(date)) / 1000);
+
+/** Every reason this provider cannot be offered this request right now; an empty list means eligible. */
+function exclusionReasons(provider, request, now = new Date()) {
+  const reasons = [];
+  const state = provider.providerState || {};
+  const location = state.currentLocation;
+  if (provider.id === String(request.userId)) reasons.push("is the customer");
+  if (provider.mechanicProfile?.serviceCategory !== categoryFor(request.category)) {
+    reasons.push(`category ${provider.mechanicProfile?.serviceCategory ?? "none"} != ${categoryFor(request.category)}`);
+  }
+  if (provider.verificationStatus !== "verified") reasons.push(`verification ${provider.verificationStatus}`);
+  if (!state.isOnline) reasons.push("offline");
+  if (state.activeRequestId) reasons.push(`busy with request ${state.activeRequestId}`);
+  if (state.reservedOfferId && state.reservedUntil && new Date(state.reservedUntil) > now) reasons.push("reserved for another offer");
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+    reasons.push("no location");
+  } else {
+    const limit = FRESH_MS / 1000;
+    if (!location.updatedAt || ageSeconds(location.updatedAt, now) > limit) {
+      reasons.push(`location received ${location.updatedAt ? ageSeconds(location.updatedAt, now) + "s" : "never"} ago (max ${limit}s)`);
+    }
+    if (location.capturedAt && ageSeconds(location.capturedAt, now) > limit) {
+      reasons.push(`GPS fix ${ageSeconds(location.capturedAt, now)}s old (max ${limit}s)`);
+    }
+    const km = distanceKm(request.pickupLocation, location);
+    if (!withinDispatchRadius(km, request.dispatch.radiusKm)) reasons.push(`${km.toFixed(1)} km away (radius ${request.dispatch.radiusKm} km)`);
+  }
+  if ((request.dispatch.attemptedProviderIds || []).map(String).includes(provider.id)) reasons.push("already offered this request");
+  return reasons;
+}
+
+async function logDispatchDiagnostics(requests, now = new Date()) {
+  if (!diagnosticsEnabled()) return;
+  for (const request of requests) {
+    const last = lastDiagnostic.get(request.id) || 0;
+    if (+now - last < DIAGNOSTIC_INTERVAL_MS) continue;
+    lastDiagnostic.set(request.id, +now);
+    const wanted = categoryFor(request.category);
+    const providers = await User.find({ ...roleFilter("mechanic"), "mechanicProfile.serviceCategory": wanted }).limit(25);
+    const head = `[dispatch] request ${request.id} ${request.category}->${wanted} radius ${request.dispatch.radiusKm} km: no offer this round`;
+    if (!providers.length) {
+      const others = await User.countDocuments({ ...roleFilter("mechanic"), "providerState.isOnline": true });
+      console.info(`${head}; 0 ${wanted} providers exist (${others} online in other categories)`);
+      continue;
+    }
+    console.info(`${head}; checking ${providers.length} ${wanted} provider(s)`);
+    for (const provider of providers) {
+      const reasons = exclusionReasons(provider, request, now);
+      console.info(`[dispatch]   provider ${provider.id}: ${reasons.length ? "excluded - " + reasons.join("; ") : "eligible (waiting for travel-time/assignment)"}`);
+    }
+  }
+  if (lastDiagnostic.size > 500) lastDiagnostic.clear();
+}
+
 function candidatePairs(requests, providers) {
   const pairs = new Map();
   for (const request of requests) {
@@ -343,6 +405,7 @@ async function runDispatchBatchCore(now = new Date()) {
 
   const providers = await User.find(eligibleQuery(null, now));
   if (!providers.length) {
+    await logDispatchDiagnostics(requests, now).catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
     return { assignments: [], unassignedRequestIds: [...unavailableRequestIds, ...requests.map((request) => request.id)], totalCost: 0 };
   }
 
@@ -371,6 +434,9 @@ async function runDispatchBatchCore(now = new Date()) {
     }, batchId, now);
   }
 
+  const offered = new Set(solution.assignments.map((assignment) => String(assignment.requestId)));
+  await logDispatchDiagnostics(requests.filter((request) => !offered.has(request.id)), now)
+    .catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
   return { ...solution, unassignedRequestIds: [...solution.unassignedRequestIds, ...unavailableRequestIds], batchId };
 }
 
@@ -554,6 +620,7 @@ module.exports = {
   distanceKm,
   eligibleQuery,
   isFreshProviderLocation,
+  exclusionReasons,
   newDispatch,
   radiusFor,
   recoverReservations,

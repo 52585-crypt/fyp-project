@@ -17,7 +17,7 @@ const { ChatMessage } = require("../src/models/ChatMessage");
 const { Notification } = require("../src/models/Notification");
 const { DeviceToken } = require("../src/models/DeviceToken");
 const { signAccessToken } = require("../src/utils/jwt");
-const { newDispatch, advanceDispatch, acceptOffer, declineOffer, recoverReservations, runDispatchBatch, startDispatchWorker, distanceKm, withinDispatchRadius } = require("../src/services/dispatch");
+const { newDispatch, advanceDispatch, acceptOffer, declineOffer, recoverReservations, runDispatchBatch, startDispatchWorker, distanceKm, withinDispatchRadius, exclusionReasons, isFreshProviderLocation } = require("../src/services/dispatch");
 const { ensureOperationalLocation } = require("../src/services/operationalLocation");
 const { fallbackBlock } = require("../src/services/travelTimeMatrix");
 const { cleanupGoogleLocations } = require("../src/services/googleLocationCleanup");
@@ -907,6 +907,48 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const stale = await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 31.54, capturedAt: new Date(newer.getTime() - 10000).toISOString() } });
     assert.equal(stale.status, 409);
     assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 31.53);
+  });
+
+  it("treats a re-sent GPS fix as a heartbeat, not an error", async () => {
+    const p = await provider();
+    const fix = { ...pickup, lat: 31.53, capturedAt: new Date().toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
+    const before = (await User.findById(p.id)).providerState.lastSeenAt;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const again = await api(p, "/api/requests/provider/location", "PATCH", { location: fix });
+    assert.equal(again.status, 200);
+    assert.equal(again.data.ignored, true);
+    const saved = await User.findById(p.id);
+    assert.ok(saved.providerState.lastSeenAt > before, "heartbeat must move even when the fix is not newer");
+    assert.equal(saved.providerState.currentLocation.lat, 31.53);
+  });
+
+  it("measures fix age on the device clock when sentAt is provided (no clock-skew staleness)", async () => {
+    const p = await provider();
+    const skew = 10 * 60 * 1000; // device clock 10 minutes behind the server
+    const deviceNow = Date.now() - skew;
+    const fix = { ...pickup, lat: 31.531, capturedAt: new Date(deviceNow - 2000).toISOString(), sentAt: new Date(deviceNow).toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
+    const stored = (await User.findById(p.id)).providerState.currentLocation;
+    assert.ok(Date.now() - stored.capturedAt.getTime() < 10000, "a 2s-old fix from a skewed device must be stored as ~2s old");
+    assert.equal(isFreshProviderLocation(stored), true);
+    // The next real fix from the same skewed device is newer and accepted.
+    const next = { ...pickup, lat: 31.532, capturedAt: new Date(deviceNow + 3000).toISOString(), sentAt: new Date(deviceNow + 3500).toISOString() };
+    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: next })).status, 200);
+    assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 31.532);
+  });
+
+  it("explains each reason a provider is excluded from a request", async () => {
+    const job = await request();
+    const ok = await provider();
+    assert.deepEqual(exclusionReasons(await User.findById(ok.id), job), []);
+    const stale = new Date(Date.now() - 200000);
+    const bad = await provider({ verificationStatus: "pending", mechanicProfile: { serviceCategory: "towing" },
+      providerState: { isOnline: false, currentLocation: { ...pickup, lat: 31.7, updatedAt: stale, capturedAt: stale } } });
+    const reasons = exclusionReasons(await User.findById(bad.id), job).join(" | ");
+    for (const part of ["category towing != mechanic", "verification pending", "offline", "location received", "GPS fix", "km away (radius 8 km)"]) {
+      assert.ok(reasons.includes(part), `missing "${part}" in: ${reasons}`);
+    }
   });
 
   it("persists explainable matching decisions and response-time metrics", async () => {

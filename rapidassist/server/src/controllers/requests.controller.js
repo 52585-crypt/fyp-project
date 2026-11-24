@@ -159,8 +159,16 @@ function optionalLocation(input) {
   const lng = parseNum(input.lng);
   if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest("Valid location lat/lng required");
   const now = new Date();
-  const capturedAt = input.capturedAt ? new Date(input.capturedAt) : now;
-  if (Number.isNaN(capturedAt.getTime()) || capturedAt.getTime() > now.getTime() + 5 * 60 * 1000) {
+  const deviceCapturedAt = input.capturedAt ? new Date(input.capturedAt) : now;
+  if (Number.isNaN(deviceCapturedAt.getTime())) throw badRequest("Invalid location capture time");
+  // capturedAt comes from the device clock, which can be minutes off the server's. When the client also sends
+  // sentAt (device clock at send time), the fix's age is measured on one clock and rebased onto server time,
+  // so freshness and ordering never depend on device/server clock skew.
+  const sentAt = input.sentAt ? new Date(input.sentAt) : null;
+  let capturedAt = deviceCapturedAt;
+  if (sentAt && !Number.isNaN(sentAt.getTime())) {
+    capturedAt = new Date(now.getTime() - Math.max(0, sentAt.getTime() - deviceCapturedAt.getTime()));
+  } else if (deviceCapturedAt.getTime() > now.getTime() + 5 * 60 * 1000) {
     throw badRequest("Invalid location capture time");
   }
   const optionalNumber = (value) => {
@@ -179,6 +187,9 @@ function optionalLocation(input) {
     updatedAt: now
   };
 }
+
+/** Re-sent fixes within this window of the stored one are treated as duplicates, not out-of-order updates. */
+const DUPLICATE_FIX_TOLERANCE_MS = 2000;
 
 function newerProviderLocationQuery(location) {
   return {
@@ -739,6 +750,18 @@ async function updateProviderLocation(req, res, next) {
     );
 
     if (!provider) {
+      // Not newer than the stored fix. Still a sign of life, so the heartbeat always moves.
+      const current = await User.findOneAndUpdate(
+        { _id: req.user._id },
+        { $set: { "providerState.lastSeenAt": new Date() } },
+        { new: true }
+      );
+      const storedAt = current?.providerState?.currentLocation?.capturedAt;
+      // The same fix sent again (cached position, request jitter) is a heartbeat, not an error.
+      if (current && storedAt && storedAt.getTime() - location.capturedAt.getTime() <= DUPLICATE_FIX_TOLERANCE_MS) {
+        return res.json({ ok: true, ignored: true, provider: current.toSafeJSON(req.authRole) });
+      }
+      // A genuinely older fix arriving out of order must never overwrite a newer position.
       const err = new Error("Older location update ignored");
       err.statusCode = 409;
       throw err;
