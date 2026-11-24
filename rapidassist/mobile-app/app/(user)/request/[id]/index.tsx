@@ -5,9 +5,9 @@ import { tapFeedback } from "../../../../src/design/haptics";
 import { tokens } from "../../../../src/design/tokens";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { ApproveExtraWorkStage, CancelledStage, CompletedStage } from "../../../../src/requests/customer/ClosureStages";
-import { ArrivedStage, AssignedStage, TrackingStage } from "../../../../src/requests/customer/LiveStages";
 import { LiveRequestMap, mapFirstStages } from "../../../../src/requests/customer/LiveRequestMap";
 import { OffersSheet } from "../../../../src/requests/customer/OffersSheet";
+import { TrackingSheet } from "../../../../src/requests/customer/TrackingSheet";
 import {
   ConfirmCompletionStage, FuelDeliveredStage, InProgressStage, ReachedDestinationStage, VehiclePickedUpStage
 } from "../../../../src/requests/customer/ServiceStages";
@@ -20,6 +20,7 @@ import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
 
 const sosStages: ReadonlyArray<CustomerStage> = ["assigned", "tracking", "arrived", "vehicle_picked_up", "reached_destination"];
 const OFFERS_PEEK = tokens.sizes.sheetPeek + tokens.sizes.avatarLarge;
+const TRACKING_PEEK = tokens.sizes.sheetPeek;
 
 /** Stage-driven live request. Which content shows is decided only by getCustomerStage(). */
 export default function CustomerRequestScreen() {
@@ -41,11 +42,12 @@ export default function CustomerRequestScreen() {
   ) : null;
 
   if (request && stage && mapFirstStages.includes(stage)) {
+    const searching = stage === "searching" || stage === "no_provider";
     return (
-      <LiveRequestMap stage={stage} request={request} state={state} right={sos} peek={OFFERS_PEEK}
-        title={titleFor(stage, request.category)} subtitle={getServiceTitle(request.category)}>
+      <LiveRequestMap stage={stage} request={request} state={state} right={sos} peek={searching ? OFFERS_PEEK : TRACKING_PEEK}
+        title={titleFor(stage, request.category)} subtitle={searching || stage === "arrived" ? getServiceTitle(request.category) : `ETA ${state.eta}`}>
         {paused}
-        <OffersSheet state={state} request={request} unavailable={stage === "no_provider"} />
+        <StageView stage={stage} state={state} request={request} />
       </LiveRequestMap>
     );
   }
@@ -70,9 +72,9 @@ function StageView({ stage, ...props }: { stage: CustomerStage } & StageProps) {
   switch (stage) {
     case "searching": return <OffersSheet {...props} unavailable={false} />;
     case "no_provider": return <OffersSheet {...props} unavailable />;
-    case "assigned": return <AssignedStage {...props} />;
-    case "tracking": return <TrackingStage {...props} />;
-    case "arrived": return <ArrivedStage {...props} />;
+    case "assigned":
+    case "tracking":
+    case "arrived": return <TrackingSheet stage={stage} {...props} />;
     case "vehicle_picked_up": return <VehiclePickedUpStage {...props} />;
     case "reached_destination": return <ReachedDestinationStage {...props} />;
     case "fuel_delivered": return <FuelDeliveredStage {...props} />;

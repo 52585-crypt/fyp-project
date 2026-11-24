@@ -12,7 +12,7 @@ import { providerNoun, type CustomerStage } from "../stages";
 import type { CustomerRequestState } from "../useCustomerRequest";
 
 /** Stages shown map-first (live map + bottom sheet); the rest keep the scrolling stage layout. */
-export const mapFirstStages: ReadonlyArray<CustomerStage> = ["searching", "no_provider"];
+export const mapFirstStages: ReadonlyArray<CustomerStage> = ["searching", "no_provider", "assigned", "tracking", "arrived"];
 
 function point(l: ServiceRequest["pickupLocation"] | null | undefined) {
   return hasOperationalCoordinates(l) ? { latitude: l.lat, longitude: l.lng } : null;
