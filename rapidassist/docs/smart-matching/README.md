@@ -24,3 +24,17 @@ On 22 seeded single-batch scenarios (3,280 requests; Node 22, i5-13420H; straigh
 
 Both exact solvers agree on identical cost matrices, so the differences come from the cost function and the priority policy, not from the algorithm.
 
+## Summary for the report
+
+All figures are from the seeded synthetic benchmark (`07-benchmark.md`; Node 22, i5-13420H, straight-line ETAs). They are not production measurements.
+
+- **Large gains over nearest-provider-first.** Across 22 single-batch scenarios the smart engine served every urgent request (331/331 against 166/331, 50.2 %) and 85.1 % of high-priority requests against 59.4 %. It always reached the maximum possible number of matches (22/22 cases against 12/22), with a 13 % shorter mean ETA (211 s vs 243 s). In loaded simulations, mean waiting time to assignment fell from 66–111 s to 46–48 s.
+- **Quality on par with the existing optimal solver, and much faster at scale.** Both are exact optimisers, and they produce identical totals on identical cost matrices. Against the existing min-cost-flow solver, the smart engine has the same urgent coverage (100 %), the same or one more match (2122 vs 2121 of 2122), and a similar mean ETA (211 s vs 206 s). It is not better on ETA, and it is worse on urgent ETA (219 s vs 170 s). It is **5.5 × faster at 300 × 300** (median 67 ms vs 368 ms).
+- **Guarantees, with proof and tests.** Every batch makes the maximum possible number of matches, and a higher-priority request always wins a contested provider (`04-hungarian.md` §4: per-batch U floor, transversal-matroid argument). Exactness is verified against brute force and the existing solver, and integer arithmetic stays far inside `MAX_SAFE_INTEGER`.
+- **Explainable and configurable cost.** Every offer stores its six cost terms (ETA, rating, acceptance, response time, workload, urgency) and the weights used. The admin API explains each decision. Weights, priors, the priority multipliers and the batch cap are environment settings, and the engine is off by default with a one-variable rollback.
+- **Known limitations.**
+  - When providers are plentiful, mean ETA is longer than the existing solver's (159 s vs 105 s at default weights; E 0.70 narrows it to 112 s).
+  - At default weights there is no measurable fairness gain. A higher fairness weight lowers workload Gini by about 30 % at normal load, at an ETA cost, and has no effect under peak load.
+  - Under overload a greedy policy serves about 4.7 % more requests (913 vs 872), because batch-optimal priority-first matching is myopic.
+  - Strict priority can leave normal requests unserved when providers are scarce.
+  - Production ETA depends on a public OSRM server (`08-limitations.md`).

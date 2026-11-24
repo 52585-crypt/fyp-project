@@ -1,0 +1,73 @@
+variant,part,cases,casesAtMax,matched,possible,requests,urgentRate,highRate,normalRate,meanEta,urgentEta,highEta,scenario,arrivals,served,servedRate,urgentServed,urgentArrivals,meanWaitSeconds,meanEtaSeconds,gini,jobsStdDev
+(d) default,single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,211.4533,218.8308,232.4736,,,,,,,,,,
+(d) default,single-batch/abundant,4,4,160,160,160,1,1,1,159.1938,130.4444,172.1111,,,,,,,,,,
+(d) default,single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.9063,375.3158,359.8173,,,,,,,,,,
+(d) default,single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,186.2406,195.1643,169.8938,,,,,,,,,,
+(d) default,simulation,,,,,,,,,,,,sim/uniform/normal-load,118,116,0.9831,7,7,15,444.2069,0.1644,0.6289
+(d) default,simulation,,,,,,,,,,,,sim/uniform/peak-load,235,152,0.6468,13,17,46.1842,540.9145,0.105,0.5312
+(d) default,simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,15.2101,314.2521,0.1662,0.6453
+(d) default,simulation,,,,,,,,,,,,sim/clustered/peak-load,245,162,0.6612,12,14,45.6173,431.2531,0.1019,0.5568
+(d) default,simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,872,0.5798,82,84,48.1651,360.8739,0.0878,0.5459
+(d) eta-heavy (E 0.50),single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,208.0966,215.003,229.852,,,,,,,,,,
+(d) eta-heavy (E 0.50),single-batch/abundant,4,4,160,160,160,1,1,1,131.5188,116.1111,159.2778,,,,,,,,,,
+(d) eta-heavy (E 0.50),single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.8188,375.3158,359.8654,,,,,,,,,,
+(d) eta-heavy (E 0.50),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,185.5125,194.0773,169.823,,,,,,,,,,
+(d) eta-heavy (E 0.50),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,116,0.9831,7,7,15.3448,428.0948,0.1644,0.6289
+(d) eta-heavy (E 0.50),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,151,0.6426,14,17,51.1258,554.8874,0.1058,0.532
+(d) eta-heavy (E 0.50),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,14.6218,300.1513,0.1696,0.6706
+(d) eta-heavy (E 0.50),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,167,0.6816,11,14,41.3772,404.7006,0.0789,0.4862
+(d) eta-heavy (E 0.50),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,869,0.5778,83,84,48.1588,368.8251,0.0933,0.5651
+(d) eta-dominant (E 0.70),single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,206.2884,211.139,229.6364,,,,,,,,,,
+(d) eta-dominant (E 0.70),single-batch/abundant,4,4,160,160,160,1,1,1,111.5813,103.2222,117.7222,,,,,,,,,,
+(d) eta-dominant (E 0.70),single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.8188,375.3158,359.8654,,,,,,,,,,
+(d) eta-dominant (E 0.70),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,185.2031,189.5169,177.3009,,,,,,,,,,
+(d) eta-dominant (E 0.70),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,113,0.9576,6,7,15.0442,414.6814,0.1497,0.58
+(d) eta-dominant (E 0.70),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,152,0.6468,14,17,48.1579,542.1382,0.105,0.5312
+(d) eta-dominant (E 0.70),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,13.4454,283.5546,0.1794,0.695
+(d) eta-dominant (E 0.70),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,168,0.6857,10,14,42.3214,409.0774,0.0839,0.5099
+(d) eta-dominant (E 0.70),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,877,0.5831,82,84,45.6899,368.5507,0.087,0.5454
+(d) fairness-heavy (F 0.30),single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,215.8652,221.7976,231.6152,,,,,,,,,,
+(d) fairness-heavy (F 0.30),single-batch/abundant,4,4,160,160,160,1,1,1,205.0063,191,179.1667,,,,,,,,,,
+(d) fairness-heavy (F 0.30),single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.9063,375.3158,359.8173,,,,,,,,,,
+(d) fairness-heavy (F 0.30),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,186.2406,196.1787,168.0354,,,,,,,,,,
+(d) fairness-heavy (F 0.30),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,115,0.9746,6,7,17.1304,488.9304,0.1123,0.493
+(d) fairness-heavy (F 0.30),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,152,0.6468,13,17,46.1842,540.9145,0.105,0.5312
+(d) fairness-heavy (F 0.30),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,118,0.9916,4,4,15,321.2881,0.1172,0.5153
+(d) fairness-heavy (F 0.30),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,162,0.6612,12,14,45.6173,431.2531,0.1019,0.5568
+(d) fairness-heavy (F 0.30),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,874,0.5811,82,84,47.6888,360.0343,0.0846,0.5346
+(d) quality-heavy (Q 0.35),single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,212.3063,220.3172,231.8013,,,,,,,,,,
+(d) quality-heavy (Q 0.35),single-batch/abundant,4,4,160,160,160,1,1,1,168.2,169.4444,175.9444,,,,,,,,,,
+(d) quality-heavy (Q 0.35),single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.9063,375.3158,359.8173,,,,,,,,,,
+(d) quality-heavy (Q 0.35),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,186.2406,196.1787,168.0354,,,,,,,,,,
+(d) quality-heavy (Q 0.35),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,115,0.9746,6,7,14.6957,450.0435,0.1372,0.5565
+(d) quality-heavy (Q 0.35),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,152,0.6468,14,17,50.1316,546.1513,0.105,0.5312
+(d) quality-heavy (Q 0.35),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,14.6218,342.5294,0.1483,0.6189
+(d) quality-heavy (Q 0.35),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,170,0.6939,13,14,45.5294,412.7,0.0767,0.4888
+(d) quality-heavy (Q 0.35),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,862,0.5731,84,84,47.0882,382.1381,0.0878,0.5452
+(d) eta+fairness (E 0.45, F 0.25),single-batch/all,22,22,2122,2122,3280,1,0.8507,0.5508,211.6423,214.6103,233.2326,,,,,,,,,,
+(d) eta+fairness (E 0.45, F 0.25),single-batch/abundant,4,4,160,160,160,1,1,1,164.8438,164.3333,172.5,,,,,,,,,,
+(d) eta+fairness (E 0.45, F 0.25),single-batch/scarce,4,4,160,160,800,1,0.972,0.0275,338.8188,375.3158,359.8654,,,,,,,,,,
+(d) eta+fairness (E 0.45, F 0.25),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,185.2719,189.6957,177.1681,,,,,,,,,,
+(d) eta+fairness (E 0.45, F 0.25),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,116,0.9831,7,7,15.6034,432.7069,0.1184,0.5121
+(d) eta+fairness (E 0.45, F 0.25),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,151,0.6426,14,17,53.9073,543.6755,0.1058,0.532
+(d) eta+fairness (E 0.45, F 0.25),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,118,0.9916,4,4,14.2373,295.5254,0.141,0.5764
+(d) eta+fairness (E 0.45, F 0.25),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,170,0.6939,10,14,46.7059,403.8059,0.0678,0.4534
+(d) eta+fairness (E 0.45, F 0.25),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,872,0.5798,82,84,45.7683,358.0023,0.0813,0.5209
+(c) existing min-cost flow (reference),single-batch/all,22,21,2121,2122,3280,1,0.8453,0.5516,206.0858,170.3535,208.9298,,,,,,,,,,
+(c) existing min-cost flow (reference),single-batch/abundant,4,4,160,160,160,1,1,1,105.0438,82.3333,109.7222,,,,,,,,,,
+(c) existing min-cost flow (reference),single-batch/scarce,4,4,160,160,800,1,0.9439,0.0321,310.7688,253.6579,365.9901,,,,,,,,,,
+(c) existing min-cost flow (reference),single-batch/mixedPriority,4,4,320,320,800,1,0.5855,0,189.675,172.2222,221.646,,,,,,,,,,
+(c) existing min-cost flow (reference),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,115,0.9746,6,7,17.7391,434.6348,0.1599,0.6135
+(c) existing min-cost flow (reference),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,154,0.6553,13,17,55.4545,548.3896,0.1028,0.5281
+(c) existing min-cost flow (reference),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,14.5378,283.1176,0.1592,0.6453
+(c) existing min-cost flow (reference),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,169,0.6898,11,14,44.7929,404.858,0.1111,0.6189
+(c) existing min-cost flow (reference),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,880,0.5851,83,84,51.3068,369.5261,0.083,0.5312
+(b) greedy new-cost (reference),single-batch/all,22,12,2066,2122,3280,0.9124,0.6547,0.585,187.5702,179.3212,162.2995,,,,,,,,,,
+(b) greedy new-cost (reference),single-batch/abundant,4,4,160,160,160,1,1,1,164.9625,145.8889,160.5,,,,,,,,,,
+(b) greedy new-cost (reference),single-batch/scarce,4,4,160,160,800,0.8158,0.3271,0.1435,145.225,222.5161,145.0286,,,,,,,,,,
+(b) greedy new-cost (reference),single-batch/mixedPriority,4,4,320,320,800,0.8937,0.4041,0.1425,149.6813,163.3514,147.6282,,,,,,,,,,
+(b) greedy new-cost (reference),simulation,,,,,,,,,,,,sim/uniform/normal-load,118,116,0.9831,7,7,15,444.2069,0.1644,0.6289
+(b) greedy new-cost (reference),simulation,,,,,,,,,,,,sim/uniform/peak-load,235,151,0.6426,11,17,51.5232,501.3113,0.0992,0.4997
+(b) greedy new-cost (reference),simulation,,,,,,,,,,,,sim/clustered/normal-load,119,119,1,4,4,14.8739,314.2521,0.1662,0.6453
+(b) greedy new-cost (reference),simulation,,,,,,,,,,,,sim/clustered/peak-load,245,167,0.6816,10,14,52.0359,386.7365,0.1029,0.58
+(b) greedy new-cost (reference),simulation,,,,,,,,,,,,sim/uniform/large-overload,1504,913,0.607,72,84,59.8686,256.6528,0.0815,0.5429

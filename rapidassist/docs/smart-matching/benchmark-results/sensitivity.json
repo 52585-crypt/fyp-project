@@ -1,0 +1,1034 @@
+{
+  "environment": {
+    "generatedAt": "2026-11-24T11:35:15.336Z",
+    "node": "v22.22.1",
+    "platform": "linux 7.0.0-43-generic",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "logicalCores": 12,
+    "memoryGiB": 14.8,
+    "quick": false,
+    "eta": "straight line at 25 km/h, 60 s floor (services/travelTimeMatrix.js fallbackBlock); OSRM excluded",
+    "config": {
+      "weights": {
+        "E": 0.3,
+        "Q": 0.2,
+        "A": 0.15,
+        "S": 0.1,
+        "F": 0.1,
+        "T": 0.15
+      },
+      "unmatchedBaseCost": 150,
+      "priorityMultipliers": {
+        "normal": 1,
+        "high": 2,
+        "urgent": 4
+      },
+      "maxBatchSize": 300,
+      "radiusKm": 8
+    }
+  },
+  "results": [
+    {
+      "variant": "(d) default",
+      "weights": {
+        "E": 0.3,
+        "Q": 0.2,
+        "A": 0.15,
+        "S": 0.1,
+        "F": 0.1,
+        "T": 0.15
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 211.45334590009426,
+          "urgentEta": 218.83081570996978,
+          "highEta": 232.47357293868922
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 159.19375,
+          "urgentEta": 130.44444444444446,
+          "highEta": 172.11111111111111
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.90625,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.8173076923077
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 186.240625,
+          "urgentEta": 195.16425120772948,
+          "highEta": 169.89380530973452
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 116,
+          "servedRate": 0.9830508474576272,
+          "urgentServed": 7,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 15,
+          "meanEtaSeconds": 444.2068965517241,
+          "gini": 0.16436781609195417,
+          "jobsStdDev": 0.6289320754704405
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 152,
+          "servedRate": 0.6468085106382979,
+          "urgentServed": 13,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 46.18421052631579,
+          "meanEtaSeconds": 540.9144736842105,
+          "gini": 0.10504385964912277,
+          "jobsStdDev": 0.5312459150169743
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 15.210084033613445,
+          "meanEtaSeconds": 314.25210084033614,
+          "gini": 0.16624649859943985,
+          "jobsStdDev": 0.645282022753531
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 162,
+          "servedRate": 0.6612244897959184,
+          "urgentServed": 12,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 45.617283950617285,
+          "meanEtaSeconds": 431.25308641975306,
+          "gini": 0.10185185185185186,
+          "jobsStdDev": 0.5567764362830023
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 872,
+          "servedRate": 0.5797872340425532,
+          "urgentServed": 82,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 48.1651376146789,
+          "meanEtaSeconds": 360.8738532110092,
+          "gini": 0.08782874617736991,
+          "jobsStdDev": 0.5458530530788993
+        }
+      ]
+    },
+    {
+      "variant": "(d) eta-heavy (E 0.50)",
+      "weights": {
+        "E": 0.5,
+        "Q": 0.14285714285714288,
+        "A": 0.10714285714285715,
+        "S": 0.07142857142857144,
+        "F": 0.07142857142857144,
+        "T": 0.10714285714285715
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 208.09660697455232,
+          "urgentEta": 215.00302114803625,
+          "highEta": 229.85200845665963
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 131.51875,
+          "urgentEta": 116.11111111111111,
+          "highEta": 159.27777777777777
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.81875,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.86538461538464
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 185.5125,
+          "urgentEta": 194.07729468599032,
+          "highEta": 169.8230088495575
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 116,
+          "servedRate": 0.9830508474576272,
+          "urgentServed": 7,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 15.344827586206897,
+          "meanEtaSeconds": 428.0948275862069,
+          "gini": 0.16436781609195417,
+          "jobsStdDev": 0.6289320754704405
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 151,
+          "servedRate": 0.6425531914893617,
+          "urgentServed": 14,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 51.12582781456954,
+          "meanEtaSeconds": 554.8874172185431,
+          "gini": 0.10584988962472419,
+          "jobsStdDev": 0.5320296566504121
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 14.621848739495798,
+          "meanEtaSeconds": 300.1512605042017,
+          "gini": 0.16960784313725497,
+          "jobsStdDev": 0.6706133179576904
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 167,
+          "servedRate": 0.6816326530612244,
+          "urgentServed": 11,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 41.377245508982035,
+          "meanEtaSeconds": 404.70059880239523,
+          "gini": 0.0789421157684631,
+          "jobsStdDev": 0.4861984048604938
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 869,
+          "servedRate": 0.5777925531914894,
+          "urgentServed": 83,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 48.15880322209436,
+          "meanEtaSeconds": 368.82508630609897,
+          "gini": 0.09328346758726491,
+          "jobsStdDev": 0.5650860308149737
+        }
+      ]
+    },
+    {
+      "variant": "(d) eta-dominant (E 0.70)",
+      "weights": {
+        "E": 0.7,
+        "Q": 0.08571428571428574,
+        "A": 0.0642857142857143,
+        "S": 0.04285714285714287,
+        "F": 0.04285714285714287,
+        "T": 0.0642857142857143
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 206.28840716305373,
+          "urgentEta": 211.13897280966768,
+          "highEta": 229.63636363636363
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 111.58125,
+          "urgentEta": 103.22222222222223,
+          "highEta": 117.72222222222223
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.81875,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.86538461538464
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 185.203125,
+          "urgentEta": 189.5169082125604,
+          "highEta": 177.30088495575222
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 113,
+          "servedRate": 0.9576271186440678,
+          "urgentServed": 6,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 15.044247787610619,
+          "meanEtaSeconds": 414.6814159292035,
+          "gini": 0.14970501474926268,
+          "jobsStdDev": 0.5799904213768438
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 152,
+          "servedRate": 0.6468085106382979,
+          "urgentServed": 14,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 48.1578947368421,
+          "meanEtaSeconds": 542.1381578947369,
+          "gini": 0.10504385964912277,
+          "jobsStdDev": 0.5312459150169743
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 13.445378151260504,
+          "meanEtaSeconds": 283.5546218487395,
+          "gini": 0.17941176470588238,
+          "jobsStdDev": 0.6950219820664346
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 168,
+          "servedRate": 0.6857142857142857,
+          "urgentServed": 10,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 42.32142857142857,
+          "meanEtaSeconds": 409.07738095238096,
+          "gini": 0.08392857142857157,
+          "jobsStdDev": 0.5099019513592788
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 877,
+          "servedRate": 0.5831117021276596,
+          "urgentServed": 82,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 45.689851767388824,
+          "meanEtaSeconds": 368.5507411630559,
+          "gini": 0.08702014443177486,
+          "jobsStdDev": 0.5453948620546001
+        }
+      ]
+    },
+    {
+      "variant": "(d) fairness-heavy (F 0.30)",
+      "weights": {
+        "E": 0.2333333333333333,
+        "Q": 0.15555555555555553,
+        "A": 0.11666666666666665,
+        "S": 0.07777777777777777,
+        "F": 0.3,
+        "T": 0.11666666666666665
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 215.86522148916117,
+          "urgentEta": 221.797583081571,
+          "highEta": 231.615221987315
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 205.00625,
+          "urgentEta": 191,
+          "highEta": 179.16666666666666
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.90625,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.8173076923077
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 186.240625,
+          "urgentEta": 196.17874396135267,
+          "highEta": 168.0353982300885
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 115,
+          "servedRate": 0.9745762711864406,
+          "urgentServed": 6,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 17.130434782608695,
+          "meanEtaSeconds": 488.9304347826087,
+          "gini": 0.1123188405797102,
+          "jobsStdDev": 0.49300664859163484
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 152,
+          "servedRate": 0.6468085106382979,
+          "urgentServed": 13,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 46.18421052631579,
+          "meanEtaSeconds": 540.9144736842105,
+          "gini": 0.10504385964912277,
+          "jobsStdDev": 0.5312459150169743
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 118,
+          "servedRate": 0.9915966386554622,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 15,
+          "meanEtaSeconds": 321.2881355932203,
+          "gini": 0.11723163841807915,
+          "jobsStdDev": 0.5153208277913437
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 162,
+          "servedRate": 0.6612244897959184,
+          "urgentServed": 12,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 45.617283950617285,
+          "meanEtaSeconds": 431.25308641975306,
+          "gini": 0.10185185185185186,
+          "jobsStdDev": 0.5567764362830023
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 874,
+          "servedRate": 0.5811170212765957,
+          "urgentServed": 82,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 47.68878718535469,
+          "meanEtaSeconds": 360.0343249427918,
+          "gini": 0.08463005339435536,
+          "jobsStdDev": 0.5346234396490893
+        }
+      ]
+    },
+    {
+      "variant": "(d) quality-heavy (Q 0.35)",
+      "weights": {
+        "E": 0.24375000000000002,
+        "Q": 0.35,
+        "A": 0.12187500000000001,
+        "S": 0.08125,
+        "F": 0.08125,
+        "T": 0.12187500000000001
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 212.30631479736098,
+          "urgentEta": 220.31722054380666,
+          "highEta": 231.80126849894293
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 168.2,
+          "urgentEta": 169.44444444444446,
+          "highEta": 175.94444444444446
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.90625,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.8173076923077
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 186.240625,
+          "urgentEta": 196.17874396135267,
+          "highEta": 168.0353982300885
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 115,
+          "servedRate": 0.9745762711864406,
+          "urgentServed": 6,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 14.695652173913043,
+          "meanEtaSeconds": 450.04347826086956,
+          "gini": 0.13724637681159435,
+          "jobsStdDev": 0.5565269285688001
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 152,
+          "servedRate": 0.6468085106382979,
+          "urgentServed": 14,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 50.13157894736842,
+          "meanEtaSeconds": 546.1513157894736,
+          "gini": 0.10504385964912277,
+          "jobsStdDev": 0.5312459150169743
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 14.621848739495798,
+          "meanEtaSeconds": 342.52941176470586,
+          "gini": 0.14831932773109258,
+          "jobsStdDev": 0.6189148209209047
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 170,
+          "servedRate": 0.6938775510204082,
+          "urgentServed": 13,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 45.529411764705884,
+          "meanEtaSeconds": 412.7,
+          "gini": 0.07666666666666666,
+          "jobsStdDev": 0.48876260995383974
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 862,
+          "servedRate": 0.5731382978723404,
+          "urgentServed": 84,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 47.088167053364266,
+          "meanEtaSeconds": 382.1380510440835,
+          "gini": 0.08777262180974477,
+          "jobsStdDev": 0.5452420461491296
+        }
+      ]
+    },
+    {
+      "variant": "(d) eta+fairness (E 0.45, F 0.25)",
+      "weights": {
+        "E": 0.45,
+        "Q": 0.10000000000000002,
+        "A": 0.07500000000000001,
+        "S": 0.05000000000000001,
+        "F": 0.25,
+        "T": 0.07500000000000001
+      },
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 22,
+          "matched": 2122,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8507194244604317,
+          "normalRate": 0.5507730881738404,
+          "meanEta": 211.64231856738925,
+          "urgentEta": 214.61027190332325,
+          "highEta": 233.2325581395349
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 164.84375,
+          "urgentEta": 164.33333333333334,
+          "highEta": 172.5
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9719626168224299,
+          "normalRate": 0.02748091603053435,
+          "meanEta": 338.81875,
+          "urgentEta": 375.3157894736842,
+          "highEta": 359.86538461538464
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 185.271875,
+          "urgentEta": 189.69565217391303,
+          "highEta": 177.16814159292036
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 116,
+          "servedRate": 0.9830508474576272,
+          "urgentServed": 7,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 15.60344827586207,
+          "meanEtaSeconds": 432.7068965517241,
+          "gini": 0.11839080459770113,
+          "jobsStdDev": 0.5120763831912407
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 151,
+          "servedRate": 0.6425531914893617,
+          "urgentServed": 14,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 53.90728476821192,
+          "meanEtaSeconds": 543.6754966887418,
+          "gini": 0.10584988962472419,
+          "jobsStdDev": 0.5320296566504121
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 118,
+          "servedRate": 0.9915966386554622,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 14.23728813559322,
+          "meanEtaSeconds": 295.52542372881356,
+          "gini": 0.14096045197740126,
+          "jobsStdDev": 0.5763872155263529
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 170,
+          "servedRate": 0.6938775510204082,
+          "urgentServed": 10,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 46.705882352941174,
+          "meanEtaSeconds": 403.8058823529412,
+          "gini": 0.06784313725490199,
+          "jobsStdDev": 0.45338235029118157
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 872,
+          "servedRate": 0.5797872340425532,
+          "urgentServed": 82,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 45.768348623853214,
+          "meanEtaSeconds": 358.0022935779817,
+          "gini": 0.08134556574923546,
+          "jobsStdDev": 0.5208539995899897
+        }
+      ]
+    },
+    {
+      "variant": "(c) existing min-cost flow (reference)",
+      "weights": null,
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 21,
+          "matched": 2121,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 1,
+          "highRate": 0.8453237410071942,
+          "normalRate": 0.5516088591725867,
+          "meanEta": 206.0858085808581,
+          "urgentEta": 170.3534743202417,
+          "highEta": 208.92978723404255
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 105.04375,
+          "urgentEta": 82.33333333333333,
+          "highEta": 109.72222222222223
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.9439252336448598,
+          "normalRate": 0.03206106870229008,
+          "meanEta": 310.76875,
+          "urgentEta": 253.6578947368421,
+          "highEta": 365.990099009901
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 1,
+          "highRate": 0.5854922279792746,
+          "normalRate": 0,
+          "meanEta": 189.675,
+          "urgentEta": 172.22222222222223,
+          "highEta": 221.64601769911505
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 115,
+          "servedRate": 0.9745762711864406,
+          "urgentServed": 6,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 17.73913043478261,
+          "meanEtaSeconds": 434.6347826086957,
+          "gini": 0.15985507246376818,
+          "jobsStdDev": 0.6135054106435318
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 154,
+          "servedRate": 0.6553191489361702,
+          "urgentServed": 13,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 55.45454545454545,
+          "meanEtaSeconds": 548.3896103896104,
+          "gini": 0.10281385281385291,
+          "jobsStdDev": 0.5280993172584952
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 14.53781512605042,
+          "meanEtaSeconds": 283.11764705882354,
+          "gini": 0.1592436974789917,
+          "jobsStdDev": 0.6452820227535312
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 169,
+          "servedRate": 0.689795918367347,
+          "urgentServed": 11,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 44.79289940828402,
+          "meanEtaSeconds": 404.85798816568047,
+          "gini": 0.11114398422090743,
+          "jobsStdDev": 0.6189148209209047
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 880,
+          "servedRate": 0.5851063829787234,
+          "urgentServed": 83,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 51.30681818181818,
+          "meanEtaSeconds": 369.52613636363634,
+          "gini": 0.08296212121212121,
+          "jobsStdDev": 0.5312459150169746
+        }
+      ]
+    },
+    {
+      "variant": "(b) greedy new-cost (reference)",
+      "weights": null,
+      "singleBatch": {
+        "all": {
+          "cases": 22,
+          "casesAtMax": 12,
+          "matched": 2066,
+          "possible": 2122,
+          "requests": 3280,
+          "urgentRate": 0.9123867069486404,
+          "highRate": 0.6546762589928058,
+          "normalRate": 0.5850396991224405,
+          "meanEta": 187.5701839303001,
+          "urgentEta": 179.32119205298014,
+          "highEta": 162.29945054945054
+        },
+        "abundant": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 160,
+          "urgentRate": 1,
+          "highRate": 1,
+          "normalRate": 1,
+          "meanEta": 164.9625,
+          "urgentEta": 145.88888888888889,
+          "highEta": 160.5
+        },
+        "scarce": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 160,
+          "possible": 160,
+          "requests": 800,
+          "urgentRate": 0.8157894736842105,
+          "highRate": 0.32710280373831774,
+          "normalRate": 0.1435114503816794,
+          "meanEta": 145.225,
+          "urgentEta": 222.51612903225808,
+          "highEta": 145.02857142857144
+        },
+        "mixedPriority": {
+          "cases": 4,
+          "casesAtMax": 4,
+          "matched": 320,
+          "possible": 320,
+          "requests": 800,
+          "urgentRate": 0.893719806763285,
+          "highRate": 0.40414507772020725,
+          "normalRate": 0.1425,
+          "meanEta": 149.68125,
+          "urgentEta": 163.35135135135135,
+          "highEta": 147.62820512820514
+        }
+      },
+      "simulations": [
+        {
+          "scenario": "sim/uniform/normal-load",
+          "arrivals": 118,
+          "served": 116,
+          "servedRate": 0.9830508474576272,
+          "urgentServed": 7,
+          "urgentArrivals": 7,
+          "meanWaitSeconds": 15,
+          "meanEtaSeconds": 444.2068965517241,
+          "gini": 0.16436781609195417,
+          "jobsStdDev": 0.6289320754704405
+        },
+        {
+          "scenario": "sim/uniform/peak-load",
+          "arrivals": 235,
+          "served": 151,
+          "servedRate": 0.6425531914893617,
+          "urgentServed": 11,
+          "urgentArrivals": 17,
+          "meanWaitSeconds": 51.52317880794702,
+          "meanEtaSeconds": 501.3112582781457,
+          "gini": 0.09922737306843277,
+          "jobsStdDev": 0.49972214501883166
+        },
+        {
+          "scenario": "sim/clustered/normal-load",
+          "arrivals": 119,
+          "served": 119,
+          "servedRate": 1,
+          "urgentServed": 4,
+          "urgentArrivals": 4,
+          "meanWaitSeconds": 14.873949579831933,
+          "meanEtaSeconds": 314.25210084033614,
+          "gini": 0.16624649859943985,
+          "jobsStdDev": 0.645282022753531
+        },
+        {
+          "scenario": "sim/clustered/peak-load",
+          "arrivals": 245,
+          "served": 167,
+          "servedRate": 0.6816326530612244,
+          "urgentServed": 10,
+          "urgentArrivals": 14,
+          "meanWaitSeconds": 52.035928143712574,
+          "meanEtaSeconds": 386.7365269461078,
+          "gini": 0.1028942115768463,
+          "jobsStdDev": 0.579990421376844
+        },
+        {
+          "scenario": "sim/uniform/large-overload",
+          "arrivals": 1504,
+          "served": 913,
+          "servedRate": 0.6070478723404256,
+          "urgentServed": 72,
+          "urgentArrivals": 84,
+          "meanWaitSeconds": 59.86856516976999,
+          "meanEtaSeconds": 256.6527929901424,
+          "gini": 0.08152245345016418,
+          "jobsStdDev": 0.5429446462475612
+        }
+      ]
+    }
+  ]
+}
