@@ -67,7 +67,12 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.surface, strokeWeight: 10, zIndex: 3 }));
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.primary, strokeWeight: 6, zIndex: 4 }));
     }
-    if (focus) { map.current.panTo(at(focus.coordinate)); map.current.setZoom(MAP_CANVAS_FOCUS_ZOOM); return; }
+    if (focus) {
+      map.current.setZoom(MAP_CANVAS_FOCUS_ZOOM);
+      map.current.panTo(at(focus.coordinate));
+      map.current.panBy(0, (inset.bottom - inset.top) / 2);
+      return;
+    }
     if (onCenterChange) return;
     const points = canvasPoints(markers, route);
     const padding = { top: inset.top + MAP_CANVAS_EDGE, bottom: inset.bottom + MAP_CANVAS_EDGE, left: MAP_CANVAS_EDGE, right: MAP_CANVAS_EDGE };
