@@ -1,0 +1,3346 @@
+[
+  {
+    "case": "balanced/uniform/10x10",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 31,
+    "maxPossibleMatches": 8,
+    "approach": "nearest-first",
+    "solveMs": 0.102927,
+    "matched": 7,
+    "unmatched": 3,
+    "matchRate": 0.7,
+    "totalPairCost": 266.0900568168885,
+    "meanPairCost": 38.0128652595555,
+    "meanEtaSeconds": 365.14285714285717,
+    "p90EtaSeconds": 751,
+    "perPriority": {
+      "normal": {
+        "requests": 7,
+        "matched": 5,
+        "matchRate": 0.7142857142857143,
+        "meanEtaSeconds": 393.4
+      },
+      "high": {
+        "requests": 2,
+        "matched": 1,
+        "matchRate": 0.5,
+        "meanEtaSeconds": 501
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 88
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/10x10",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 31,
+    "maxPossibleMatches": 8,
+    "approach": "greedy-cost",
+    "solveMs": 0.340951,
+    "matched": 7,
+    "unmatched": 3,
+    "matchRate": 0.7,
+    "totalPairCost": 266.0900568168885,
+    "meanPairCost": 38.0128652595555,
+    "meanEtaSeconds": 365.14285714285717,
+    "p90EtaSeconds": 751,
+    "perPriority": {
+      "normal": {
+        "requests": 7,
+        "matched": 5,
+        "matchRate": 0.7142857142857143,
+        "meanEtaSeconds": 393.4
+      },
+      "high": {
+        "requests": 2,
+        "matched": 1,
+        "matchRate": 0.5,
+        "meanEtaSeconds": 501
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 88
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/10x10",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 31,
+    "maxPossibleMatches": 8,
+    "approach": "existing-mcf",
+    "solveMs": 5.654751,
+    "matched": 8,
+    "unmatched": 2,
+    "matchRate": 0.8,
+    "totalPairCost": 343.09532295330615,
+    "meanPairCost": 42.88691536916327,
+    "meanEtaSeconds": 530.375,
+    "p90EtaSeconds": 989,
+    "perPriority": {
+      "normal": {
+        "requests": 7,
+        "matched": 5,
+        "matchRate": 0.7142857142857143,
+        "meanEtaSeconds": 533
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 745
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 88
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/10x10",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 31,
+    "maxPossibleMatches": 8,
+    "approach": "smart-hungarian",
+    "solveMs": 1.155997,
+    "matched": 8,
+    "unmatched": 2,
+    "matchRate": 0.8,
+    "totalPairCost": 341.57496188443986,
+    "meanPairCost": 42.69687023555498,
+    "meanEtaSeconds": 538.25,
+    "p90EtaSeconds": 989,
+    "perPriority": {
+      "normal": {
+        "requests": 7,
+        "matched": 5,
+        "matchRate": 0.7142857142857143,
+        "meanEtaSeconds": 434.8
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 784
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 564
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/50x50",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 821,
+    "maxPossibleMatches": 50,
+    "approach": "nearest-first",
+    "solveMs": 0.30661,
+    "matched": 47,
+    "unmatched": 3,
+    "matchRate": 0.94,
+    "totalPairCost": 1876.1315825637487,
+    "meanPairCost": 39.9176932460372,
+    "meanEtaSeconds": 344.82978723404256,
+    "p90EtaSeconds": 774,
+    "perPriority": {
+      "normal": {
+        "requests": 41,
+        "matched": 40,
+        "matchRate": 0.975609756097561,
+        "meanEtaSeconds": 330.55
+      },
+      "high": {
+        "requests": 6,
+        "matched": 4,
+        "matchRate": 0.6666666666666666,
+        "meanEtaSeconds": 361.25
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 513.3333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/50x50",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 821,
+    "maxPossibleMatches": 50,
+    "approach": "greedy-cost",
+    "solveMs": 2.108009,
+    "matched": 43,
+    "unmatched": 7,
+    "matchRate": 0.86,
+    "totalPairCost": 1620.3907626800842,
+    "meanPairCost": 37.68350610883917,
+    "meanEtaSeconds": 284.95348837209303,
+    "p90EtaSeconds": 573,
+    "perPriority": {
+      "normal": {
+        "requests": 41,
+        "matched": 35,
+        "matchRate": 0.8536585365853658,
+        "meanEtaSeconds": 260.57142857142856
+      },
+      "high": {
+        "requests": 6,
+        "matched": 5,
+        "matchRate": 0.8333333333333334,
+        "meanEtaSeconds": 431.4
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 325.3333333333333
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/50x50",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 821,
+    "maxPossibleMatches": 50,
+    "approach": "existing-mcf",
+    "solveMs": 4.375516,
+    "matched": 50,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 2067.7583067997066,
+    "meanPairCost": 41.35516613599413,
+    "meanEtaSeconds": 396.6,
+    "p90EtaSeconds": 839,
+    "perPriority": {
+      "normal": {
+        "requests": 41,
+        "matched": 41,
+        "matchRate": 1,
+        "meanEtaSeconds": 417.780487804878
+      },
+      "high": {
+        "requests": 6,
+        "matched": 6,
+        "matchRate": 1,
+        "meanEtaSeconds": 349
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 202.33333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/50x50",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 821,
+    "maxPossibleMatches": 50,
+    "approach": "smart-hungarian",
+    "solveMs": 6.590509,
+    "matched": 50,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 2065.883306799706,
+    "meanPairCost": 41.31766613599412,
+    "meanEtaSeconds": 395.16,
+    "p90EtaSeconds": 839,
+    "perPriority": {
+      "normal": {
+        "requests": 41,
+        "matched": 41,
+        "matchRate": 1,
+        "meanEtaSeconds": 412.8780487804878
+      },
+      "high": {
+        "requests": 6,
+        "matched": 6,
+        "matchRate": 1,
+        "meanEtaSeconds": 349
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 245.33333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/100x100",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 3307,
+    "maxPossibleMatches": 100,
+    "approach": "nearest-first",
+    "solveMs": 2.306649,
+    "matched": 93,
+    "unmatched": 7,
+    "matchRate": 0.93,
+    "totalPairCost": 3541.316259980431,
+    "meanPairCost": 38.07866946215517,
+    "meanEtaSeconds": 294.35483870967744,
+    "p90EtaSeconds": 731,
+    "perPriority": {
+      "normal": {
+        "requests": 83,
+        "matched": 78,
+        "matchRate": 0.9397590361445783,
+        "meanEtaSeconds": 303.34615384615387
+      },
+      "high": {
+        "requests": 14,
+        "matched": 12,
+        "matchRate": 0.8571428571428571,
+        "meanEtaSeconds": 200.25
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 437
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/100x100",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 3307,
+    "maxPossibleMatches": 100,
+    "approach": "greedy-cost",
+    "solveMs": 10.379784,
+    "matched": 92,
+    "unmatched": 8,
+    "matchRate": 0.92,
+    "totalPairCost": 3362.38602803084,
+    "meanPairCost": 36.547674217726524,
+    "meanEtaSeconds": 247.1413043478261,
+    "p90EtaSeconds": 460,
+    "perPriority": {
+      "normal": {
+        "requests": 83,
+        "matched": 75,
+        "matchRate": 0.9036144578313253,
+        "meanEtaSeconds": 255.81333333333333
+      },
+      "high": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 204.07142857142858
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 231.33333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/100x100",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 3307,
+    "maxPossibleMatches": 100,
+    "approach": "existing-mcf",
+    "solveMs": 19.161908,
+    "matched": 99,
+    "unmatched": 1,
+    "matchRate": 0.99,
+    "totalPairCost": 3841.258295119597,
+    "meanPairCost": 38.80058883959189,
+    "meanEtaSeconds": 308.8787878787879,
+    "p90EtaSeconds": 621,
+    "perPriority": {
+      "normal": {
+        "requests": 83,
+        "matched": 82,
+        "matchRate": 0.9879518072289156,
+        "meanEtaSeconds": 334.109756097561
+      },
+      "high": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 186.42857142857142
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 190.66666666666666
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/100x100",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 3307,
+    "maxPossibleMatches": 100,
+    "approach": "smart-hungarian",
+    "solveMs": 19.607716,
+    "matched": 100,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 3929.583531103533,
+    "meanPairCost": 39.29583531103533,
+    "meanEtaSeconds": 327.76,
+    "p90EtaSeconds": 707,
+    "perPriority": {
+      "normal": {
+        "requests": 83,
+        "matched": 83,
+        "matchRate": 1,
+        "meanEtaSeconds": 332.51807228915663
+      },
+      "high": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 271.35714285714283
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 459.3333333333333
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/300x300",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 30679,
+    "maxPossibleMatches": 300,
+    "approach": "nearest-first",
+    "solveMs": 10.212484,
+    "matched": 284,
+    "unmatched": 16,
+    "matchRate": 0.9466666666666667,
+    "totalPairCost": 10012.61010805575,
+    "meanPairCost": 35.255669394562496,
+    "meanEtaSeconds": 197.25704225352112,
+    "p90EtaSeconds": 381,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 230,
+        "matchRate": 0.9465020576131687,
+        "meanEtaSeconds": 199.88260869565218
+      },
+      "high": {
+        "requests": 45,
+        "matched": 42,
+        "matchRate": 0.9333333333333333,
+        "meanEtaSeconds": 193.28571428571428
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 160.83333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/300x300",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 30679,
+    "maxPossibleMatches": 300,
+    "approach": "greedy-cost",
+    "solveMs": 40.108762,
+    "matched": 281,
+    "unmatched": 19,
+    "matchRate": 0.9366666666666666,
+    "totalPairCost": 9578.696765638266,
+    "meanPairCost": 34.08788884568778,
+    "meanEtaSeconds": 164.7864768683274,
+    "p90EtaSeconds": 302,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 224,
+        "matchRate": 0.9218106995884774,
+        "meanEtaSeconds": 169.53125
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 133.66666666666666
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 192.91666666666666
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/300x300",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 30679,
+    "maxPossibleMatches": 300,
+    "approach": "existing-mcf",
+    "solveMs": 297.504149,
+    "matched": 300,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 10689.37115593399,
+    "meanPairCost": 35.63123718644663,
+    "meanEtaSeconds": 210.46666666666667,
+    "p90EtaSeconds": 429,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 243,
+        "matchRate": 1,
+        "meanEtaSeconds": 233.56378600823047
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 114.95555555555555
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 100.91666666666667
+      }
+    }
+  },
+  {
+    "case": "balanced/uniform/300x300",
+    "scenario": "balanced",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 30679,
+    "maxPossibleMatches": 300,
+    "approach": "smart-hungarian",
+    "solveMs": 83.690163,
+    "matched": 300,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 10653.199280933984,
+    "meanPairCost": 35.51066426977995,
+    "meanEtaSeconds": 205.83666666666667,
+    "p90EtaSeconds": 416,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 243,
+        "matchRate": 1,
+        "meanEtaSeconds": 207.2798353909465
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 212.04444444444445
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 153.33333333333334
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/10x10",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 54,
+    "maxPossibleMatches": 9,
+    "approach": "nearest-first",
+    "solveMs": 0.021074,
+    "matched": 8,
+    "unmatched": 2,
+    "matchRate": 0.8,
+    "totalPairCost": 321.88081867413104,
+    "meanPairCost": 40.23510233426638,
+    "meanEtaSeconds": 357.125,
+    "p90EtaSeconds": 672,
+    "perPriority": {
+      "normal": {
+        "requests": 9,
+        "matched": 7,
+        "matchRate": 0.7777777777777778,
+        "meanEtaSeconds": 394.57142857142856
+      },
+      "high": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 95
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/10x10",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 54,
+    "maxPossibleMatches": 9,
+    "approach": "greedy-cost",
+    "solveMs": 0.090563,
+    "matched": 8,
+    "unmatched": 2,
+    "matchRate": 0.8,
+    "totalPairCost": 323.0787353407977,
+    "meanPairCost": 40.384841917599715,
+    "meanEtaSeconds": 362.875,
+    "p90EtaSeconds": 789,
+    "perPriority": {
+      "normal": {
+        "requests": 9,
+        "matched": 7,
+        "matchRate": 0.7777777777777778,
+        "meanEtaSeconds": 401.14285714285717
+      },
+      "high": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 95
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/10x10",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 54,
+    "maxPossibleMatches": 9,
+    "approach": "existing-mcf",
+    "solveMs": 0.091848,
+    "matched": 9,
+    "unmatched": 1,
+    "matchRate": 0.9,
+    "totalPairCost": 372.4112907655659,
+    "meanPairCost": 41.3790323072851,
+    "meanEtaSeconds": 380.8888888888889,
+    "p90EtaSeconds": 672,
+    "perPriority": {
+      "normal": {
+        "requests": 9,
+        "matched": 8,
+        "matchRate": 0.8888888888888888,
+        "meanEtaSeconds": 416.625
+      },
+      "high": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 95
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/10x10",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 10,
+    "providers": 10,
+    "eligiblePairs": 54,
+    "maxPossibleMatches": 9,
+    "approach": "smart-hungarian",
+    "solveMs": 0.18686,
+    "matched": 9,
+    "unmatched": 1,
+    "matchRate": 0.9,
+    "totalPairCost": 372.4112907655659,
+    "meanPairCost": 41.3790323072851,
+    "meanEtaSeconds": 380.8888888888889,
+    "p90EtaSeconds": 672,
+    "perPriority": {
+      "normal": {
+        "requests": 9,
+        "matched": 8,
+        "matchRate": 0.8888888888888888,
+        "meanEtaSeconds": 416.625
+      },
+      "high": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 95
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/50x50",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 1385,
+    "maxPossibleMatches": 50,
+    "approach": "nearest-first",
+    "solveMs": 0.360293,
+    "matched": 48,
+    "unmatched": 2,
+    "matchRate": 0.96,
+    "totalPairCost": 1781.1895978541445,
+    "meanPairCost": 37.108116621961344,
+    "meanEtaSeconds": 309.5625,
+    "p90EtaSeconds": 872,
+    "perPriority": {
+      "normal": {
+        "requests": 40,
+        "matched": 38,
+        "matchRate": 0.95,
+        "meanEtaSeconds": 286.7105263157895
+      },
+      "high": {
+        "requests": 7,
+        "matched": 7,
+        "matchRate": 1,
+        "meanEtaSeconds": 377.85714285714283
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 439.6666666666667
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/50x50",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 1385,
+    "maxPossibleMatches": 50,
+    "approach": "greedy-cost",
+    "solveMs": 1.995358,
+    "matched": 49,
+    "unmatched": 1,
+    "matchRate": 0.98,
+    "totalPairCost": 1813.2294642051816,
+    "meanPairCost": 37.00468294296289,
+    "meanEtaSeconds": 304.3673469387755,
+    "p90EtaSeconds": 950,
+    "perPriority": {
+      "normal": {
+        "requests": 40,
+        "matched": 39,
+        "matchRate": 0.975,
+        "meanEtaSeconds": 322.6666666666667
+      },
+      "high": {
+        "requests": 7,
+        "matched": 7,
+        "matchRate": 1,
+        "meanEtaSeconds": 276.7142857142857
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 131
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/50x50",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 1385,
+    "maxPossibleMatches": 50,
+    "approach": "existing-mcf",
+    "solveMs": 4.864522,
+    "matched": 50,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1830.0441225517673,
+    "meanPairCost": 36.600882451035346,
+    "meanEtaSeconds": 284.34,
+    "p90EtaSeconds": 521,
+    "perPriority": {
+      "normal": {
+        "requests": 40,
+        "matched": 40,
+        "matchRate": 1,
+        "meanEtaSeconds": 301.25
+      },
+      "high": {
+        "requests": 7,
+        "matched": 7,
+        "matchRate": 1,
+        "meanEtaSeconds": 246.14285714285714
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 148
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/50x50",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 50,
+    "providers": 50,
+    "eligiblePairs": 1385,
+    "maxPossibleMatches": 50,
+    "approach": "smart-hungarian",
+    "solveMs": 5.231475,
+    "matched": 50,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1817.752455885101,
+    "meanPairCost": 36.355049117702016,
+    "meanEtaSeconds": 274.9,
+    "p90EtaSeconds": 506,
+    "perPriority": {
+      "normal": {
+        "requests": 40,
+        "matched": 40,
+        "matchRate": 1,
+        "meanEtaSeconds": 248.525
+      },
+      "high": {
+        "requests": 7,
+        "matched": 7,
+        "matchRate": 1,
+        "meanEtaSeconds": 410.57142857142856
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 310
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/100x100",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 5173,
+    "maxPossibleMatches": 100,
+    "approach": "nearest-first",
+    "solveMs": 1.330407,
+    "matched": 97,
+    "unmatched": 3,
+    "matchRate": 0.97,
+    "totalPairCost": 3535.244502308839,
+    "meanPairCost": 36.44581961143133,
+    "meanEtaSeconds": 229.22680412371133,
+    "p90EtaSeconds": 588,
+    "perPriority": {
+      "normal": {
+        "requests": 80,
+        "matched": 77,
+        "matchRate": 0.9625,
+        "meanEtaSeconds": 248.07792207792207
+      },
+      "high": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 153.05555555555554
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 189
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/100x100",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 5173,
+    "maxPossibleMatches": 100,
+    "approach": "greedy-cost",
+    "solveMs": 3.645175,
+    "matched": 96,
+    "unmatched": 4,
+    "matchRate": 0.96,
+    "totalPairCost": 3385.713993680804,
+    "meanPairCost": 35.26785410084171,
+    "meanEtaSeconds": 188.90625,
+    "p90EtaSeconds": 478,
+    "perPriority": {
+      "normal": {
+        "requests": 80,
+        "matched": 76,
+        "matchRate": 0.95,
+        "meanEtaSeconds": 199.73684210526315
+      },
+      "high": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 142.88888888888889
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 191.5
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/100x100",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 5173,
+    "maxPossibleMatches": 100,
+    "approach": "existing-mcf",
+    "solveMs": 13.073982,
+    "matched": 100,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 3583.4925417187637,
+    "meanPairCost": 35.834925417187634,
+    "meanEtaSeconds": 200.64,
+    "p90EtaSeconds": 414,
+    "perPriority": {
+      "normal": {
+        "requests": 80,
+        "matched": 80,
+        "matchRate": 1,
+        "meanEtaSeconds": 224.525
+      },
+      "high": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 104.61111111111111
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 109.5
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/100x100",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 100,
+    "eligiblePairs": 5173,
+    "maxPossibleMatches": 100,
+    "approach": "smart-hungarian",
+    "solveMs": 7.29206,
+    "matched": 100,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 3574.5081667187646,
+    "meanPairCost": 35.74508166718765,
+    "meanEtaSeconds": 197.19,
+    "p90EtaSeconds": 424,
+    "perPriority": {
+      "normal": {
+        "requests": 80,
+        "matched": 80,
+        "matchRate": 1,
+        "meanEtaSeconds": 203.1625
+      },
+      "high": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 159.83333333333334
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 294.5
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/300x300",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 54836,
+    "maxPossibleMatches": 300,
+    "approach": "nearest-first",
+    "solveMs": 8.119509,
+    "matched": 297,
+    "unmatched": 3,
+    "matchRate": 0.99,
+    "totalPairCost": 10266.423938378177,
+    "meanPairCost": 34.56708396760329,
+    "meanEtaSeconds": 160.82491582491582,
+    "p90EtaSeconds": 317,
+    "perPriority": {
+      "normal": {
+        "requests": 241,
+        "matched": 239,
+        "matchRate": 0.991701244813278,
+        "meanEtaSeconds": 160.29707112970712
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 162.6888888888889
+      },
+      "urgent": {
+        "requests": 14,
+        "matched": 13,
+        "matchRate": 0.9285714285714286,
+        "meanEtaSeconds": 164.07692307692307
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/300x300",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 54836,
+    "maxPossibleMatches": 300,
+    "approach": "greedy-cost",
+    "solveMs": 70.096554,
+    "matched": 292,
+    "unmatched": 8,
+    "matchRate": 0.9733333333333334,
+    "totalPairCost": 9922.385937540213,
+    "meanPairCost": 33.980773758699364,
+    "meanEtaSeconds": 148.75342465753425,
+    "p90EtaSeconds": 302,
+    "perPriority": {
+      "normal": {
+        "requests": 241,
+        "matched": 233,
+        "matchRate": 0.966804979253112,
+        "meanEtaSeconds": 155.90987124463518
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 103.17777777777778
+      },
+      "urgent": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 176.14285714285714
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/300x300",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 54836,
+    "maxPossibleMatches": 300,
+    "approach": "existing-mcf",
+    "solveMs": 1099.855694,
+    "matched": 300,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 10174.051985161352,
+    "meanPairCost": 33.913506617204504,
+    "meanEtaSeconds": 136.96666666666667,
+    "p90EtaSeconds": 255,
+    "perPriority": {
+      "normal": {
+        "requests": 241,
+        "matched": 241,
+        "matchRate": 1,
+        "meanEtaSeconds": 149.77178423236515
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 80.73333333333333
+      },
+      "urgent": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 97.28571428571429
+      }
+    }
+  },
+  {
+    "case": "balanced/clustered/300x300",
+    "scenario": "balanced",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 54836,
+    "maxPossibleMatches": 300,
+    "approach": "smart-hungarian",
+    "solveMs": 107.202991,
+    "matched": 300,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 10150.926985161352,
+    "meanPairCost": 33.83642328387117,
+    "meanEtaSeconds": 134.00666666666666,
+    "p90EtaSeconds": 226,
+    "perPriority": {
+      "normal": {
+        "requests": 241,
+        "matched": 241,
+        "matchRate": 1,
+        "meanEtaSeconds": 134.4564315352697
+      },
+      "high": {
+        "requests": 45,
+        "matched": 45,
+        "matchRate": 1,
+        "meanEtaSeconds": 130.6888888888889
+      },
+      "urgent": {
+        "requests": 14,
+        "matched": 14,
+        "matchRate": 1,
+        "meanEtaSeconds": 136.92857142857142
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/100x20",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 724,
+    "maxPossibleMatches": 20,
+    "approach": "nearest-first",
+    "solveMs": 0.115343,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 879.7998435202546,
+    "meanPairCost": 43.989992176012734,
+    "meanEtaSeconds": 563.85,
+    "p90EtaSeconds": 988,
+    "perPriority": {
+      "normal": {
+        "requests": 81,
+        "matched": 14,
+        "matchRate": 0.1728395061728395,
+        "meanEtaSeconds": 557.1428571428571
+      },
+      "high": {
+        "requests": 16,
+        "matched": 5,
+        "matchRate": 0.3125,
+        "meanEtaSeconds": 493.6
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 1,
+        "matchRate": 0.3333333333333333,
+        "meanEtaSeconds": 1009
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/100x20",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 724,
+    "maxPossibleMatches": 20,
+    "approach": "greedy-cost",
+    "solveMs": 0.54151,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 682.6279685202546,
+    "meanPairCost": 34.13139842601273,
+    "meanEtaSeconds": 131.7,
+    "p90EtaSeconds": 248,
+    "perPriority": {
+      "normal": {
+        "requests": 81,
+        "matched": 16,
+        "matchRate": 0.19753086419753085,
+        "meanEtaSeconds": 115.0625
+      },
+      "high": {
+        "requests": 16,
+        "matched": 4,
+        "matchRate": 0.25,
+        "meanEtaSeconds": 198.25
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/100x20",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 724,
+    "maxPossibleMatches": 20,
+    "approach": "existing-mcf",
+    "solveMs": 1.780042,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 777.2269268535882,
+    "meanPairCost": 38.86134634267941,
+    "meanEtaSeconds": 403.35,
+    "p90EtaSeconds": 630,
+    "perPriority": {
+      "normal": {
+        "requests": 81,
+        "matched": 4,
+        "matchRate": 0.04938271604938271,
+        "meanEtaSeconds": 141.25
+      },
+      "high": {
+        "requests": 16,
+        "matched": 13,
+        "matchRate": 0.8125,
+        "meanEtaSeconds": 467.7692307692308
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 473.6666666666667
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/100x20",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 724,
+    "maxPossibleMatches": 20,
+    "approach": "smart-hungarian",
+    "solveMs": 4.007931,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 872.6956768535879,
+    "meanPairCost": 43.6347838426794,
+    "meanEtaSeconds": 591.85,
+    "p90EtaSeconds": 1044,
+    "perPriority": {
+      "normal": {
+        "requests": 81,
+        "matched": 2,
+        "matchRate": 0.024691358024691357,
+        "meanEtaSeconds": 165.5
+      },
+      "high": {
+        "requests": 16,
+        "matched": 15,
+        "matchRate": 0.9375,
+        "meanEtaSeconds": 612.0666666666667
+      },
+      "urgent": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 775
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/300x60",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 5981,
+    "maxPossibleMatches": 60,
+    "approach": "nearest-first",
+    "solveMs": 0.605412,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2453.037001726306,
+    "meanPairCost": 40.883950028771764,
+    "meanEtaSeconds": 422.75,
+    "p90EtaSeconds": 883,
+    "perPriority": {
+      "normal": {
+        "requests": 247,
+        "matched": 50,
+        "matchRate": 0.20242914979757085,
+        "meanEtaSeconds": 424.96
+      },
+      "high": {
+        "requests": 41,
+        "matched": 6,
+        "matchRate": 0.14634146341463414,
+        "meanEtaSeconds": 444
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 4,
+        "matchRate": 0.3333333333333333,
+        "meanEtaSeconds": 363.25
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/300x60",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 5981,
+    "maxPossibleMatches": 60,
+    "approach": "greedy-cost",
+    "solveMs": 4.750152,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 1973.755751726306,
+    "meanPairCost": 32.895929195438434,
+    "meanEtaSeconds": 140.31666666666666,
+    "p90EtaSeconds": 245,
+    "perPriority": {
+      "normal": {
+        "requests": 247,
+        "matched": 37,
+        "matchRate": 0.14979757085020243,
+        "meanEtaSeconds": 115.05405405405405
+      },
+      "high": {
+        "requests": 41,
+        "matched": 12,
+        "matchRate": 0.2926829268292683,
+        "meanEtaSeconds": 156.75
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 11,
+        "matchRate": 0.9166666666666666,
+        "meanEtaSeconds": 207.36363636363637
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/300x60",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 5981,
+    "maxPossibleMatches": 60,
+    "approach": "existing-mcf",
+    "solveMs": 35.47626,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2173.4224183929723,
+    "meanPairCost": 36.2237069732162,
+    "meanEtaSeconds": 319.55,
+    "p90EtaSeconds": 643,
+    "perPriority": {
+      "normal": {
+        "requests": 247,
+        "matched": 7,
+        "matchRate": 0.02834008097165992,
+        "meanEtaSeconds": 132
+      },
+      "high": {
+        "requests": 41,
+        "matched": 41,
+        "matchRate": 1,
+        "meanEtaSeconds": 371.7317073170732
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 250.66666666666666
+      }
+    }
+  },
+  {
+    "case": "scarce/uniform/300x60",
+    "scenario": "scarce",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 5981,
+    "maxPossibleMatches": 60,
+    "approach": "smart-hungarian",
+    "solveMs": 81.682778,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2169.5161683929728,
+    "meanPairCost": 36.158602806549546,
+    "meanEtaSeconds": 317.05,
+    "p90EtaSeconds": 623,
+    "perPriority": {
+      "normal": {
+        "requests": 247,
+        "matched": 7,
+        "matchRate": 0.02834008097165992,
+        "meanEtaSeconds": 121.57142857142857
+      },
+      "high": {
+        "requests": 41,
+        "matched": 41,
+        "matchRate": 1,
+        "meanEtaSeconds": 350.4146341463415
+      },
+      "urgent": {
+        "requests": 12,
+        "matched": 12,
+        "matchRate": 1,
+        "meanEtaSeconds": 317.0833333333333
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/100x20",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 971,
+    "maxPossibleMatches": 20,
+    "approach": "nearest-first",
+    "solveMs": 0.100748,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 754.0067956020155,
+    "meanPairCost": 37.70033978010078,
+    "meanEtaSeconds": 366,
+    "p90EtaSeconds": 542,
+    "perPriority": {
+      "normal": {
+        "requests": 89,
+        "matched": 18,
+        "matchRate": 0.20224719101123595,
+        "meanEtaSeconds": 361.72222222222223
+      },
+      "high": {
+        "requests": 10,
+        "matched": 2,
+        "matchRate": 0.2,
+        "meanEtaSeconds": 404.5
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/100x20",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 971,
+    "maxPossibleMatches": 20,
+    "approach": "greedy-cost",
+    "solveMs": 0.700286,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 645.6213789353487,
+    "meanPairCost": 32.281068946767434,
+    "meanEtaSeconds": 151.8,
+    "p90EtaSeconds": 297,
+    "perPriority": {
+      "normal": {
+        "requests": 89,
+        "matched": 17,
+        "matchRate": 0.19101123595505617,
+        "meanEtaSeconds": 145.7058823529412
+      },
+      "high": {
+        "requests": 10,
+        "matched": 2,
+        "matchRate": 0.2,
+        "meanEtaSeconds": 73
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 413
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/100x20",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 971,
+    "maxPossibleMatches": 20,
+    "approach": "existing-mcf",
+    "solveMs": 1.768122,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 680.7880456020156,
+    "meanPairCost": 34.03940228010078,
+    "meanEtaSeconds": 266,
+    "p90EtaSeconds": 475,
+    "perPriority": {
+      "normal": {
+        "requests": 89,
+        "matched": 9,
+        "matchRate": 0.10112359550561797,
+        "meanEtaSeconds": 174.44444444444446
+      },
+      "high": {
+        "requests": 10,
+        "matched": 10,
+        "matchRate": 1,
+        "meanEtaSeconds": 333.7
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 413
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/100x20",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 20,
+    "eligiblePairs": 971,
+    "maxPossibleMatches": 20,
+    "approach": "smart-hungarian",
+    "solveMs": 3.906549,
+    "matched": 20,
+    "unmatched": 80,
+    "matchRate": 0.2,
+    "totalPairCost": 678.0067956020155,
+    "meanPairCost": 33.90033978010077,
+    "meanEtaSeconds": 255.5,
+    "p90EtaSeconds": 475,
+    "perPriority": {
+      "normal": {
+        "requests": 89,
+        "matched": 9,
+        "matchRate": 0.10112359550561797,
+        "meanEtaSeconds": 151.11111111111111
+      },
+      "high": {
+        "requests": 10,
+        "matched": 10,
+        "matchRate": 1,
+        "meanEtaSeconds": 333.7
+      },
+      "urgent": {
+        "requests": 1,
+        "matched": 1,
+        "matchRate": 1,
+        "meanEtaSeconds": 413
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/300x60",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 7270,
+    "maxPossibleMatches": 60,
+    "approach": "nearest-first",
+    "solveMs": 0.659405,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2217.241298429052,
+    "meanPairCost": 36.95402164048421,
+    "meanEtaSeconds": 278.2,
+    "p90EtaSeconds": 504,
+    "perPriority": {
+      "normal": {
+        "requests": 238,
+        "matched": 52,
+        "matchRate": 0.2184873949579832,
+        "meanEtaSeconds": 284.34615384615387
+      },
+      "high": {
+        "requests": 40,
+        "matched": 6,
+        "matchRate": 0.15,
+        "meanEtaSeconds": 241.16666666666666
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 2,
+        "matchRate": 0.09090909090909091,
+        "meanEtaSeconds": 229.5
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/300x60",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 7270,
+    "maxPossibleMatches": 60,
+    "approach": "greedy-cost",
+    "solveMs": 7.992869,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 1885.5798400957187,
+    "meanPairCost": 31.42633066826198,
+    "meanEtaSeconds": 152.45,
+    "p90EtaSeconds": 294,
+    "perPriority": {
+      "normal": {
+        "requests": 238,
+        "matched": 24,
+        "matchRate": 0.10084033613445378,
+        "meanEtaSeconds": 111.95833333333333
+      },
+      "high": {
+        "requests": 40,
+        "matched": 17,
+        "matchRate": 0.425,
+        "meanEtaSeconds": 132.7058823529412
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 19,
+        "matchRate": 0.8636363636363636,
+        "meanEtaSeconds": 221.26315789473685
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/300x60",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 7270,
+    "maxPossibleMatches": 60,
+    "approach": "existing-mcf",
+    "solveMs": 45.182321,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2034.2881734290524,
+    "meanPairCost": 33.904802890484206,
+    "meanEtaSeconds": 286.05,
+    "p90EtaSeconds": 519,
+    "perPriority": {
+      "normal": {
+        "requests": 238,
+        "matched": 1,
+        "matchRate": 0.004201680672268907,
+        "meanEtaSeconds": 60
+      },
+      "high": {
+        "requests": 40,
+        "matched": 37,
+        "matchRate": 0.925,
+        "meanEtaSeconds": 332.5945945945946
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 218.04545454545453
+      }
+    }
+  },
+  {
+    "case": "scarce/clustered/300x60",
+    "scenario": "scarce",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 60,
+    "eligiblePairs": 7270,
+    "maxPossibleMatches": 60,
+    "approach": "smart-hungarian",
+    "solveMs": 80.814373,
+    "matched": 60,
+    "unmatched": 240,
+    "matchRate": 0.2,
+    "totalPairCost": 2060.006923429052,
+    "meanPairCost": 34.33344872381754,
+    "meanEtaSeconds": 304.25,
+    "p90EtaSeconds": 602,
+    "perPriority": {
+      "normal": {
+        "requests": 238,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 40,
+        "matched": 38,
+        "matchRate": 0.95,
+        "meanEtaSeconds": 277.2631578947368
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 350.8636363636364
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/20x100",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 643,
+    "maxPossibleMatches": 20,
+    "approach": "nearest-first",
+    "solveMs": 0.135618,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 690.6126381530943,
+    "meanPairCost": 34.530631907654715,
+    "meanEtaSeconds": 170.25,
+    "p90EtaSeconds": 332,
+    "perPriority": {
+      "normal": {
+        "requests": 15,
+        "matched": 15,
+        "matchRate": 1,
+        "meanEtaSeconds": 187.06666666666666
+      },
+      "high": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 125.66666666666667
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 111
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/20x100",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 643,
+    "maxPossibleMatches": 20,
+    "approach": "greedy-cost",
+    "solveMs": 0.42974,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 614.7526772024219,
+    "meanPairCost": 30.737633860121093,
+    "meanEtaSeconds": 229.95,
+    "p90EtaSeconds": 413,
+    "perPriority": {
+      "normal": {
+        "requests": 15,
+        "matched": 15,
+        "matchRate": 1,
+        "meanEtaSeconds": 237.86666666666667
+      },
+      "high": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 207.66666666666666
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 204
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/20x100",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 643,
+    "maxPossibleMatches": 20,
+    "approach": "existing-mcf",
+    "solveMs": 0.558969,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 692.4721318131034,
+    "meanPairCost": 34.62360659065517,
+    "meanEtaSeconds": 156.85,
+    "p90EtaSeconds": 232,
+    "perPriority": {
+      "normal": {
+        "requests": 15,
+        "matched": 15,
+        "matchRate": 1,
+        "meanEtaSeconds": 169.2
+      },
+      "high": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 125.66666666666667
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 111
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/20x100",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 643,
+    "maxPossibleMatches": 20,
+    "approach": "smart-hungarian",
+    "solveMs": 0.716031,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 604.9510609669587,
+    "meanPairCost": 30.247553048347935,
+    "meanEtaSeconds": 205.7,
+    "p90EtaSeconds": 332,
+    "perPriority": {
+      "normal": {
+        "requests": 15,
+        "matched": 15,
+        "matchRate": 1,
+        "meanEtaSeconds": 213.66666666666666
+      },
+      "high": {
+        "requests": 3,
+        "matched": 3,
+        "matchRate": 1,
+        "meanEtaSeconds": 207.66666666666666
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 143
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/60x300",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 5635,
+    "maxPossibleMatches": 60,
+    "approach": "nearest-first",
+    "solveMs": 1.325012,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1913.3013290986958,
+    "meanPairCost": 31.888355484978263,
+    "meanEtaSeconds": 110.63333333333334,
+    "p90EtaSeconds": 168,
+    "perPriority": {
+      "normal": {
+        "requests": 47,
+        "matched": 47,
+        "matchRate": 1,
+        "meanEtaSeconds": 112.65957446808511
+      },
+      "high": {
+        "requests": 8,
+        "matched": 8,
+        "matchRate": 1,
+        "meanEtaSeconds": 108.5
+      },
+      "urgent": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 95
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/60x300",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 5635,
+    "maxPossibleMatches": 60,
+    "approach": "greedy-cost",
+    "solveMs": 4.056534,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1739.2824761833945,
+    "meanPairCost": 28.98804126972324,
+    "meanEtaSeconds": 158.33333333333334,
+    "p90EtaSeconds": 268,
+    "perPriority": {
+      "normal": {
+        "requests": 47,
+        "matched": 47,
+        "matchRate": 1,
+        "meanEtaSeconds": 166.40425531914894
+      },
+      "high": {
+        "requests": 8,
+        "matched": 8,
+        "matchRate": 1,
+        "meanEtaSeconds": 130.125
+      },
+      "urgent": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 127.6
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/60x300",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 5635,
+    "maxPossibleMatches": 60,
+    "approach": "existing-mcf",
+    "solveMs": 11.403742,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1909.1762068749485,
+    "meanPairCost": 31.81960344791581,
+    "meanEtaSeconds": 104.51666666666667,
+    "p90EtaSeconds": 164,
+    "perPriority": {
+      "normal": {
+        "requests": 47,
+        "matched": 47,
+        "matchRate": 1,
+        "meanEtaSeconds": 109.55319148936171
+      },
+      "high": {
+        "requests": 8,
+        "matched": 8,
+        "matchRate": 1,
+        "meanEtaSeconds": 95.125
+      },
+      "urgent": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 72.2
+      }
+    }
+  },
+  {
+    "case": "abundant/uniform/60x300",
+    "scenario": "abundant",
+    "geo": "uniform",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 5635,
+    "maxPossibleMatches": 60,
+    "approach": "smart-hungarian",
+    "solveMs": 6.009385,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1729.1975865270472,
+    "meanPairCost": 28.819959775450787,
+    "meanEtaSeconds": 151.31666666666666,
+    "p90EtaSeconds": 278,
+    "perPriority": {
+      "normal": {
+        "requests": 47,
+        "matched": 47,
+        "matchRate": 1,
+        "meanEtaSeconds": 152.10638297872342
+      },
+      "high": {
+        "requests": 8,
+        "matched": 8,
+        "matchRate": 1,
+        "meanEtaSeconds": 153.625
+      },
+      "urgent": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 140.2
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/20x100",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 831,
+    "maxPossibleMatches": 20,
+    "approach": "nearest-first",
+    "solveMs": 0.143587,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 652.1516189987814,
+    "meanPairCost": 32.60758094993907,
+    "meanEtaSeconds": 119.8,
+    "p90EtaSeconds": 168,
+    "perPriority": {
+      "normal": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 113.72222222222223
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 174.5
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/20x100",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 831,
+    "maxPossibleMatches": 20,
+    "approach": "greedy-cost",
+    "solveMs": 0.534732,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 608.1002685961605,
+    "meanPairCost": 30.405013429808026,
+    "meanEtaSeconds": 193.1,
+    "p90EtaSeconds": 345,
+    "perPriority": {
+      "normal": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 190.38888888888889
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 217.5
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/20x100",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 831,
+    "maxPossibleMatches": 20,
+    "approach": "existing-mcf",
+    "solveMs": 0.703806,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 652.1516189987814,
+    "meanPairCost": 32.60758094993907,
+    "meanEtaSeconds": 119.8,
+    "p90EtaSeconds": 168,
+    "perPriority": {
+      "normal": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 113.72222222222223
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 174.5
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/20x100",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 20,
+    "providers": 100,
+    "eligiblePairs": 831,
+    "maxPossibleMatches": 20,
+    "approach": "smart-hungarian",
+    "solveMs": 0.8202,
+    "matched": 20,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 607.423185262827,
+    "meanPairCost": 30.37115926314135,
+    "meanEtaSeconds": 191.8,
+    "p90EtaSeconds": 345,
+    "perPriority": {
+      "normal": {
+        "requests": 18,
+        "matched": 18,
+        "matchRate": 1,
+        "meanEtaSeconds": 188.94444444444446
+      },
+      "high": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 217.5
+      },
+      "urgent": {
+        "requests": 0,
+        "matched": 0,
+        "matchRate": null,
+        "meanEtaSeconds": null
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/60x300",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 9331,
+    "maxPossibleMatches": 60,
+    "approach": "nearest-first",
+    "solveMs": 3.021989,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1987.6231973516255,
+    "meanPairCost": 33.12705328919376,
+    "meanEtaSeconds": 85.36666666666666,
+    "p90EtaSeconds": 125,
+    "perPriority": {
+      "normal": {
+        "requests": 53,
+        "matched": 53,
+        "matchRate": 1,
+        "meanEtaSeconds": 84.45283018867924
+      },
+      "high": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 97.6
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 79
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/60x300",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 9331,
+    "maxPossibleMatches": 60,
+    "approach": "greedy-cost",
+    "solveMs": 9.812755,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1732.090705100991,
+    "meanPairCost": 28.86817841834985,
+    "meanEtaSeconds": 140.55,
+    "p90EtaSeconds": 250,
+    "perPriority": {
+      "normal": {
+        "requests": 53,
+        "matched": 53,
+        "matchRate": 1,
+        "meanEtaSeconds": 139.16981132075472
+      },
+      "high": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 158
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 133.5
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/60x300",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 9331,
+    "maxPossibleMatches": 60,
+    "approach": "existing-mcf",
+    "solveMs": 24.139857,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1990.2106661985283,
+    "meanPairCost": 33.170177769975474,
+    "meanEtaSeconds": 83.38333333333334,
+    "p90EtaSeconds": 125,
+    "perPriority": {
+      "normal": {
+        "requests": 53,
+        "matched": 53,
+        "matchRate": 1,
+        "meanEtaSeconds": 82.20754716981132
+      },
+      "high": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 97.6
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 79
+      }
+    }
+  },
+  {
+    "case": "abundant/clustered/60x300",
+    "scenario": "abundant",
+    "geo": "clustered",
+    "requests": 60,
+    "providers": 300,
+    "eligiblePairs": 9331,
+    "maxPossibleMatches": 60,
+    "approach": "smart-hungarian",
+    "solveMs": 12.231231,
+    "matched": 60,
+    "unmatched": 0,
+    "matchRate": 1,
+    "totalPairCost": 1719.6803758748024,
+    "meanPairCost": 28.661339597913372,
+    "meanEtaSeconds": 140.7,
+    "p90EtaSeconds": 239,
+    "perPriority": {
+      "normal": {
+        "requests": 53,
+        "matched": 53,
+        "matchRate": 1,
+        "meanEtaSeconds": 140.45283018867926
+      },
+      "high": {
+        "requests": 5,
+        "matched": 5,
+        "matchRate": 1,
+        "meanEtaSeconds": 162.2
+      },
+      "urgent": {
+        "requests": 2,
+        "matched": 2,
+        "matchRate": 1,
+        "meanEtaSeconds": 93.5
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/100x40",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1423,
+    "maxPossibleMatches": 40,
+    "approach": "nearest-first",
+    "solveMs": 0.197359,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1487.6703383875001,
+    "meanPairCost": 37.191758459687506,
+    "meanEtaSeconds": 394.375,
+    "p90EtaSeconds": 750,
+    "perPriority": {
+      "normal": {
+        "requests": 45,
+        "matched": 20,
+        "matchRate": 0.4444444444444444,
+        "meanEtaSeconds": 345.85
+      },
+      "high": {
+        "requests": 26,
+        "matched": 6,
+        "matchRate": 0.23076923076923078,
+        "meanEtaSeconds": 330.8333333333333
+      },
+      "urgent": {
+        "requests": 29,
+        "matched": 14,
+        "matchRate": 0.4827586206896552,
+        "meanEtaSeconds": 490.92857142857144
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/100x40",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1423,
+    "maxPossibleMatches": 40,
+    "approach": "greedy-cost",
+    "solveMs": 0.982015,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1281.8109633875006,
+    "meanPairCost": 32.04527408468751,
+    "meanEtaSeconds": 229.1,
+    "p90EtaSeconds": 392,
+    "perPriority": {
+      "normal": {
+        "requests": 45,
+        "matched": 10,
+        "matchRate": 0.2222222222222222,
+        "meanEtaSeconds": 106.7
+      },
+      "high": {
+        "requests": 26,
+        "matched": 8,
+        "matchRate": 0.3076923076923077,
+        "meanEtaSeconds": 188.5
+      },
+      "urgent": {
+        "requests": 29,
+        "matched": 22,
+        "matchRate": 0.7586206896551724,
+        "meanEtaSeconds": 299.5
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/100x40",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1423,
+    "maxPossibleMatches": 40,
+    "approach": "existing-mcf",
+    "solveMs": 4.305173,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1335.8474217208334,
+    "meanPairCost": 33.396185543020835,
+    "meanEtaSeconds": 336.425,
+    "p90EtaSeconds": 674,
+    "perPriority": {
+      "normal": {
+        "requests": 45,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 26,
+        "matched": 11,
+        "matchRate": 0.4230769230769231,
+        "meanEtaSeconds": 252.54545454545453
+      },
+      "urgent": {
+        "requests": 29,
+        "matched": 29,
+        "matchRate": 1,
+        "meanEtaSeconds": 368.2413793103448
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/100x40",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1423,
+    "maxPossibleMatches": 40,
+    "approach": "smart-hungarian",
+    "solveMs": 5.285909,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1335.8474217208336,
+    "meanPairCost": 33.39618554302084,
+    "meanEtaSeconds": 336.425,
+    "p90EtaSeconds": 674,
+    "perPriority": {
+      "normal": {
+        "requests": 45,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 26,
+        "matched": 11,
+        "matchRate": 0.4230769230769231,
+        "meanEtaSeconds": 252.54545454545453
+      },
+      "urgent": {
+        "requests": 29,
+        "matched": 29,
+        "matchRate": 1,
+        "meanEtaSeconds": 368.2413793103448
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/300x120",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 12448,
+    "maxPossibleMatches": 120,
+    "approach": "nearest-first",
+    "solveMs": 1.586535,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 4141.005606390706,
+    "meanPairCost": 34.508380053255884,
+    "meanEtaSeconds": 279.10833333333335,
+    "p90EtaSeconds": 564,
+    "perPriority": {
+      "normal": {
+        "requests": 148,
+        "matched": 67,
+        "matchRate": 0.4527027027027027,
+        "meanEtaSeconds": 284.2238805970149
+      },
+      "high": {
+        "requests": 70,
+        "matched": 19,
+        "matchRate": 0.2714285714285714,
+        "meanEtaSeconds": 304.89473684210526
+      },
+      "urgent": {
+        "requests": 82,
+        "matched": 34,
+        "matchRate": 0.4146341463414634,
+        "meanEtaSeconds": 254.61764705882354
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/300x120",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 12448,
+    "maxPossibleMatches": 120,
+    "approach": "greedy-cost",
+    "solveMs": 11.837976,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3450.8858147240394,
+    "meanPairCost": 28.757381789366995,
+    "meanEtaSeconds": 139.96666666666667,
+    "p90EtaSeconds": 247,
+    "perPriority": {
+      "normal": {
+        "requests": 148,
+        "matched": 20,
+        "matchRate": 0.13513513513513514,
+        "meanEtaSeconds": 113
+      },
+      "high": {
+        "requests": 70,
+        "matched": 24,
+        "matchRate": 0.34285714285714286,
+        "meanEtaSeconds": 143.83333333333334
+      },
+      "urgent": {
+        "requests": 82,
+        "matched": 76,
+        "matchRate": 0.926829268292683,
+        "meanEtaSeconds": 145.8421052631579
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/300x120",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 12448,
+    "maxPossibleMatches": 120,
+    "approach": "existing-mcf",
+    "solveMs": 88.963632,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3494.130606390704,
+    "meanPairCost": 29.117755053255866,
+    "meanEtaSeconds": 173.975,
+    "p90EtaSeconds": 356,
+    "perPriority": {
+      "normal": {
+        "requests": 148,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 70,
+        "matched": 38,
+        "matchRate": 0.5428571428571428,
+        "meanEtaSeconds": 240.3421052631579
+      },
+      "urgent": {
+        "requests": 82,
+        "matched": 82,
+        "matchRate": 1,
+        "meanEtaSeconds": 143.21951219512195
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/uniform/300x120",
+    "scenario": "mixed-priority",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 12448,
+    "maxPossibleMatches": 120,
+    "approach": "smart-hungarian",
+    "solveMs": 105.075075,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3482.7556063907077,
+    "meanPairCost": 29.022963386589232,
+    "meanEtaSeconds": 170.94166666666666,
+    "p90EtaSeconds": 304,
+    "perPriority": {
+      "normal": {
+        "requests": 148,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 70,
+        "matched": 38,
+        "matchRate": 0.5428571428571428,
+        "meanEtaSeconds": 179.47368421052633
+      },
+      "urgent": {
+        "requests": 82,
+        "matched": 82,
+        "matchRate": 1,
+        "meanEtaSeconds": 166.9878048780488
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/100x40",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1538,
+    "maxPossibleMatches": 40,
+    "approach": "nearest-first",
+    "solveMs": 0.19387,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1572.6817994419332,
+    "meanPairCost": 39.31704498604833,
+    "meanEtaSeconds": 398.175,
+    "p90EtaSeconds": 790,
+    "perPriority": {
+      "normal": {
+        "requests": 51,
+        "matched": 23,
+        "matchRate": 0.45098039215686275,
+        "meanEtaSeconds": 456.6521739130435
+      },
+      "high": {
+        "requests": 27,
+        "matched": 12,
+        "matchRate": 0.4444444444444444,
+        "meanEtaSeconds": 295.5
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 5,
+        "matchRate": 0.22727272727272727,
+        "meanEtaSeconds": 375.6
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/100x40",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1538,
+    "maxPossibleMatches": 40,
+    "approach": "greedy-cost",
+    "solveMs": 1.02642,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1259.1765911086,
+    "meanPairCost": 31.479414777715,
+    "meanEtaSeconds": 176.1,
+    "p90EtaSeconds": 293,
+    "perPriority": {
+      "normal": {
+        "requests": 51,
+        "matched": 7,
+        "matchRate": 0.13725490196078433,
+        "meanEtaSeconds": 118.71428571428571
+      },
+      "high": {
+        "requests": 27,
+        "matched": 14,
+        "matchRate": 0.5185185185185185,
+        "meanEtaSeconds": 177.21428571428572
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 19,
+        "matchRate": 0.8636363636363636,
+        "meanEtaSeconds": 196.42105263157896
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/100x40",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1538,
+    "maxPossibleMatches": 40,
+    "approach": "existing-mcf",
+    "solveMs": 4.742265,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1276.4213827752671,
+    "meanPairCost": 31.910534569381678,
+    "meanEtaSeconds": 222.825,
+    "p90EtaSeconds": 393,
+    "perPriority": {
+      "normal": {
+        "requests": 51,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 27,
+        "matched": 18,
+        "matchRate": 0.6666666666666666,
+        "meanEtaSeconds": 249.11111111111111
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 201.3181818181818
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/100x40",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 100,
+    "providers": 40,
+    "eligiblePairs": 1538,
+    "maxPossibleMatches": 40,
+    "approach": "smart-hungarian",
+    "solveMs": 11.895175,
+    "matched": 40,
+    "unmatched": 60,
+    "matchRate": 0.4,
+    "totalPairCost": 1270.2755494419334,
+    "meanPairCost": 31.756888736048335,
+    "meanEtaSeconds": 217.825,
+    "p90EtaSeconds": 381,
+    "perPriority": {
+      "normal": {
+        "requests": 51,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 27,
+        "matched": 18,
+        "matchRate": 0.6666666666666666,
+        "meanEtaSeconds": 187.38888888888889
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 242.72727272727272
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/300x120",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 24955,
+    "maxPossibleMatches": 120,
+    "approach": "nearest-first",
+    "solveMs": 2.184349,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3990.522399646319,
+    "meanPairCost": 33.254353330385996,
+    "meanEtaSeconds": 222.54166666666666,
+    "p90EtaSeconds": 581,
+    "perPriority": {
+      "normal": {
+        "requests": 156,
+        "matched": 63,
+        "matchRate": 0.40384615384615385,
+        "meanEtaSeconds": 219.04761904761904
+      },
+      "high": {
+        "requests": 70,
+        "matched": 32,
+        "matchRate": 0.45714285714285713,
+        "meanEtaSeconds": 257.8125
+      },
+      "urgent": {
+        "requests": 74,
+        "matched": 25,
+        "matchRate": 0.33783783783783783,
+        "meanEtaSeconds": 186.2
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/300x120",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 24955,
+    "maxPossibleMatches": 120,
+    "approach": "greedy-cost",
+    "solveMs": 33.682484,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3424.0380246463196,
+    "meanPairCost": 28.533650205385996,
+    "meanEtaSeconds": 124.11666666666666,
+    "p90EtaSeconds": 213,
+    "perPriority": {
+      "normal": {
+        "requests": 156,
+        "matched": 20,
+        "matchRate": 0.1282051282051282,
+        "meanEtaSeconds": 100.25
+      },
+      "high": {
+        "requests": 70,
+        "matched": 32,
+        "matchRate": 0.45714285714285713,
+        "meanEtaSeconds": 127.3125
+      },
+      "urgent": {
+        "requests": 74,
+        "matched": 68,
+        "matchRate": 0.918918918918919,
+        "meanEtaSeconds": 129.63235294117646
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/300x120",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 24955,
+    "maxPossibleMatches": 120,
+    "approach": "existing-mcf",
+    "solveMs": 206.443074,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3413.553649646322,
+    "meanPairCost": 28.44628041371935,
+    "meanEtaSeconds": 145.40833333333333,
+    "p90EtaSeconds": 287,
+    "perPriority": {
+      "normal": {
+        "requests": 156,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 70,
+        "matched": 46,
+        "matchRate": 0.6571428571428571,
+        "meanEtaSeconds": 188.06521739130434
+      },
+      "urgent": {
+        "requests": 74,
+        "matched": 74,
+        "matchRate": 1,
+        "meanEtaSeconds": 118.89189189189189
+      }
+    }
+  },
+  {
+    "case": "mixed-priority/clustered/300x120",
+    "scenario": "mixed-priority",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 120,
+    "eligiblePairs": 24955,
+    "maxPossibleMatches": 120,
+    "approach": "smart-hungarian",
+    "solveMs": 135.968558,
+    "matched": 120,
+    "unmatched": 180,
+    "matchRate": 0.4,
+    "totalPairCost": 3399.4963579796527,
+    "meanPairCost": 28.329136316497106,
+    "meanEtaSeconds": 140.95,
+    "p90EtaSeconds": 266,
+    "perPriority": {
+      "normal": {
+        "requests": 156,
+        "matched": 0,
+        "matchRate": 0,
+        "meanEtaSeconds": null
+      },
+      "high": {
+        "requests": 70,
+        "matched": 46,
+        "matchRate": 0.6571428571428571,
+        "meanEtaSeconds": 135.3695652173913
+      },
+      "urgent": {
+        "requests": 74,
+        "matched": 74,
+        "matchRate": 1,
+        "meanEtaSeconds": 144.4189189189189
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/uniform/300x300",
+    "scenario": "mixed-categories",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 11373,
+    "maxPossibleMatches": 282,
+    "approach": "nearest-first",
+    "solveMs": 4.709739,
+    "matched": 281,
+    "unmatched": 19,
+    "matchRate": 0.9366666666666666,
+    "totalPairCost": 10603.842988494787,
+    "meanPairCost": 37.736096044465434,
+    "meanEtaSeconds": 282.51601423487546,
+    "p90EtaSeconds": 638,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 229,
+        "matchRate": 0.9423868312757202,
+        "meanEtaSeconds": 289.7860262008734
+      },
+      "high": {
+        "requests": 40,
+        "matched": 37,
+        "matchRate": 0.925,
+        "meanEtaSeconds": 240.9189189189189
+      },
+      "urgent": {
+        "requests": 17,
+        "matched": 15,
+        "matchRate": 0.8823529411764706,
+        "meanEtaSeconds": 274.1333333333333
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/uniform/300x300",
+    "scenario": "mixed-categories",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 11373,
+    "maxPossibleMatches": 282,
+    "approach": "greedy-cost",
+    "solveMs": 12.905713,
+    "matched": 276,
+    "unmatched": 24,
+    "matchRate": 0.92,
+    "totalPairCost": 9974.759243494042,
+    "meanPairCost": 36.14043204164508,
+    "meanEtaSeconds": 233.9927536231884,
+    "p90EtaSeconds": 449,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 219,
+        "matchRate": 0.9012345679012346,
+        "meanEtaSeconds": 237.9634703196347
+      },
+      "high": {
+        "requests": 40,
+        "matched": 40,
+        "matchRate": 1,
+        "meanEtaSeconds": 214.225
+      },
+      "urgent": {
+        "requests": 17,
+        "matched": 17,
+        "matchRate": 1,
+        "meanEtaSeconds": 229.35294117647058
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/uniform/300x300",
+    "scenario": "mixed-categories",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 11373,
+    "maxPossibleMatches": 282,
+    "approach": "existing-mcf",
+    "solveMs": 102.151867,
+    "matched": 282,
+    "unmatched": 18,
+    "matchRate": 0.94,
+    "totalPairCost": 10179.41339502,
+    "meanPairCost": 36.09721062063829,
+    "meanEtaSeconds": 220.03546099290782,
+    "p90EtaSeconds": 426,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 225,
+        "matchRate": 0.9259259259259259,
+        "meanEtaSeconds": 235.8177777777778
+      },
+      "high": {
+        "requests": 40,
+        "matched": 40,
+        "matchRate": 1,
+        "meanEtaSeconds": 160.85
+      },
+      "urgent": {
+        "requests": 17,
+        "matched": 17,
+        "matchRate": 1,
+        "meanEtaSeconds": 150.41176470588235
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/uniform/300x300",
+    "scenario": "mixed-categories",
+    "geo": "uniform",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 11373,
+    "maxPossibleMatches": 282,
+    "approach": "smart-hungarian",
+    "solveMs": 29.406253,
+    "matched": 282,
+    "unmatched": 18,
+    "matchRate": 0.94,
+    "totalPairCost": 10102.22099563443,
+    "meanPairCost": 35.82347870792351,
+    "meanEtaSeconds": 220.21985815602838,
+    "p90EtaSeconds": 421,
+    "perPriority": {
+      "normal": {
+        "requests": 243,
+        "matched": 225,
+        "matchRate": 0.9259259259259259,
+        "meanEtaSeconds": 217.89777777777778
+      },
+      "high": {
+        "requests": 40,
+        "matched": 40,
+        "matchRate": 1,
+        "meanEtaSeconds": 227.275
+      },
+      "urgent": {
+        "requests": 17,
+        "matched": 17,
+        "matchRate": 1,
+        "meanEtaSeconds": 234.35294117647058
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/clustered/300x300",
+    "scenario": "mixed-categories",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 19462,
+    "maxPossibleMatches": 283,
+    "approach": "nearest-first",
+    "solveMs": 5.701087,
+    "matched": 282,
+    "unmatched": 18,
+    "matchRate": 0.94,
+    "totalPairCost": 10311.213257739897,
+    "meanPairCost": 36.56458602035424,
+    "meanEtaSeconds": 235.39007092198582,
+    "p90EtaSeconds": 510,
+    "perPriority": {
+      "normal": {
+        "requests": 218,
+        "matched": 205,
+        "matchRate": 0.9403669724770642,
+        "meanEtaSeconds": 229.33658536585367
+      },
+      "high": {
+        "requests": 60,
+        "matched": 57,
+        "matchRate": 0.95,
+        "meanEtaSeconds": 248.87719298245614
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 20,
+        "matchRate": 0.9090909090909091,
+        "meanEtaSeconds": 259
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/clustered/300x300",
+    "scenario": "mixed-categories",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 19462,
+    "maxPossibleMatches": 283,
+    "approach": "greedy-cost",
+    "solveMs": 22.123669,
+    "matched": 282,
+    "unmatched": 18,
+    "matchRate": 0.94,
+    "totalPairCost": 10093.287043192859,
+    "meanPairCost": 35.791798025506594,
+    "meanEtaSeconds": 220.46453900709218,
+    "p90EtaSeconds": 479,
+    "perPriority": {
+      "normal": {
+        "requests": 218,
+        "matched": 203,
+        "matchRate": 0.9311926605504587,
+        "meanEtaSeconds": 233.54679802955664
+      },
+      "high": {
+        "requests": 60,
+        "matched": 57,
+        "matchRate": 0.95,
+        "meanEtaSeconds": 179.8421052631579
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 205
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/clustered/300x300",
+    "scenario": "mixed-categories",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 19462,
+    "maxPossibleMatches": 283,
+    "approach": "existing-mcf",
+    "solveMs": 211.660872,
+    "matched": 283,
+    "unmatched": 17,
+    "matchRate": 0.9433333333333334,
+    "totalPairCost": 9946.270026970118,
+    "meanPairCost": 35.14583048399335,
+    "meanEtaSeconds": 181.06360424028267,
+    "p90EtaSeconds": 369,
+    "perPriority": {
+      "normal": {
+        "requests": 218,
+        "matched": 201,
+        "matchRate": 0.9220183486238532,
+        "meanEtaSeconds": 193.37313432835822
+      },
+      "high": {
+        "requests": 60,
+        "matched": 60,
+        "matchRate": 1,
+        "meanEtaSeconds": 151.26666666666668
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 149.86363636363637
+      }
+    }
+  },
+  {
+    "case": "mixed-categories/clustered/300x300",
+    "scenario": "mixed-categories",
+    "geo": "clustered",
+    "requests": 300,
+    "providers": 300,
+    "eligiblePairs": 19462,
+    "maxPossibleMatches": 283,
+    "approach": "smart-hungarian",
+    "solveMs": 35.267597,
+    "matched": 283,
+    "unmatched": 17,
+    "matchRate": 0.9433333333333334,
+    "totalPairCost": 9834.437763234233,
+    "meanPairCost": 34.75066347432591,
+    "meanEtaSeconds": 182.41696113074204,
+    "p90EtaSeconds": 374,
+    "perPriority": {
+      "normal": {
+        "requests": 218,
+        "matched": 201,
+        "matchRate": 0.9220183486238532,
+        "meanEtaSeconds": 171.8507462686567
+      },
+      "high": {
+        "requests": 60,
+        "matched": 60,
+        "matchRate": 1,
+        "meanEtaSeconds": 207.03333333333333
+      },
+      "urgent": {
+        "requests": 22,
+        "matched": 22,
+        "matchRate": 1,
+        "meanEtaSeconds": 211.8181818181818
+      }
+    }
+  }
+]

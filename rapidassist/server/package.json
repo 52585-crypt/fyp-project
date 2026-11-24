@@ -11,7 +11,8 @@
     "aws:check": "node scripts/checkAws.js",
     "dev:checked": "npm run aws:check && npm run dev",
     "dev": "nodemon src/index.js --development",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "benchmark:matching": "node scripts/benchmark-matching.js"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1172.0",

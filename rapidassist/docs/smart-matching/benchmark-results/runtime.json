@@ -1,0 +1,202 @@
+[
+  {
+    "size": 10,
+    "eligiblePairs": 35,
+    "approach": "nearest-first",
+    "runs": 30,
+    "medianMs": 0.005489,
+    "p95Ms": 0.006894,
+    "minMs": 0.005315,
+    "maxMs": 0.012603
+  },
+  {
+    "size": 10,
+    "eligiblePairs": 35,
+    "approach": "greedy-cost",
+    "runs": 30,
+    "medianMs": 0.0205,
+    "p95Ms": 0.026864,
+    "minMs": 0.019958,
+    "maxMs": 1.198045
+  },
+  {
+    "size": 10,
+    "eligiblePairs": 35,
+    "approach": "existing-mcf",
+    "runs": 30,
+    "medianMs": 0.026847,
+    "p95Ms": 0.061669,
+    "minMs": 0.025682,
+    "maxMs": 0.077457
+  },
+  {
+    "size": 10,
+    "eligiblePairs": 35,
+    "approach": "smart-hungarian",
+    "runs": 30,
+    "medianMs": 0.043726,
+    "p95Ms": 0.059458,
+    "minMs": 0.041994,
+    "maxMs": 0.059918
+  },
+  {
+    "size": 50,
+    "eligiblePairs": 864,
+    "approach": "nearest-first",
+    "runs": 30,
+    "medianMs": 0.125255,
+    "p95Ms": 0.14235,
+    "minMs": 0.123033,
+    "maxMs": 0.148145
+  },
+  {
+    "size": 50,
+    "eligiblePairs": 864,
+    "approach": "greedy-cost",
+    "runs": 30,
+    "medianMs": 0.530066,
+    "p95Ms": 1.090344,
+    "minMs": 0.502647,
+    "maxMs": 1.40766
+  },
+  {
+    "size": 50,
+    "eligiblePairs": 864,
+    "approach": "existing-mcf",
+    "runs": 30,
+    "medianMs": 1.108181,
+    "p95Ms": 1.532847,
+    "minMs": 1.074466,
+    "maxMs": 1.653074
+  },
+  {
+    "size": 50,
+    "eligiblePairs": 864,
+    "approach": "smart-hungarian",
+    "runs": 30,
+    "medianMs": 1.020886,
+    "p95Ms": 2.745633,
+    "minMs": 0.99199,
+    "maxMs": 3.30331
+  },
+  {
+    "size": 100,
+    "eligiblePairs": 3589,
+    "approach": "nearest-first",
+    "runs": 30,
+    "medianMs": 0.513396,
+    "p95Ms": 0.527305,
+    "minMs": 0.507178,
+    "maxMs": 0.542001
+  },
+  {
+    "size": 100,
+    "eligiblePairs": 3589,
+    "approach": "greedy-cost",
+    "runs": 30,
+    "medianMs": 2.368166,
+    "p95Ms": 3.04523,
+    "minMs": 2.282361,
+    "maxMs": 3.158078
+  },
+  {
+    "size": 100,
+    "eligiblePairs": 3589,
+    "approach": "existing-mcf",
+    "runs": 30,
+    "medianMs": 8.2182,
+    "p95Ms": 9.288424,
+    "minMs": 7.86187,
+    "maxMs": 9.717511
+  },
+  {
+    "size": 100,
+    "eligiblePairs": 3589,
+    "approach": "smart-hungarian",
+    "runs": 30,
+    "medianMs": 5.567425,
+    "p95Ms": 7.877637,
+    "minMs": 5.203548,
+    "maxMs": 9.196294
+  },
+  {
+    "size": 200,
+    "eligiblePairs": 13950,
+    "approach": "nearest-first",
+    "runs": 30,
+    "medianMs": 2.174087,
+    "p95Ms": 3.266848,
+    "minMs": 2.111584,
+    "maxMs": 5.461559
+  },
+  {
+    "size": 200,
+    "eligiblePairs": 13950,
+    "approach": "greedy-cost",
+    "runs": 30,
+    "medianMs": 14.198286,
+    "p95Ms": 18.977111,
+    "minMs": 12.611734,
+    "maxMs": 22.152318
+  },
+  {
+    "size": 200,
+    "eligiblePairs": 13950,
+    "approach": "existing-mcf",
+    "runs": 30,
+    "medianMs": 78.481289,
+    "p95Ms": 92.743449,
+    "minMs": 72.279369,
+    "maxMs": 94.529835
+  },
+  {
+    "size": 200,
+    "eligiblePairs": 13950,
+    "approach": "smart-hungarian",
+    "runs": 30,
+    "medianMs": 27.137389,
+    "p95Ms": 28.707302,
+    "minMs": 24.939063,
+    "maxMs": 29.404747
+  },
+  {
+    "size": 300,
+    "eligiblePairs": 30865,
+    "approach": "nearest-first",
+    "runs": 30,
+    "medianMs": 5.91766,
+    "p95Ms": 6.745477,
+    "minMs": 5.435166,
+    "maxMs": 7.735642
+  },
+  {
+    "size": 300,
+    "eligiblePairs": 30865,
+    "approach": "greedy-cost",
+    "runs": 30,
+    "medianMs": 37.729182,
+    "p95Ms": 47.532668,
+    "minMs": 35.005401,
+    "maxMs": 47.96474
+  },
+  {
+    "size": 300,
+    "eligiblePairs": 30865,
+    "approach": "existing-mcf",
+    "runs": 30,
+    "medianMs": 368.385137,
+    "p95Ms": 474.272296,
+    "minMs": 340.218011,
+    "maxMs": 475.666374
+  },
+  {
+    "size": 300,
+    "eligiblePairs": 30865,
+    "approach": "smart-hungarian",
+    "runs": 30,
+    "medianMs": 66.814433,
+    "p95Ms": 73.454079,
+    "minMs": 64.587659,
+    "maxMs": 75.206782
+  }
+]

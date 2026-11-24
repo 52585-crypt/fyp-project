@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-11-24T11:25:02.093Z",
+  "node": "v22.22.1",
+  "platform": "linux 7.0.0-43-generic",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+  "logicalCores": 12,
+  "memoryGiB": 14.8,
+  "quick": false,
+  "eta": "straight line at 25 km/h, 60 s floor (services/travelTimeMatrix.js fallbackBlock); OSRM excluded",
+  "config": {
+    "weights": {
+      "E": 0.3,
+      "Q": 0.2,
+      "A": 0.15,
+      "S": 0.1,
+      "F": 0.1,
+      "T": 0.15
+    },
+    "unmatchedBaseCost": 150,
+    "priorityMultipliers": {
+      "normal": 1,
+      "high": 2,
+      "urgent": 4
+    },
+    "maxBatchSize": 300,
+    "radiusKm": 8
+  }
+}

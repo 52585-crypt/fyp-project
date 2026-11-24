@@ -1,0 +1,1382 @@
+[
+  {
+    "scenario": "sim/uniform/normal-load",
+    "approach": "nearest-first",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 118,
+    "served": 115,
+    "servedRate": 0.9745762711864406,
+    "lost": 3,
+    "stillOpenAtEnd": 0,
+    "offers": 146,
+    "declines": 16,
+    "expiries": 15,
+    "meanEtaSeconds": 434.6347826086957,
+    "p90EtaSeconds": 748,
+    "meanWaitSeconds": 17.73913043478261,
+    "p90WaitSeconds": 30,
+    "utilization": 0.6020833333333333,
+    "jobsPerProvider": {
+      "mean": 1.9166666666666667,
+      "stdDev": 0.6135054106435318,
+      "gini": 0.15985507246376818,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 91,
+        "served": 89,
+        "servedRate": 0.978021978021978,
+        "meanWaitSeconds": 18.651685393258425,
+        "meanEtaSeconds": 433.0112359550562
+      },
+      "high": {
+        "arrivals": 20,
+        "served": 20,
+        "servedRate": 1,
+        "meanWaitSeconds": 14,
+        "meanEtaSeconds": 404.65
+      },
+      "urgent": {
+        "arrivals": 7,
+        "served": 6,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 16.666666666666668,
+        "meanEtaSeconds": 558.6666666666666
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.4127906976744187,
+      "maxRequests": 4,
+      "meanFreeProviders": 20.46511627906977,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 172,
+      "median": 0.003007,
+      "p95": 0.008965,
+      "max": 0.046324
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 31,
+      "median": 0.003868,
+      "p95": 0.008795,
+      "max": 0.046324
+    }
+  },
+  {
+    "scenario": "sim/uniform/normal-load",
+    "approach": "greedy-cost",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 118,
+    "served": 116,
+    "servedRate": 0.9830508474576272,
+    "lost": 2,
+    "stillOpenAtEnd": 0,
+    "offers": 154,
+    "declines": 24,
+    "expiries": 14,
+    "meanEtaSeconds": 444.2068965517241,
+    "p90EtaSeconds": 827,
+    "meanWaitSeconds": 15,
+    "p90WaitSeconds": 30,
+    "utilization": 0.6040277777777778,
+    "jobsPerProvider": {
+      "mean": 1.9333333333333333,
+      "stdDev": 0.6289320754704405,
+      "gini": 0.16436781609195417,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 91,
+        "served": 89,
+        "servedRate": 0.978021978021978,
+        "meanWaitSeconds": 15.393258426966293,
+        "meanEtaSeconds": 427.8426966292135
+      },
+      "high": {
+        "arrivals": 20,
+        "served": 20,
+        "servedRate": 1,
+        "meanWaitSeconds": 13,
+        "meanEtaSeconds": 466.25
+      },
+      "urgent": {
+        "arrivals": 7,
+        "served": 7,
+        "servedRate": 1,
+        "meanWaitSeconds": 15.714285714285714,
+        "meanEtaSeconds": 589.2857142857143
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.240506329113924,
+      "maxRequests": 3,
+      "meanFreeProviders": 21.063291139240505,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 158,
+      "median": 0.009001,
+      "p95": 0.042299,
+      "max": 1.387151
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 38,
+      "median": 0.008354,
+      "p95": 0.041983,
+      "max": 0.042781
+    }
+  },
+  {
+    "scenario": "sim/uniform/normal-load",
+    "approach": "existing-mcf",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 118,
+    "served": 115,
+    "servedRate": 0.9745762711864406,
+    "lost": 3,
+    "stillOpenAtEnd": 0,
+    "offers": 146,
+    "declines": 16,
+    "expiries": 15,
+    "meanEtaSeconds": 434.6347826086957,
+    "p90EtaSeconds": 748,
+    "meanWaitSeconds": 17.73913043478261,
+    "p90WaitSeconds": 30,
+    "utilization": 0.6020833333333333,
+    "jobsPerProvider": {
+      "mean": 1.9166666666666667,
+      "stdDev": 0.6135054106435318,
+      "gini": 0.15985507246376818,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 91,
+        "served": 89,
+        "servedRate": 0.978021978021978,
+        "meanWaitSeconds": 18.651685393258425,
+        "meanEtaSeconds": 433.0112359550562
+      },
+      "high": {
+        "arrivals": 20,
+        "served": 20,
+        "servedRate": 1,
+        "meanWaitSeconds": 14,
+        "meanEtaSeconds": 404.65
+      },
+      "urgent": {
+        "arrivals": 7,
+        "served": 6,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 16.666666666666668,
+        "meanEtaSeconds": 558.6666666666666
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.4127906976744187,
+      "maxRequests": 4,
+      "meanFreeProviders": 20.46511627906977,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 172,
+      "median": 0.011193,
+      "p95": 0.035332,
+      "max": 0.090458
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 31,
+      "median": 0.014401,
+      "p95": 0.033464,
+      "max": 0.06358
+    }
+  },
+  {
+    "scenario": "sim/uniform/normal-load",
+    "approach": "smart-hungarian",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 118,
+    "served": 116,
+    "servedRate": 0.9830508474576272,
+    "lost": 2,
+    "stillOpenAtEnd": 0,
+    "offers": 154,
+    "declines": 24,
+    "expiries": 14,
+    "meanEtaSeconds": 444.2068965517241,
+    "p90EtaSeconds": 827,
+    "meanWaitSeconds": 15,
+    "p90WaitSeconds": 30,
+    "utilization": 0.6040277777777778,
+    "jobsPerProvider": {
+      "mean": 1.9333333333333333,
+      "stdDev": 0.6289320754704405,
+      "gini": 0.16436781609195417,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 91,
+        "served": 89,
+        "servedRate": 0.978021978021978,
+        "meanWaitSeconds": 15.393258426966293,
+        "meanEtaSeconds": 427.8426966292135
+      },
+      "high": {
+        "arrivals": 20,
+        "served": 20,
+        "servedRate": 1,
+        "meanWaitSeconds": 13,
+        "meanEtaSeconds": 466.25
+      },
+      "urgent": {
+        "arrivals": 7,
+        "served": 7,
+        "servedRate": 1,
+        "meanWaitSeconds": 15.714285714285714,
+        "meanEtaSeconds": 589.2857142857143
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.240506329113924,
+      "maxRequests": 3,
+      "meanFreeProviders": 21.063291139240505,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 158,
+      "median": 0.015041,
+      "p95": 0.048495,
+      "max": 0.443664
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 38,
+      "median": 0.015421,
+      "p95": 0.055939,
+      "max": 0.058142
+    }
+  },
+  {
+    "scenario": "sim/uniform/peak-load",
+    "approach": "nearest-first",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 235,
+    "served": 150,
+    "servedRate": 0.6382978723404256,
+    "lost": 83,
+    "stillOpenAtEnd": 2,
+    "offers": 197,
+    "declines": 33,
+    "expiries": 14,
+    "meanEtaSeconds": 599.0666666666667,
+    "p90EtaSeconds": 1042,
+    "meanWaitSeconds": 66.2,
+    "p90WaitSeconds": 160,
+    "utilization": 0.8389814814814814,
+    "jobsPerProvider": {
+      "mean": 2.5,
+      "stdDev": 0.5322906474223771,
+      "gini": 0.10644444444444456,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 185,
+        "served": 117,
+        "servedRate": 0.6324324324324324,
+        "meanWaitSeconds": 62.64957264957265,
+        "meanEtaSeconds": 599.2820512820513
+      },
+      "high": {
+        "arrivals": 33,
+        "served": 22,
+        "servedRate": 0.6666666666666666,
+        "meanWaitSeconds": 75.45454545454545,
+        "meanEtaSeconds": 597.1363636363636
+      },
+      "urgent": {
+        "arrivals": 17,
+        "served": 11,
+        "servedRate": 0.6470588235294118,
+        "meanWaitSeconds": 85.45454545454545,
+        "meanEtaSeconds": 600.6363636363636
+      }
+    },
+    "batchSize": {
+      "meanRequests": 6.01530612244898,
+      "maxRequests": 19,
+      "meanFreeProviders": 10.35204081632653,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 196,
+      "median": 0.003277,
+      "p95": 0.009786,
+      "max": 0.034341
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 46,
+      "median": 0.003772,
+      "p95": 0.021165,
+      "max": 0.034341
+    }
+  },
+  {
+    "scenario": "sim/uniform/peak-load",
+    "approach": "greedy-cost",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 235,
+    "served": 151,
+    "servedRate": 0.6425531914893617,
+    "lost": 81,
+    "stillOpenAtEnd": 3,
+    "offers": 202,
+    "declines": 33,
+    "expiries": 18,
+    "meanEtaSeconds": 501.3112582781457,
+    "p90EtaSeconds": 885,
+    "meanWaitSeconds": 51.52317880794702,
+    "p90WaitSeconds": 150,
+    "utilization": 0.8384259259259259,
+    "jobsPerProvider": {
+      "mean": 2.5166666666666666,
+      "stdDev": 0.49972214501883166,
+      "gini": 0.09922737306843277,
+      "min": 2,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 185,
+        "served": 122,
+        "servedRate": 0.6594594594594595,
+        "meanWaitSeconds": 49.50819672131148,
+        "meanEtaSeconds": 511.23770491803276
+      },
+      "high": {
+        "arrivals": 33,
+        "served": 18,
+        "servedRate": 0.5454545454545454,
+        "meanWaitSeconds": 53.888888888888886,
+        "meanEtaSeconds": 452.1666666666667
+      },
+      "urgent": {
+        "arrivals": 17,
+        "served": 11,
+        "servedRate": 0.6470588235294118,
+        "meanWaitSeconds": 70,
+        "meanEtaSeconds": 471.6363636363636
+      }
+    },
+    "batchSize": {
+      "meanRequests": 6.3822222222222225,
+      "maxRequests": 15,
+      "meanFreeProviders": 8.8,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 225,
+      "median": 0.003237,
+      "p95": 0.022853,
+      "max": 0.076097
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 48,
+      "median": 0.003937,
+      "p95": 0.028986,
+      "max": 0.076097
+    }
+  },
+  {
+    "scenario": "sim/uniform/peak-load",
+    "approach": "existing-mcf",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 235,
+    "served": 154,
+    "servedRate": 0.6553191489361702,
+    "lost": 80,
+    "stillOpenAtEnd": 1,
+    "offers": 200,
+    "declines": 28,
+    "expiries": 18,
+    "meanEtaSeconds": 548.3896103896104,
+    "p90EtaSeconds": 927,
+    "meanWaitSeconds": 55.45454545454545,
+    "p90WaitSeconds": 160,
+    "utilization": 0.8398148148148148,
+    "jobsPerProvider": {
+      "mean": 2.566666666666667,
+      "stdDev": 0.5280993172584952,
+      "gini": 0.10281385281385291,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 185,
+        "served": 111,
+        "servedRate": 0.6,
+        "meanWaitSeconds": 52.612612612612615,
+        "meanEtaSeconds": 519.7567567567568
+      },
+      "high": {
+        "arrivals": 33,
+        "served": 30,
+        "servedRate": 0.9090909090909091,
+        "meanWaitSeconds": 65,
+        "meanEtaSeconds": 608.9
+      },
+      "urgent": {
+        "arrivals": 17,
+        "served": 13,
+        "servedRate": 0.7647058823529411,
+        "meanWaitSeconds": 57.69230769230769,
+        "meanEtaSeconds": 653.2307692307693
+      }
+    },
+    "batchSize": {
+      "meanRequests": 5.757894736842105,
+      "maxRequests": 17,
+      "meanFreeProviders": 10.478947368421053,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 190,
+      "median": 0.018295,
+      "p95": 0.049406,
+      "max": 0.506276
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 45,
+      "median": 0.021691,
+      "p95": 0.056124,
+      "max": 0.506276
+    }
+  },
+  {
+    "scenario": "sim/uniform/peak-load",
+    "approach": "smart-hungarian",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 235,
+    "served": 152,
+    "servedRate": 0.6468085106382979,
+    "lost": 80,
+    "stillOpenAtEnd": 3,
+    "offers": 204,
+    "declines": 33,
+    "expiries": 19,
+    "meanEtaSeconds": 540.9144736842105,
+    "p90EtaSeconds": 926,
+    "meanWaitSeconds": 46.18421052631579,
+    "p90WaitSeconds": 120,
+    "utilization": 0.8403703703703703,
+    "jobsPerProvider": {
+      "mean": 2.533333333333333,
+      "stdDev": 0.5312459150169743,
+      "gini": 0.10504385964912277,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 185,
+        "served": 112,
+        "servedRate": 0.6054054054054054,
+        "meanWaitSeconds": 44.017857142857146,
+        "meanEtaSeconds": 530.9732142857143
+      },
+      "high": {
+        "arrivals": 33,
+        "served": 27,
+        "servedRate": 0.8181818181818182,
+        "meanWaitSeconds": 51.851851851851855,
+        "meanEtaSeconds": 550.074074074074
+      },
+      "urgent": {
+        "arrivals": 17,
+        "served": 13,
+        "servedRate": 0.7647058823529411,
+        "meanWaitSeconds": 53.07692307692308,
+        "meanEtaSeconds": 607.5384615384615
+      }
+    },
+    "batchSize": {
+      "meanRequests": 6.36231884057971,
+      "maxRequests": 15,
+      "meanFreeProviders": 9.36231884057971,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 207,
+      "median": 0.030012,
+      "p95": 0.100216,
+      "max": 0.139806
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 46,
+      "median": 0.038733,
+      "p95": 0.103754,
+      "max": 0.110725
+    }
+  },
+  {
+    "scenario": "sim/clustered/normal-load",
+    "approach": "nearest-first",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 119,
+    "served": 119,
+    "servedRate": 1,
+    "lost": 0,
+    "stillOpenAtEnd": 0,
+    "offers": 158,
+    "declines": 24,
+    "expiries": 15,
+    "meanEtaSeconds": 283.11764705882354,
+    "p90EtaSeconds": 565,
+    "meanWaitSeconds": 14.53781512605042,
+    "p90WaitSeconds": 30,
+    "utilization": 0.5572222222222222,
+    "jobsPerProvider": {
+      "mean": 1.9833333333333334,
+      "stdDev": 0.6452820227535312,
+      "gini": 0.1592436974789917,
+      "min": 0,
+      "max": 3,
+      "idleProviders": 1
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 97,
+        "served": 97,
+        "servedRate": 1,
+        "meanWaitSeconds": 14.639175257731958,
+        "meanEtaSeconds": 291.10309278350513
+      },
+      "high": {
+        "arrivals": 18,
+        "served": 18,
+        "servedRate": 1,
+        "meanWaitSeconds": 12.777777777777779,
+        "meanEtaSeconds": 251.11111111111111
+      },
+      "urgent": {
+        "arrivals": 4,
+        "served": 4,
+        "servedRate": 1,
+        "meanWaitSeconds": 20,
+        "meanEtaSeconds": 233.5
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.2153846153846153,
+      "maxRequests": 3,
+      "meanFreeProviders": 26.861538461538462,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 130,
+      "median": 0.001802,
+      "p95": 0.005664,
+      "max": 0.011055
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 38,
+      "median": 0.001732,
+      "p95": 0.005831,
+      "max": 0.006004
+    }
+  },
+  {
+    "scenario": "sim/clustered/normal-load",
+    "approach": "greedy-cost",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 119,
+    "served": 119,
+    "servedRate": 1,
+    "lost": 0,
+    "stillOpenAtEnd": 0,
+    "offers": 164,
+    "declines": 32,
+    "expiries": 13,
+    "meanEtaSeconds": 314.25210084033614,
+    "p90EtaSeconds": 615,
+    "meanWaitSeconds": 14.873949579831933,
+    "p90WaitSeconds": 30,
+    "utilization": 0.5674537037037037,
+    "jobsPerProvider": {
+      "mean": 1.9833333333333334,
+      "stdDev": 0.645282022753531,
+      "gini": 0.16624649859943985,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 97,
+        "served": 97,
+        "servedRate": 1,
+        "meanWaitSeconds": 15.463917525773196,
+        "meanEtaSeconds": 321.82474226804123
+      },
+      "high": {
+        "arrivals": 18,
+        "served": 18,
+        "servedRate": 1,
+        "meanWaitSeconds": 12.777777777777779,
+        "meanEtaSeconds": 310.8888888888889
+      },
+      "urgent": {
+        "arrivals": 4,
+        "served": 4,
+        "servedRate": 1,
+        "meanWaitSeconds": 10,
+        "meanEtaSeconds": 145.75
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.2148148148148148,
+      "maxRequests": 3,
+      "meanFreeProviders": 26.31111111111111,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 135,
+      "median": 0.012315,
+      "p95": 0.043183,
+      "max": 0.083719
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 44,
+      "median": 0.011288,
+      "p95": 0.032597,
+      "max": 0.047049
+    }
+  },
+  {
+    "scenario": "sim/clustered/normal-load",
+    "approach": "existing-mcf",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 119,
+    "served": 119,
+    "servedRate": 1,
+    "lost": 0,
+    "stillOpenAtEnd": 0,
+    "offers": 158,
+    "declines": 24,
+    "expiries": 15,
+    "meanEtaSeconds": 283.11764705882354,
+    "p90EtaSeconds": 565,
+    "meanWaitSeconds": 14.53781512605042,
+    "p90WaitSeconds": 30,
+    "utilization": 0.5572222222222222,
+    "jobsPerProvider": {
+      "mean": 1.9833333333333334,
+      "stdDev": 0.6452820227535312,
+      "gini": 0.1592436974789917,
+      "min": 0,
+      "max": 3,
+      "idleProviders": 1
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 97,
+        "served": 97,
+        "servedRate": 1,
+        "meanWaitSeconds": 14.639175257731958,
+        "meanEtaSeconds": 291.10309278350513
+      },
+      "high": {
+        "arrivals": 18,
+        "served": 18,
+        "servedRate": 1,
+        "meanWaitSeconds": 12.777777777777779,
+        "meanEtaSeconds": 251.11111111111111
+      },
+      "urgent": {
+        "arrivals": 4,
+        "served": 4,
+        "servedRate": 1,
+        "meanWaitSeconds": 20,
+        "meanEtaSeconds": 233.5
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.2153846153846153,
+      "maxRequests": 3,
+      "meanFreeProviders": 26.861538461538462,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 130,
+      "median": 0.010349,
+      "p95": 0.030423,
+      "max": 0.471607
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 38,
+      "median": 0.010526,
+      "p95": 0.030423,
+      "max": 0.471607
+    }
+  },
+  {
+    "scenario": "sim/clustered/normal-load",
+    "approach": "smart-hungarian",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 119,
+    "served": 119,
+    "servedRate": 1,
+    "lost": 0,
+    "stillOpenAtEnd": 0,
+    "offers": 167,
+    "declines": 34,
+    "expiries": 14,
+    "meanEtaSeconds": 314.25210084033614,
+    "p90EtaSeconds": 615,
+    "meanWaitSeconds": 15.210084033613445,
+    "p90WaitSeconds": 30,
+    "utilization": 0.5673148148148148,
+    "jobsPerProvider": {
+      "mean": 1.9833333333333334,
+      "stdDev": 0.645282022753531,
+      "gini": 0.16624649859943985,
+      "min": 1,
+      "max": 3,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 97,
+        "served": 97,
+        "servedRate": 1,
+        "meanWaitSeconds": 15.670103092783505,
+        "meanEtaSeconds": 321.82474226804123
+      },
+      "high": {
+        "arrivals": 18,
+        "served": 18,
+        "servedRate": 1,
+        "meanWaitSeconds": 13.88888888888889,
+        "meanEtaSeconds": 310.8888888888889
+      },
+      "urgent": {
+        "arrivals": 4,
+        "served": 4,
+        "servedRate": 1,
+        "meanWaitSeconds": 10,
+        "meanEtaSeconds": 145.75
+      }
+    },
+    "batchSize": {
+      "meanRequests": 1.218978102189781,
+      "maxRequests": 3,
+      "meanFreeProviders": 26.094890510948904,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 137,
+      "median": 0.021439,
+      "p95": 0.063136,
+      "max": 0.857249
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 46,
+      "median": 0.0189,
+      "p95": 0.047453,
+      "max": 0.0705
+    }
+  },
+  {
+    "scenario": "sim/clustered/peak-load",
+    "approach": "nearest-first",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 245,
+    "served": 168,
+    "servedRate": 0.6857142857142857,
+    "lost": 67,
+    "stillOpenAtEnd": 10,
+    "offers": 222,
+    "declines": 35,
+    "expiries": 19,
+    "meanEtaSeconds": 473.2797619047619,
+    "p90EtaSeconds": 956,
+    "meanWaitSeconds": 77.97619047619048,
+    "p90WaitSeconds": 160,
+    "utilization": 0.8754166666666666,
+    "jobsPerProvider": {
+      "mean": 2.8,
+      "stdDev": 0.5099019513592788,
+      "gini": 0.08392857142857157,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 196,
+        "served": 138,
+        "servedRate": 0.7040816326530612,
+        "meanWaitSeconds": 75.79710144927536,
+        "meanEtaSeconds": 463.0652173913044
+      },
+      "high": {
+        "arrivals": 35,
+        "served": 22,
+        "servedRate": 0.6285714285714286,
+        "meanWaitSeconds": 78.18181818181819,
+        "meanEtaSeconds": 538.8636363636364
+      },
+      "urgent": {
+        "arrivals": 14,
+        "served": 8,
+        "servedRate": 0.5714285714285714,
+        "meanWaitSeconds": 115,
+        "meanEtaSeconds": 469.125
+      }
+    },
+    "batchSize": {
+      "meanRequests": 6.396039603960396,
+      "maxRequests": 18,
+      "meanFreeProviders": 8.48019801980198,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 202,
+      "median": 0.001562,
+      "p95": 0.005761,
+      "max": 0.012248
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 49,
+      "median": 0.001902,
+      "p95": 0.00897,
+      "max": 0.012248
+    }
+  },
+  {
+    "scenario": "sim/clustered/peak-load",
+    "approach": "greedy-cost",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 245,
+    "served": 167,
+    "servedRate": 0.6816326530612244,
+    "lost": 69,
+    "stillOpenAtEnd": 9,
+    "offers": 242,
+    "declines": 40,
+    "expiries": 33,
+    "meanEtaSeconds": 386.7365269461078,
+    "p90EtaSeconds": 728,
+    "meanWaitSeconds": 52.035928143712574,
+    "p90WaitSeconds": 130,
+    "utilization": 0.8693055555555556,
+    "jobsPerProvider": {
+      "mean": 2.783333333333333,
+      "stdDev": 0.579990421376844,
+      "gini": 0.1028942115768463,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 196,
+        "served": 132,
+        "servedRate": 0.673469387755102,
+        "meanWaitSeconds": 50.15151515151515,
+        "meanEtaSeconds": 368.6287878787879
+      },
+      "high": {
+        "arrivals": 35,
+        "served": 25,
+        "servedRate": 0.7142857142857143,
+        "meanWaitSeconds": 54,
+        "meanEtaSeconds": 482.72
+      },
+      "urgent": {
+        "arrivals": 14,
+        "served": 10,
+        "servedRate": 0.7142857142857143,
+        "meanWaitSeconds": 72,
+        "meanEtaSeconds": 385.8
+      }
+    },
+    "batchSize": {
+      "meanRequests": 5.0638297872340425,
+      "maxRequests": 18,
+      "meanFreeProviders": 8.425531914893616,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 235,
+      "median": 0.003812,
+      "p95": 0.033768,
+      "max": 0.061071
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 63,
+      "median": 0.006162,
+      "p95": 0.039078,
+      "max": 0.059765
+    }
+  },
+  {
+    "scenario": "sim/clustered/peak-load",
+    "approach": "existing-mcf",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 245,
+    "served": 169,
+    "servedRate": 0.689795918367347,
+    "lost": 70,
+    "stillOpenAtEnd": 6,
+    "offers": 232,
+    "declines": 38,
+    "expiries": 23,
+    "meanEtaSeconds": 404.85798816568047,
+    "p90EtaSeconds": 795,
+    "meanWaitSeconds": 44.79289940828402,
+    "p90WaitSeconds": 130,
+    "utilization": 0.8713888888888889,
+    "jobsPerProvider": {
+      "mean": 2.816666666666667,
+      "stdDev": 0.6189148209209047,
+      "gini": 0.11114398422090743,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 196,
+        "served": 128,
+        "servedRate": 0.6530612244897959,
+        "meanWaitSeconds": 44.53125,
+        "meanEtaSeconds": 356.59375
+      },
+      "high": {
+        "arrivals": 35,
+        "served": 30,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 44,
+        "meanEtaSeconds": 506.56666666666666
+      },
+      "urgent": {
+        "arrivals": 14,
+        "served": 11,
+        "servedRate": 0.7857142857142857,
+        "meanWaitSeconds": 50,
+        "meanEtaSeconds": 689.0909090909091
+      }
+    },
+    "batchSize": {
+      "meanRequests": 5.294871794871795,
+      "maxRequests": 19,
+      "meanFreeProviders": 7.696581196581197,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 234,
+      "median": 0.0083,
+      "p95": 0.034926,
+      "max": 0.059597
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 57,
+      "median": 0.014281,
+      "p95": 0.043617,
+      "max": 0.048557
+    }
+  },
+  {
+    "scenario": "sim/clustered/peak-load",
+    "approach": "smart-hungarian",
+    "providers": 60,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 245,
+    "served": 162,
+    "servedRate": 0.6612244897959184,
+    "lost": 74,
+    "stillOpenAtEnd": 9,
+    "offers": 227,
+    "declines": 30,
+    "expiries": 34,
+    "meanEtaSeconds": 431.25308641975306,
+    "p90EtaSeconds": 894,
+    "meanWaitSeconds": 45.617283950617285,
+    "p90WaitSeconds": 100,
+    "utilization": 0.8699537037037037,
+    "jobsPerProvider": {
+      "mean": 2.7,
+      "stdDev": 0.5567764362830023,
+      "gini": 0.10185185185185186,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 196,
+        "served": 120,
+        "servedRate": 0.6122448979591837,
+        "meanWaitSeconds": 42.583333333333336,
+        "meanEtaSeconds": 387.1166666666667
+      },
+      "high": {
+        "arrivals": 35,
+        "served": 30,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 54.666666666666664,
+        "meanEtaSeconds": 544.6333333333333
+      },
+      "urgent": {
+        "arrivals": 14,
+        "served": 12,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 53.333333333333336,
+        "meanEtaSeconds": 589.1666666666666
+      }
+    },
+    "batchSize": {
+      "meanRequests": 4.88,
+      "maxRequests": 17,
+      "meanFreeProviders": 8.542222222222222,
+      "maxFreeProviders": 60
+    },
+    "solveMs": {
+      "rounds": 225,
+      "median": 0.011731,
+      "p95": 0.048226,
+      "max": 0.087213
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 55,
+      "median": 0.014145,
+      "p95": 0.060608,
+      "max": 0.080323
+    }
+  },
+  {
+    "scenario": "sim/uniform/large-overload",
+    "approach": "nearest-first",
+    "providers": 300,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 1504,
+    "served": 819,
+    "servedRate": 0.5445478723404256,
+    "lost": 608,
+    "stillOpenAtEnd": 77,
+    "offers": 1103,
+    "declines": 169,
+    "expiries": 112,
+    "meanEtaSeconds": 524.9645909645909,
+    "p90EtaSeconds": 1037,
+    "meanWaitSeconds": 111.36752136752136,
+    "p90WaitSeconds": 180,
+    "utilization": 0.8902592592592593,
+    "jobsPerProvider": {
+      "mean": 2.73,
+      "stdDev": 0.5004331457181197,
+      "gini": 0.08593813593813593,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 1184,
+        "served": 640,
+        "servedRate": 0.5405405405405406,
+        "meanWaitSeconds": 111.171875,
+        "meanEtaSeconds": 514.490625
+      },
+      "high": {
+        "arrivals": 236,
+        "served": 130,
+        "servedRate": 0.5508474576271186,
+        "meanWaitSeconds": 110.6923076923077,
+        "meanEtaSeconds": 546.3
+      },
+      "urgent": {
+        "arrivals": 84,
+        "served": 49,
+        "servedRate": 0.5833333333333334,
+        "meanWaitSeconds": 115.71428571428571,
+        "meanEtaSeconds": 605.1632653061224
+      }
+    },
+    "batchSize": {
+      "meanRequests": 56.512121212121215,
+      "maxRequests": 92,
+      "meanFreeProviders": 35.915151515151514,
+      "maxFreeProviders": 300
+    },
+    "solveMs": {
+      "rounds": 330,
+      "median": 0.011165,
+      "p95": 0.150841,
+      "max": 0.270333
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 183,
+      "median": 0.012098,
+      "p95": 0.181247,
+      "max": 0.266653
+    }
+  },
+  {
+    "scenario": "sim/uniform/large-overload",
+    "approach": "greedy-cost",
+    "providers": 300,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 1504,
+    "served": 913,
+    "servedRate": 0.6070478723404256,
+    "lost": 528,
+    "stillOpenAtEnd": 63,
+    "offers": 1209,
+    "declines": 178,
+    "expiries": 116,
+    "meanEtaSeconds": 256.6527929901424,
+    "p90EtaSeconds": 487,
+    "meanWaitSeconds": 59.86856516976999,
+    "p90WaitSeconds": 140,
+    "utilization": 0.889537037037037,
+    "jobsPerProvider": {
+      "mean": 3.0433333333333334,
+      "stdDev": 0.5429446462475612,
+      "gini": 0.08152245345016418,
+      "min": 2,
+      "max": 5,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 1184,
+        "served": 658,
+        "servedRate": 0.5557432432432432,
+        "meanWaitSeconds": 57.87234042553192,
+        "meanEtaSeconds": 243.70060790273556
+      },
+      "high": {
+        "arrivals": 236,
+        "served": 183,
+        "servedRate": 0.7754237288135594,
+        "meanWaitSeconds": 67.37704918032787,
+        "meanEtaSeconds": 274.0273224043716
+      },
+      "urgent": {
+        "arrivals": 84,
+        "served": 72,
+        "servedRate": 0.8571428571428571,
+        "meanWaitSeconds": 59.02777777777778,
+        "meanEtaSeconds": 330.8611111111111
+      }
+    },
+    "batchSize": {
+      "meanRequests": 42.316715542522,
+      "maxRequests": 76,
+      "meanFreeProviders": 34.98533724340176,
+      "maxFreeProviders": 300
+    },
+    "solveMs": {
+      "rounds": 341,
+      "median": 0.034519,
+      "p95": 0.319507,
+      "max": 1.190567
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 199,
+      "median": 0.044125,
+      "p95": 0.420404,
+      "max": 1.190567
+    }
+  },
+  {
+    "scenario": "sim/uniform/large-overload",
+    "approach": "existing-mcf",
+    "providers": 300,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 1504,
+    "served": 880,
+    "servedRate": 0.5851063829787234,
+    "lost": 557,
+    "stillOpenAtEnd": 67,
+    "offers": 1176,
+    "declines": 182,
+    "expiries": 112,
+    "meanEtaSeconds": 369.52613636363634,
+    "p90EtaSeconds": 851,
+    "meanWaitSeconds": 51.30681818181818,
+    "p90WaitSeconds": 140,
+    "utilization": 0.8899814814814815,
+    "jobsPerProvider": {
+      "mean": 2.933333333333333,
+      "stdDev": 0.5312459150169746,
+      "gini": 0.08296212121212121,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 1184,
+        "served": 568,
+        "servedRate": 0.4797297297297297,
+        "meanWaitSeconds": 61.19718309859155,
+        "meanEtaSeconds": 251.8855633802817
+      },
+      "high": {
+        "arrivals": 236,
+        "served": 229,
+        "servedRate": 0.9703389830508474,
+        "meanWaitSeconds": 34.49781659388646,
+        "meanEtaSeconds": 576.2139737991266
+      },
+      "urgent": {
+        "arrivals": 84,
+        "served": 83,
+        "servedRate": 0.9880952380952381,
+        "meanWaitSeconds": 30,
+        "meanEtaSeconds": 604.3253012048193
+      }
+    },
+    "batchSize": {
+      "meanRequests": 40.949101796407184,
+      "maxRequests": 74,
+      "meanFreeProviders": 35.5748502994012,
+      "maxFreeProviders": 300
+    },
+    "solveMs": {
+      "rounds": 334,
+      "median": 0.171474,
+      "p95": 0.355935,
+      "max": 1.061045
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 191,
+      "median": 0.177826,
+      "p95": 0.35117,
+      "max": 0.483226
+    }
+  },
+  {
+    "scenario": "sim/uniform/large-overload",
+    "approach": "smart-hungarian",
+    "providers": 300,
+    "rounds": 360,
+    "roundSeconds": 10,
+    "arrivals": 1504,
+    "served": 872,
+    "servedRate": 0.5797872340425532,
+    "lost": 575,
+    "stillOpenAtEnd": 57,
+    "offers": 1154,
+    "declines": 173,
+    "expiries": 106,
+    "meanEtaSeconds": 360.8738532110092,
+    "p90EtaSeconds": 847,
+    "meanWaitSeconds": 48.1651376146789,
+    "p90WaitSeconds": 130,
+    "utilization": 0.8901574074074075,
+    "jobsPerProvider": {
+      "mean": 2.9066666666666667,
+      "stdDev": 0.5458530530788993,
+      "gini": 0.08782874617736991,
+      "min": 2,
+      "max": 4,
+      "idleProviders": 0
+    },
+    "perPriority": {
+      "normal": {
+        "arrivals": 1184,
+        "served": 556,
+        "servedRate": 0.46959459459459457,
+        "meanWaitSeconds": 58.93884892086331,
+        "meanEtaSeconds": 238.4640287769784
+      },
+      "high": {
+        "arrivals": 236,
+        "served": 234,
+        "servedRate": 0.9915254237288136,
+        "meanWaitSeconds": 29.82905982905983,
+        "meanEtaSeconds": 558.7564102564103
+      },
+      "urgent": {
+        "arrivals": 84,
+        "served": 82,
+        "servedRate": 0.9761904761904762,
+        "meanWaitSeconds": 27.4390243902439,
+        "meanEtaSeconds": 626.1829268292682
+      }
+    },
+    "batchSize": {
+      "meanRequests": 41.16715542521994,
+      "maxRequests": 70,
+      "meanFreeProviders": 34.78885630498534,
+      "maxFreeProviders": 300
+    },
+    "solveMs": {
+      "rounds": 341,
+      "median": 0.406523,
+      "p95": 0.857871,
+      "max": 6.287151
+    },
+    "reoptimizeAfterDeclineMs": {
+      "rounds": 182,
+      "median": 0.423615,
+      "p95": 0.892011,
+      "max": 6.287151
+    }
+  }
+]
