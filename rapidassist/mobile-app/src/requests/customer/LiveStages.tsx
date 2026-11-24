@@ -1,41 +1,9 @@
 import { StyleSheet, View } from "react-native";
-import { Banner, Button, Card, Pulse, StatTile, StatusTimeline, SuccessHero, Text } from "../../design/components";
+import { Banner, Button, StatTile, SuccessHero } from "../../design/components";
 import { tokens } from "../../design/tokens";
 import { clockIn } from "../../utils/format";
-import { getServiceIcon } from "../serviceCatalog";
 import { providerNoun } from "../stages";
 import { CancelRequest, LiveMap, ProviderRow, QuickActions, TripStatus, type StageProps } from "./shared";
-
-const searchingNoun = { car_towing: "tow drivers", fuel_delivery: "riders", mechanic: "mechanics" } as const;
-
-export function SearchingStage({ state, request, unavailable }: StageProps & { unavailable: boolean }) {
-  const d = request.dispatch;
-  return (
-    <>
-      <View style={styles.center}>
-        <Pulse icon={getServiceIcon(request.category)} active={!unavailable} />
-        <Text variant="title" align="center">
-          {unavailable ? "No provider accepted yet" : `Searching nearby ${searchingNoun[request.category]}...`}
-        </Text>
-        <Text variant="bodySmall" color="muted" align="center">
-          {unavailable
-            ? "Retry with the same pickup and search area. To change the pickup, cancel and create a new request."
-            : "Please wait while we find the best provider for you."}
-        </Text>
-      </View>
-      <Card>
-        <StatusTimeline items={[
-          { key: "confirmed", label: "Request confirmed", state: "done" },
-          { key: "search", label: d?.radiusKm ? `Searching within ${d.radiusKm} km` : "Searching nearby providers", state: unavailable ? "done" : "current",
-            time: d?.attempts ? `${d.attempts} contacted` : null },
-          { key: "assign", label: `Assigning best ${providerNoun(request.category).toLowerCase()}`, state: "todo" }
-        ]} />
-      </Card>
-      {unavailable || !d ? <Button title="Retry Search" icon="refresh" loading={state.updating} onPress={state.retrySearch} /> : null}
-      <CancelRequest state={state} />
-    </>
-  );
-}
 
 function Tiles({ state }: StageProps) {
   const minutes = Number.parseInt(state.eta.replace(/\D+/g, ""), 10);
