@@ -4,11 +4,14 @@ import { useAuth } from "../auth/AuthContext";
 import { Icon } from "./Icon";
 import { Avatar } from "./ui";
 import { useTheme } from "../lib/theme";
+import { useApiResource } from "../lib/hooks";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { to: "/providers", label: "Provider verification", icon: "shield" },
   { to: "/requests", label: "Service requests", icon: "requests" },
+  { to: "/complaints", label: "Complaints", icon: "flag", badgeKey: "complaints" },
+  { to: "/live", label: "Live map", icon: "map" },
   { to: "/users", label: "Users & providers", icon: "users" }
 ];
 
@@ -17,6 +20,9 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { isDark, toggle } = useTheme();
+  // Re-counted on every navigation (pathname is part of the request key).
+  const complaintCount = useApiResource("/api/admin/complaints", { status: "active", limit: 1, view: location.pathname });
+  const badges = { complaints: complaintCount.data?.counts?.active || 0 };
 
   // Close the mobile menu after navigating (state adjusted during render, no effect needed).
   const [menuPath, setMenuPath] = useState(location.pathname);
@@ -47,6 +53,11 @@ export function Layout() {
             <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
               <Icon name={item.icon} />
               <span>{item.label}</span>
+              {item.badgeKey && badges[item.badgeKey] ? (
+                <span className="nav-badge" aria-label={`${badges[item.badgeKey]} open`}>
+                  {badges[item.badgeKey]}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

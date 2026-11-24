@@ -31,6 +31,9 @@ export type SafeUser = {
   isCertified: boolean;
   certificateUrl: string | null;
   verificationStatus: "unverified" | "pending" | "verified" | "rejected";
+  /** Admin's note on the last verification decision, e.g. why documents were rejected. */
+  verificationNote?: string | null;
+  isBlocked?: boolean;
   mechanicProfile?: MechanicProfile | null;
   ratingAvg?: number;
   ratingCount?: number;

@@ -50,6 +50,18 @@ export function Dashboard() {
 
       <ErrorBanner message={error} onRetry={load} />
 
+      {stats.urgentComplaints > 0 ? (
+        <div className="banner banner-danger">
+          <Icon name="flag" />
+          <span className="banner-text">
+            <strong>{stats.urgentComplaints} high-priority complaint{stats.urgentComplaints > 1 ? "s" : ""}</strong> waiting (safety or escalated).
+          </span>
+          <Link to="/complaints?priority=high" className="btn btn-sm btn-danger">
+            Handle now
+          </Link>
+        </div>
+      ) : null}
+
       {stats.pendingProviders > 0 ? (
         <div className="banner banner-warning">
           <Icon name="shield" />
@@ -80,9 +92,11 @@ export function Dashboard() {
             <MiniStat label="Providers" value={stats.providers} to="/users?role=mechanic" />
             <MiniStat label="Online now" value={stats.onlineProviders} />
             <MiniStat label="Vehicles" value={stats.vehicles} />
+            <MiniStat label="Live map" value="Open" to="/live" raw />
             <MiniStat label="Completed" value={stats.completedRequests} to="/requests?status=completed" />
             <MiniStat label="Cancelled" value={stats.cancelledRequests} to="/requests?status=cancelled" />
             <MiniStat label="Suspended" value={stats.blockedAccounts} to="/users?status=blocked" />
+            <MiniStat label="Open complaints" value={stats.openComplaints} to="/complaints" />
             <MiniStat label="Completion rate" value={`${completionRate}%`} raw />
           </div>
         </Panel>

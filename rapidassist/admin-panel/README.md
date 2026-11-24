@@ -11,9 +11,11 @@ Built with React 19, React Router 7 and Vite. No UI library — styles live in `
 | **Dashboard** | KPIs (active requests, pending verifications, revenue, rating), 7-day request chart, service/status breakdowns, verification queue, recent requests. Auto-refreshes every 30 s while the tab is visible. |
 | **Provider verification** | Filter by status/service, search by name or phone, view documents in a full-screen viewer, approve / reject (reason required) / move back to pending. Every decision records the admin and time. |
 | **Service requests** | Filter by status/service, search by customer, provider, address or number plate, open a request to see people, price breakdown, review and full status timeline, cancel an active request (reason required). |
+| **Complaints** | Queue of problems reported from the app, high priority (safety) and oldest first. Internal notes (admins only) or replies the customer sees, assign to yourself, change priority, resolve / dismiss with a message, reopen. Links to the related request and the reported account. |
+| **Live map** | Online providers (available / on a job / not verified / no signal) and open requests on an OpenStreetMap map, refreshed every 15 s. Requests waiting 10+ minutes for a provider are flagged as stuck. |
 | **Users & providers** | Search all customers and providers, see request counts, suspend (reason required) or restore accounts. Suspended accounts cannot sign in and providers are taken offline. |
 
-Also: real admin sign-in (httpOnly cookie), protected routes, session-expiry redirect, toasts, confirm dialogs, loading skeletons, empty states, keyboard support, dark mode toggle and a mobile layout.
+Also: real admin sign-in (httpOnly cookie, locked for 15 min after 5 wrong passwords), protected routes, session-expiry redirect, toasts, confirm dialogs, loading skeletons, empty states, keyboard support, dark mode toggle and a mobile layout.
 
 ## Setup
 
@@ -50,8 +52,15 @@ The panel calls the API on port 4000 of the same host by default. Set `VITE_API_
 | PATCH | `/providers/:id/verification` | `{ status, note }` — note required for `rejected` |
 | GET | `/users` | `role`, `status` (`active`/`blocked`), `search`, `page` |
 | PATCH | `/users/:id/block` | `{ blocked, reason }` |
+| GET | `/complaints` | `status` (`active` = open + in review), `category`, `priority`, `search`, `page` |
+| GET | `/complaints/:id` | full complaint with activity, related request, reported account |
+| PATCH | `/complaints/:id` | `{ status, resolution, priority, assign: "me" \| "none" }` — resolution required to resolve/dismiss |
+| POST | `/complaints/:id/notes` | `{ text, internal }` — `internal: false` is a reply the customer sees |
+| GET | `/live` | online providers + open requests with coordinates |
 | GET | `/requests` | `status` (incl. `active`), `category`, `search`, `page` |
 | GET | `/requests/:id` | full request with timeline |
 | PATCH | `/requests/:id/cancel` | `{ reason }` |
 
 Everything except login/logout requires an `admin` account.
+
+The mobile app files complaints through `POST /api/complaints` (`{ requestId?, category, description }`) and reads them back with `GET /api/complaints`; internal admin notes are never returned there.

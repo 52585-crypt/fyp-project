@@ -6,6 +6,8 @@ const { Vehicle } = require("../models/Vehicle");
 const { requireAuth, requireAdmin } = require("../middleware/auth.middleware");
 const { signAccessToken } = require("../utils/jwt");
 const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
+const { adminLoginLimiter, loginKey } = require("../middleware/rateLimit");
+const { Complaint, COMPLAINT_CATEGORIES, COMPLAINT_STATUSES, COMPLAINT_PRIORITIES } = require("../models/Complaint");
 
 const router = express.Router();
 
@@ -172,10 +174,17 @@ router.post("/auth/login", async (req, res, next) => {
     const password = String(req.body?.password || "");
     if (!phone || !password) throw badRequest("Phone and password are required");
 
+    const limitKey = loginKey(req, phone);
+    adminLoginLimiter.assertAllowed(limitKey, res);
+
     const user = await User.findOne({ phone, role: "admin" }).select("+passwordHash");
     // Same message for unknown account and wrong password so we don't leak which admins exist.
-    if (!user || !(await user.verifyPassword(password))) throw httpError(401, "Invalid admin credentials");
+    if (!user || !(await user.verifyPassword(password))) {
+      adminLoginLimiter.recordFailure(limitKey);
+      throw httpError(401, "Invalid admin credentials");
+    }
     if (user.isBlocked) throw httpError(403, "This admin account is suspended");
+    adminLoginLimiter.reset(limitKey);
 
     const token = signAccessToken({ sub: user._id.toString(), role: user.role });
     setAccessTokenCookie(res, token);
@@ -222,7 +231,9 @@ router.get("/dashboard", async (req, res, next) => {
       statusRows,
       revenueRows,
       ratingRows,
-      trendRows
+      trendRows,
+      openComplaints,
+      urgentComplaints
     ] = await Promise.all([
       User.countDocuments({ role: "user" }),
       User.countDocuments({ role: "mechanic" }),
@@ -253,7 +264,9 @@ router.get("/dashboard", async (req, res, next) => {
         { $match: { "review.rating": { $gte: 1, $lte: 5 } } },
         { $group: { _id: null, averageRating: { $avg: "$review.rating" }, reviewedRequests: { $sum: 1 } } }
       ]),
-      ServiceRequest.find({ createdAt: { $gte: trendStart } }).select("createdAt status").lean()
+      ServiceRequest.find({ createdAt: { $gte: trendStart } }).select("createdAt status").lean(),
+      Complaint.countDocuments({ status: { $in: ["open", "in_review"] } }),
+      Complaint.countDocuments({ status: { $in: ["open", "in_review"] }, priority: "high" })
     ]);
 
     // Bucket in server-local days so "today" matches the todayRequests count above.
@@ -286,6 +299,8 @@ router.get("/dashboard", async (req, res, next) => {
         todayRequests,
         blockedAccounts,
         onlineProviders,
+        openComplaints,
+        urgentComplaints,
         revenue: revenueRows[0]?.total || 0,
         reviewedRequests: rating.reviewedRequests || 0,
         averageRating: rating.averageRating ? Math.round(rating.averageRating * 10) / 10 : 0
@@ -583,6 +598,267 @@ router.patch("/requests/:id/cancel", async (req, res, next) => {
       .populate({ path: "providerId", select: "name phone role" });
 
     res.json({ ok: true, request: requestToAdminJSON(populated) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* --------------------------------------------------------------- live map */
+
+router.get("/live", async (req, res, next) => {
+  try {
+    const staleAfter = new Date(Date.now() - 30 * 60 * 1000);
+    const [providers, requests] = await Promise.all([
+      User.find(
+        {
+          role: "mechanic",
+          "providerState.isOnline": true,
+          "providerState.currentLocation.lat": { $type: "number" },
+          "providerState.currentLocation.lng": { $type: "number" }
+        },
+        PROVIDER_LIST_PROJECTION
+      ).limit(500),
+      ServiceRequest.find({ status: { $nin: CLOSED_STATUSES } })
+        .select("category status pickupLocation destinationLocation createdAt estimate.total userId providerId")
+        .populate({ path: "userId", select: "name phone role" })
+        .populate({ path: "providerId", select: "name phone role" })
+        .sort({ createdAt: -1 })
+        .limit(500)
+    ]);
+
+    res.json({
+      ok: true,
+      generatedAt: new Date(),
+      providers: providers.map((p) => ({
+        id: p._id.toString(),
+        name: p.name,
+        phone: p.phone,
+        serviceCategory: p.mechanicProfile?.serviceCategory || null,
+        verificationStatus: p.verificationStatus,
+        location: p.providerState.currentLocation,
+        lastSeenAt: p.providerState.lastSeenAt,
+        // Online flag but no ping for 30 min usually means the app was killed.
+        isStale: !p.providerState.lastSeenAt || p.providerState.lastSeenAt < staleAfter,
+        busy: Boolean(p.providerState.activeRequestId)
+      })),
+      requests: requests.map((r) => ({
+        id: r._id.toString(),
+        category: r.category,
+        status: r.status,
+        pickupLocation: r.pickupLocation,
+        destinationLocation: r.destinationLocation,
+        total: r.estimate?.total || 0,
+        createdAt: r.createdAt,
+        user: personSummary(r.userId),
+        provider: personSummary(r.providerId)
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* --------------------------------------------------------------- complaints */
+
+const OPEN_COMPLAINT_STATUSES = ["open", "in_review"];
+
+function complaintToAdminJSON(c, { full = false } = {}) {
+  const json = {
+    id: c._id.toString(),
+    category: c.category,
+    description: c.description,
+    status: c.status,
+    priority: c.priority,
+    resolution: c.resolution,
+    resolvedAt: c.resolvedAt,
+    raisedBy: personSummary(c.raisedBy),
+    against: personSummary(c.against),
+    assignedTo: personSummary(c.assignedTo),
+    resolvedBy: personSummary(c.resolvedBy),
+    requestId: c.requestId?._id ? c.requestId._id.toString() : c.requestId ? c.requestId.toString() : null,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt
+  };
+  if (full) {
+    const r = c.requestId?._id ? c.requestId : null;
+    json.request = r
+      ? {
+          id: r._id.toString(),
+          category: r.category,
+          status: r.status,
+          total: r.estimate?.total || 0,
+          pickupAddress: r.pickupLocation?.addressText || null,
+          createdAt: r.createdAt
+        }
+      : null;
+    json.updates = (c.updates || []).map((u) => ({
+      type: u.type,
+      text: u.text,
+      internal: u.internal,
+      status: u.status,
+      at: u.at,
+      by: u.byUserId?._id ? { name: u.byUserId.name, role: u.byUserId.role } : null
+    }));
+    json.againstStats = c.against?._id
+      ? { complaintsCount: c.against.complaintsCount || 0, isBlocked: Boolean(c.against.isBlocked) }
+      : null;
+  }
+  return json;
+}
+
+async function loadComplaint(id) {
+  assertObjectId(id, "complaint id");
+  const complaint = await Complaint.findById(id)
+    .populate({ path: "raisedBy", select: "name phone role" })
+    .populate({ path: "against", select: "name phone role complaintsCount isBlocked" })
+    .populate({ path: "assignedTo", select: "name phone role" })
+    .populate({ path: "resolvedBy", select: "name phone role" })
+    .populate({ path: "requestId", select: "category status estimate.total pickupLocation createdAt" })
+    .populate({ path: "updates.byUserId", select: "name role" });
+  if (!complaint) throw notFound("Complaint not found");
+  return complaint;
+}
+
+router.get("/complaints", async (req, res, next) => {
+  try {
+    const status = normalizeStr(req.query.status) || "active";
+    const category = normalizeStr(req.query.category) || "all";
+    const priority = normalizeStr(req.query.priority) || "all";
+    const search = normalizeStr(req.query.search);
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const query = {};
+    if (status === "active") query.status = { $in: OPEN_COMPLAINT_STATUSES };
+    else if (status !== "all") {
+      if (!COMPLAINT_STATUSES.includes(status)) throw badRequest("Invalid status filter");
+      query.status = status;
+    }
+    if (category !== "all") {
+      if (!COMPLAINT_CATEGORIES.includes(category)) throw badRequest("Invalid category filter");
+      query.category = category;
+    }
+    if (priority !== "all") {
+      if (!COMPLAINT_PRIORITIES.includes(priority)) throw badRequest("Invalid priority filter");
+      query.priority = priority;
+    }
+    if (search) {
+      const rx = new RegExp(escapeRegex(search), "i");
+      const people = await User.find({ $or: [{ name: rx }, { phone: rx }] }).select("_id").limit(200);
+      const ids = people.map((p) => p._id);
+      query.$or = [{ description: rx }, { raisedBy: { $in: ids } }, { against: { $in: ids } }];
+    }
+
+    const [complaints, total, countRows] = await Promise.all([
+      Complaint.find(query)
+        // high priority first, then oldest open first so nothing waits forever
+        .sort(status === "active" ? { priorityRank: 1, createdAt: 1 } : { createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "raisedBy", select: "name phone role" })
+        .populate({ path: "against", select: "name phone role" })
+        .populate({ path: "assignedTo", select: "name phone role" }),
+      Complaint.countDocuments(query),
+      Complaint.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }])
+    ]);
+
+    const counts = formatCountBreakdown(countRows, COMPLAINT_STATUSES);
+    counts.active = counts.open + counts.in_review;
+    counts.all = COMPLAINT_STATUSES.reduce((sum, key) => sum + counts[key], 0);
+
+    res.json({
+      ok: true,
+      complaints: complaints.map((c) => complaintToAdminJSON(c)),
+      counts,
+      pagination: paginationMeta(page, limit, total)
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/complaints/:id", async (req, res, next) => {
+  try {
+    const complaint = await loadComplaint(req.params.id);
+    res.json({ ok: true, complaint: complaintToAdminJSON(complaint, { full: true }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/complaints/:id", async (req, res, next) => {
+  try {
+    assertObjectId(req.params.id, "complaint id");
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) throw notFound("Complaint not found");
+
+    const { status, priority, assign } = req.body || {};
+    const resolution = normalizeStr(req.body?.resolution).slice(0, 1000);
+
+    if (priority != null) {
+      if (!COMPLAINT_PRIORITIES.includes(priority)) throw badRequest("Invalid priority");
+      complaint.priority = priority;
+    }
+
+    if (assign === "me") complaint.assignedTo = req.user._id;
+    else if (assign === "none") complaint.assignedTo = null;
+
+    if (status != null && status !== complaint.status) {
+      if (!COMPLAINT_STATUSES.includes(status)) throw badRequest("Invalid status");
+      const closing = status === "resolved" || status === "dismissed";
+      if (closing && resolution.length < 5) {
+        throw badRequest("Please write what was done (at least 5 characters) — the customer will see it");
+      }
+
+      complaint.status = status;
+      if (closing) {
+        complaint.resolution = resolution;
+        complaint.resolvedAt = new Date();
+        complaint.resolvedBy = req.user._id;
+      } else {
+        complaint.resolution = null;
+        complaint.resolvedAt = null;
+        complaint.resolvedBy = null;
+      }
+      if (status === "in_review" && !complaint.assignedTo) complaint.assignedTo = req.user._id;
+
+      complaint.updates.push({
+        type: "status",
+        status,
+        text: closing ? resolution : null,
+        internal: false,
+        byUserId: req.user._id
+      });
+    }
+
+    await complaint.save();
+    const fresh = await loadComplaint(complaint._id);
+    res.json({ ok: true, complaint: complaintToAdminJSON(fresh, { full: true }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/complaints/:id/notes", async (req, res, next) => {
+  try {
+    assertObjectId(req.params.id, "complaint id");
+    const text = normalizeStr(req.body?.text).slice(0, 1000);
+    const internal = req.body?.internal !== false;
+    if (text.length < 2) throw badRequest("Write a message first");
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) throw notFound("Complaint not found");
+
+    complaint.updates.push({ type: internal ? "note" : "reply", text, internal, byUserId: req.user._id });
+    // Replying to the customer means someone is on it.
+    if (!internal && complaint.status === "open") {
+      complaint.status = "in_review";
+      complaint.updates.push({ type: "status", status: "in_review", internal: false, byUserId: req.user._id });
+    }
+    if (!complaint.assignedTo) complaint.assignedTo = req.user._id;
+    await complaint.save();
+
+    const fresh = await loadComplaint(complaint._id);
+    res.json({ ok: true, complaint: complaintToAdminJSON(fresh, { full: true }) });
   } catch (err) {
     next(err);
   }

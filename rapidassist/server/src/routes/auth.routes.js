@@ -3,6 +3,7 @@ const { User, PUBLIC_ROLES, MECHANIC_SERVICE_CATEGORIES } = require("../models/U
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
 const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
+const { loginKey, userLoginLimiter } = require("../middleware/rateLimit");
 
 const router = express.Router();
 const MECHANIC_IMAGE_MAX_CHARS = Number(process.env.MECHANIC_IMAGE_MAX_CHARS) || 2500000;
@@ -154,19 +155,18 @@ router.post("/login", async (req, res, next) => {
     const { phone, password } = req.body || {};
     if (!phone || !password) throw badRequest("Phone and password are required");
 
-    const user = await User.findOne({ phone: String(phone).trim() }).select("+passwordHash");
-    if (!user) {
-      const err = new Error("Invalid credentials");
-      err.statusCode = 401;
-      throw err;
-    }
+    const limitKey = loginKey(req, phone);
+    userLoginLimiter.assertAllowed(limitKey, res);
 
-    const ok = await user.verifyPassword(String(password));
+    const user = await User.findOne({ phone: String(phone).trim() }).select("+passwordHash");
+    const ok = user ? await user.verifyPassword(String(password)) : false;
     if (!ok) {
+      userLoginLimiter.recordFailure(limitKey);
       const err = new Error("Invalid credentials");
       err.statusCode = 401;
       throw err;
     }
+    userLoginLimiter.reset(limitKey);
 
     if (user.isBlocked) {
       const err = new Error("Your account has been suspended. Please contact support.");

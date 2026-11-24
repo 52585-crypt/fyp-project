@@ -71,3 +71,15 @@ export function initials(name) {
 export function percent(part, total) {
   return total ? Math.round((part / total) * 100) : 0;
 }
+
+export const COMPLAINT_CATEGORY_LABELS = {
+  provider_behavior: "Provider behaviour",
+  overcharging: "Overcharging",
+  late_arrival: "Late arrival",
+  poor_service: "Poor service",
+  vehicle_damage: "Vehicle damage",
+  payment: "Payment",
+  safety: "Safety",
+  app_issue: "App issue",
+  other: "Other"
+};

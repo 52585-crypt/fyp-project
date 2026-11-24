@@ -250,10 +250,25 @@ export default function ProviderDashboard() {
 
         <SectionTitle title="Verification" />
         <Card style={styles.verify}>
-          <IconBox icon="shield-checkmark" tone={user?.verificationStatus === "verified" ? "success" : "warning"} />
+          <IconBox
+            icon="shield-checkmark"
+            tone={user?.verificationStatus === "verified" ? "success" : user?.verificationStatus === "rejected" ? "danger" : "warning"}
+          />
           <View style={{ flex: 1 }}>
-            <Text style={styles.verifyTitle}>{user?.verificationStatus === "verified" ? "Verified provider" : "Verification pending"}</Text>
-            <Text style={styles.verifyText}>Only verified service-category providers should receive production jobs.</Text>
+            <Text style={styles.verifyTitle}>
+              {user?.verificationStatus === "verified"
+                ? "Verified provider"
+                : user?.verificationStatus === "rejected"
+                  ? "Documents not approved"
+                  : "Verification pending"}
+            </Text>
+            <Text style={styles.verifyText}>
+              {user?.verificationStatus === "verified"
+                ? "You can accept jobs in your service category."
+                : user?.verificationStatus === "rejected"
+                  ? user?.verificationNote || "Open Verification to see what needs fixing."
+                  : "You can accept jobs once RapidAssist approves your documents."}
+            </Text>
           </View>
         </Card>
       </AppShell>

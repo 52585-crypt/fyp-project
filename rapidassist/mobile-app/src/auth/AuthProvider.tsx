@@ -9,6 +9,8 @@ type AuthState = {
   user: SafeUser | null;
   setSession: (token: string, user: SafeUser) => Promise<void>;
   logout: () => Promise<void>;
+  /** Re-fetch the signed-in user (e.g. to pick up a new verification decision). */
+  refreshUser: () => Promise<SafeUser | null>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -60,6 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearToken();
         setTokenState(null);
         setUser(null);
+      },
+      refreshUser: async () => {
+        if (!token) return null;
+        const data = await me(token);
+        setUser(data.user as SafeUser);
+        return data.user as SafeUser;
       }
     }),
     [isLoading, token, user]
