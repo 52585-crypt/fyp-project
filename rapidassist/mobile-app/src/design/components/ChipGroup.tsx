@@ -43,7 +43,7 @@ export function ChipGroup<T extends string>({ options, value, onChange, columns,
 const styles = StyleSheet.create({
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: tokens.space.sm },
   chip: {
-    minHeight: tokens.sizes.buttonSmall + tokens.space.xs, paddingHorizontal: tokens.space.md, borderRadius: tokens.radius.sm,
+    minHeight: tokens.sizes.buttonSmall + tokens.space.xs, paddingHorizontal: tokens.space.md, borderRadius: tokens.radius.control,
     borderWidth: tokens.sizes.hairline, borderColor: tokens.color.border, backgroundColor: tokens.color.surface,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: tokens.space.sm
   },

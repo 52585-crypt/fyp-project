@@ -5,7 +5,7 @@ import { tokens } from "../design/tokens";
 
 let loading: Promise<any> | undefined;
 const authFailureListeners = new Set<() => void>();
-function loadMaps(key: string): Promise<any> {
+export function loadMaps(key: string): Promise<any> {
   if (loading) return loading;
   loading = new Promise((resolve, reject) => {
     const existing = (window as any).google?.maps;

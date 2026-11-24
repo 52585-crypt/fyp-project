@@ -1,6 +1,7 @@
 export { Avatar, initials } from "./Avatar";
 export { Badge, type BadgeTone } from "./Badge";
 export { Banner, type BannerTone } from "./Banner";
+export { BottomSheet } from "./BottomSheet";
 export { Button, type ButtonVariant } from "./Button";
 export { Card } from "./Card";
 export { Checkbox } from "./Checkbox";

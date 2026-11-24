@@ -3,50 +3,74 @@
  * Screens and components must not hard-code colours, sizes, radii or fonts.
  */
 
+/** Brand palette from the RapidAssist design canvas. */
+const brand = {
+  indigo: "#2D0C9E",
+  deep: "#22087A",
+  mist: "#EEEAFE",
+  amber: "#FFB21E",
+  ink: "#15121F",
+  slate: "#5E5A6B",
+  cloud: "#F5F4F8",
+  line: "#E7E4EE",
+  green: "#12805C",
+  red: "#C8322B"
+} as const;
+
+/** Semantic colours. Components use these names; each maps onto the brand palette. */
 const palette = {
-  primary: "#2D0C9E",
-  primaryDark: "#200579",
-  primarySoft: "#EEE9FF",
+  ...brand,
+  primary: brand.indigo,
+  primaryDark: brand.deep,
+  primarySoft: brand.mist,
   primaryMuted: "#C9BEF5",
-  bg: "#F7F7FB",
+  accent: brand.amber,
+  accentSoft: "#FFF3D6",
+  onAccent: brand.ink,
+  bg: brand.cloud,
   surface: "#FFFFFF",
-  surfaceAlt: "#F2F0F8",
-  border: "#E6E2EF",
-  borderStrong: "#CFC9DE",
-  text: "#151124",
-  muted: "#6F6A7C",
-  subtle: "#9A95A6",
-  success: "#16A34A",
-  successSoft: "#DCFCE7",
-  warning: "#F59E0B",
-  warningSoft: "#FEF3C7",
-  warningText: "#92400E",
-  danger: "#DC2626",
-  dangerSoft: "#FEE2E2",
+  surfaceAlt: "#EDEBF3",
+  border: brand.line,
+  borderStrong: "#CFCAD9",
+  text: brand.ink,
+  muted: brand.slate,
+  subtle: "#9893A5",
+  success: brand.green,
+  successSoft: "#E2F2EB",
+  warning: brand.amber,
+  warningSoft: "#FFF3D6",
+  warningText: "#7A4B00",
+  danger: brand.red,
+  dangerSoft: "#FAE7E6",
   info: "#2563EB",
   infoSoft: "#DBEAFE",
   onPrimary: "#FFFFFF",
   onPrimaryMuted: "#D9D1FF",
-  star: "#F5B301",
-  overlay: "rgba(21, 17, 36, 0.45)",
+  star: brand.amber,
+  overlay: "rgba(21, 18, 31, 0.45)",
   /** Frosted white for controls and labels floating over maps. */
   surfaceGlass: "rgba(255, 255, 255, 0.94)",
   /** Faint white fills/lines on dark banners. */
   onDarkFaint: "rgba(255, 255, 255, 0.2)",
   onDarkLine: "rgba(255, 255, 255, 0.4)",
-  shadowSoft: "rgba(21, 17, 36, 0.3)",
-  starGlow: "rgba(245, 179, 1, 0.35)",
+  shadowSoft: "rgba(21, 18, 31, 0.3)",
+  starGlow: "rgba(255, 178, 30, 0.35)",
   heroGlow: "rgba(255, 255, 255, 0.12)",
-  shadow: "#151124",
+  /** Translucent indigo halo around the live / search pulse on maps. */
+  primaryHalo: "rgba(45, 12, 158, 0.16)",
+  shadow: brand.ink,
   transparent: "transparent"
 } as const;
 
-/** Inter faces; each weight is a separately loaded font family. */
+/** Loaded font faces: Inter for body copy, Space Grotesk for headings. Each weight is its own family. */
 const font = {
   regular: "Inter_400Regular",
   medium: "Inter_500Medium",
   semibold: "Inter_600SemiBold",
-  bold: "Inter_700Bold"
+  bold: "Inter_700Bold",
+  displayMedium: "SpaceGrotesk_500Medium",
+  displaySemibold: "SpaceGrotesk_600SemiBold",
+  displayBold: "SpaceGrotesk_700Bold"
 } as const;
 
 const size = {
@@ -80,10 +104,10 @@ const preset = (family: string, key: keyof typeof size): TextPreset => ({
 
 /** Ready-made text styles. Spread into a style: `{ ...tokens.text.title, color }`. */
 const text = {
-  hero: preset(font.bold, "hero"),
-  display: preset(font.bold, "display"),
-  title: preset(font.bold, "title"),
-  headline: preset(font.semibold, "headline"),
+  hero: preset(font.displayBold, "hero"),
+  display: preset(font.displayBold, "display"),
+  title: preset(font.displayBold, "title"),
+  headline: preset(font.displaySemibold, "headline"),
   body: preset(font.regular, "body"),
   bodyMedium: preset(font.medium, "body"),
   bodyStrong: preset(font.semibold, "body"),
@@ -95,7 +119,9 @@ const text = {
   captionStrong: preset(font.semibold, "caption"),
   micro: preset(font.medium, "micro"),
   button: preset(font.semibold, "body"),
-  price: preset(font.bold, "headline")
+  price: preset(font.displayBold, "headline"),
+  /** Large numerals: fares, ETAs, the arrival PIN. */
+  figure: preset(font.displayBold, "display")
 } as const;
 
 const space = {
@@ -114,9 +140,11 @@ const space = {
 const radius = {
   xs: 6,
   sm: 10,
+  /** Buttons, inputs, chips and other controls. */
   md: 14,
-  card: 18,
-  sheet: 24,
+  control: 14,
+  card: 20,
+  sheet: 28,
   pill: 999
 } as const;
 
@@ -145,7 +173,17 @@ const sizes = {
   /** Below this window width, components switch to their compact layout. */
   compactWidth: 380,
   hairline: 1,
-  border: 1.5
+  border: 1.5,
+  /** Drag handle on bottom sheets. */
+  sheetHandle: 40,
+  sheetHandleHeight: 5,
+  /** Collapsed height of the map-screen bottom sheet. */
+  sheetPeek: 300,
+  /** Centre pin on the pickup screen. */
+  pin: 44,
+  pinStem: 14,
+  mapMarker: 22,
+  mapMarkerProvider: 34
 } as const;
 
 const shadow = {
@@ -155,6 +193,13 @@ const shadow = {
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 1
+  },
+  sheet: {
+    shadowColor: palette.shadow,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 16
   },
   raised: {
     shadowColor: palette.primaryDark,

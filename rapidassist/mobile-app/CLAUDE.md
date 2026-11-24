@@ -11,10 +11,19 @@ fuel delivery). Android and Expo Web are both supported targets (see
 - Use the components in `src/design/components/` first. If one is missing, add
   it to the kit (and to the gallery at `app/(dev)/kit.tsx`) rather than styling
   a one-off in a screen.
-- Font: Inter. Weights 400 / 500 / 600 / 700 only — use `tokens.font.*`
-  (each maps to a loaded Inter face), never a raw `fontWeight` like `"800"`.
-- Card radius 18, primary button height 54, screen padding 20, indigo hero
-  cards — all expressed as tokens.
+- Fonts: Space Grotesk for headings (`hero`, `display`, `title`, `headline`,
+  `price`, `figure` presets) and Inter for body copy. Use `tokens.text.*` /
+  `tokens.font.*` (each maps to a loaded face), never a raw `fontWeight`.
+- Palette (design canvas): indigo #2D0C9E, deep #22087A, mist #EEEAFE,
+  amber #FFB21E, ink #15121F, slate #5E5A6B, cloud #F5F4F8, line #E7E4EE,
+  green #12805C, red #C8322B. Semantic names (`primary`, `muted`, `border`…)
+  map onto these in `tokens.ts`.
+- Radius 14 for controls (`radius.control`), 20 for cards (`radius.card`),
+  28 for sheets (`radius.sheet`). Primary button height 54, screen padding 20.
+- Map-first screens use `MapCanvas` (`src/components/maps/MapCanvas`) with
+  `BottomSheet`. MapCanvas renders react-native-maps on Android when
+  `GOOGLE_MAPS_ANDROID_API_KEY` is set, Google Maps JS on web when
+  `EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY` is set, and the OSM tile canvas otherwise.
 
 ## Data and logic
 - API calls stay in `src/requests`, `src/auth`, `src/vehicles` (plus the

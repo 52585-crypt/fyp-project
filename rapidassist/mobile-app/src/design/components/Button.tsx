@@ -67,7 +67,7 @@ export function Button({
 const styles = StyleSheet.create({
   base: { alignItems: "center", justifyContent: "center", borderWidth: tokens.sizes.border, borderRadius: tokens.radius.md },
   large: { minHeight: tokens.sizes.button, paddingHorizontal: tokens.space.xl },
-  small: { minHeight: tokens.sizes.buttonSmall, paddingHorizontal: tokens.space.lg, borderRadius: tokens.radius.sm },
+  small: { minHeight: tokens.sizes.buttonSmall, paddingHorizontal: tokens.space.lg, borderRadius: tokens.radius.control },
   full: { alignSelf: "stretch" },
   hug: { alignSelf: "flex-start" },
   row: { flexDirection: "row", alignItems: "center", gap: tokens.space.sm }

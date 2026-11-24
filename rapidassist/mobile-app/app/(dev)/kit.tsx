@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import {
-  Badge, Banner, Button, Card, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
+  Badge, Banner, BottomSheet, Button, Card, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
   PersonCard, PriceBreakdown, ProgressStepper, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader,
   Select, ServiceTile, SkeletonCard, StatTile, StatusTimeline, SuccessHero, Text, TextArea
 } from "../../src/design/components";
+import { MapCanvas } from "../../src/components/maps/MapCanvas";
 import { tokens } from "../../src/design/tokens";
 
-const swatches = ["primary", "primaryDark", "primarySoft", "bg", "surface", "border", "text", "muted", "success", "warning", "danger"] as const;
+const swatches = ["indigo", "deep", "mist", "amber", "ink", "slate", "cloud", "line", "green", "red", "surface"] as const;
 
 /** Developer gallery of every design-kit component. Reachable at /kit in __DEV__ only. */
 export default function KitGallery() {
@@ -108,6 +109,17 @@ export default function KitGallery() {
       <Banner tone="warning" title="Verification pending" message="You can go online once approved." />
       <Banner tone="danger" message="Payment failed. Try again." />
       <MapCard badge="12 min away" />
+      <SectionHeader title="Map + sheet" />
+      <View style={styles.mapDemo}>
+        <MapCanvas inset={{ top: 0, bottom: tokens.sizes.sheetPeek / 2 }} markers={[
+          { id: "a", kind: "pickup", coordinate: { latitude: 31.5204, longitude: 74.3587 }, label: "Pickup" },
+          { id: "b", kind: "provider", coordinate: { latitude: 31.5304, longitude: 74.3487 } }
+        ]} />
+        <BottomSheet fixed>
+          <Text variant="headline">Where do you need help?</Text>
+          <Text variant="bodySmall" color="muted">Sheet radius 28 · card radius 20 · controls 14</Text>
+        </BottomSheet>
+      </View>
       <Pulse icon="car-sport" />
       <RatingStars value={rating} onChange={setRating} />
       <SuccessHero title="Thank you!" message="Your fuel has been delivered successfully." />
@@ -127,5 +139,6 @@ const styles = StyleSheet.create({
     borderWidth: tokens.sizes.hairline, borderColor: tokens.color.border
   },
   row: { flexDirection: "row", alignItems: "center", gap: tokens.space.sm, flexWrap: "wrap" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: tokens.space.sm }
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: tokens.space.sm },
+  mapDemo: { height: tokens.sizes.mapLarge + tokens.sizes.map / 2, borderRadius: tokens.radius.card, overflow: "hidden" }
 });
