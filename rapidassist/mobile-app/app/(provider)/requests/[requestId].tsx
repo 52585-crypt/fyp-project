@@ -195,6 +195,18 @@ export default function ProviderRequestDetails() {
                 <Text style={styles.totalLabel}>Total</Text>
                 <Text style={styles.totalValue}>PKR {(request.estimate?.total || 0).toLocaleString()}</Text>
               </View>
+              {request.settlement ? (
+                <>
+                  <DetailRow
+                    label={`RapidAssist share (${Math.round(request.settlement.commissionRate * 100)}% + service fee)`}
+                    value={`- PKR ${request.settlement.platformRevenue.toLocaleString()}`}
+                  />
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>Your earning</Text>
+                    <Text style={styles.totalValue}>PKR {request.settlement.providerEarning.toLocaleString()}</Text>
+                  </View>
+                </>
+              ) : null}
             </Card>
 
             <View style={styles.actions}>

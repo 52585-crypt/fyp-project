@@ -50,11 +50,11 @@ function estimate(category: RequestCategory, liters: number, towingDistanceKm: n
     const total = 1200 + Math.round(billedDistance * TOWING_RATE_PER_KM) + 250;
     return {
       total,
-      text: `${billedDistance} km at PKR ${TOWING_RATE_PER_KM}/km, base towing fee, and service fee.`
+      text: `${billedDistance} km at PKR ${TOWING_RATE_PER_KM}/km, base towing fee, and PKR 250 service fee.`
     };
   }
-  if (category === "fuel_delivery") return { total: liters * 275 + 600, text: "Fuel amount, delivery fee, and service fee." };
-  return { total: 1250, text: "Inspection fee and visit fee. Extra work needs approval." };
+  if (category === "fuel_delivery") return { total: liters * 275 + 600, text: "Fuel amount, PKR 450 delivery fee, and PKR 150 service fee." };
+  return { total: 1350, text: "Inspection fee, visit fee, and PKR 100 service fee. Extra work needs approval." };
 }
 
 function parseCoordinate(lat: string, lng: string, fallback: Coordinate) {

@@ -96,11 +96,22 @@ export function Dashboard() {
             {loading ? "Refreshing..." : "Refresh"}
           </button>
           <Link to="/providers" style={styles.link}>Provider Verification</Link>
+          <Link to="/revenue" style={styles.link}>Revenue</Link>
+          <Link to="/payouts" style={styles.link}>Provider Dues{stats.pendingTopups ? ` (${stats.pendingTopups})` : ""}</Link>
           <Link to="/login" style={styles.link}>Logout</Link>
         </div>
       </div>
 
       {error ? <div style={styles.error}>{error}</div> : null}
+      {!error && stats.pendingTopups > 0 ? (
+        <div style={styles.alert}>
+          <div>
+            <div style={styles.alertTitle}>Dues payments waiting</div>
+            <div style={styles.alertText}>{stats.pendingTopups} provider payments need verification.</div>
+          </div>
+          <Link to="/payouts" style={styles.alertLink}>Review payments</Link>
+        </div>
+      ) : null}
       {!error && (stats.pendingProviders > 0 || stats.activeRequests > 0) ? (
         <div style={styles.alert}>
           <div>
@@ -143,10 +154,18 @@ export function Dashboard() {
           tone="success"
         />
         <ActionCard
-          title="Revenue"
-          value={formatCurrency(stats.revenue)}
-          text={`${formatCurrency(averageJobValue)} average completed job value.`}
+          title="Platform revenue"
+          value={formatCurrency(stats.platformRevenue)}
+          text={`${formatCurrency(stats.todayPlatformRevenue)} today. Customers paid ${formatCurrency(stats.revenue)} in total (${formatCurrency(averageJobValue)} per job).`}
+          href="/revenue"
           tone="primary"
+        />
+        <ActionCard
+          title="Provider dues"
+          value={formatCurrency(stats.outstandingDues)}
+          text={`${stats.pendingTopups || 0} payments to verify, ${stats.blockedProviders || 0} providers blocked.`}
+          href="/payouts"
+          tone="warning"
         />
         <ActionCard
           title="Average rating"
@@ -351,7 +370,7 @@ const styles = {
   alertTitle: { color: "#92400e", fontSize: 14, fontWeight: 900 },
   alertText: { marginTop: 3, color: "#92400e", fontSize: 12, fontWeight: 700 },
   alertLink: { color: "#92400e", fontSize: 12, fontWeight: 900 },
-  heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(4, minmax(0, 1fr))", gap: 12 },
+  heroGrid: { marginTop: 16, display: "grid", gridTemplateColumns: "2fr repeat(5, minmax(0, 1fr))", gap: 12 },
   heroPanel: { border: "1px solid var(--border)", borderRadius: 18, padding: 18, background: "#111827", color: "white" },
   eyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 900 },
   heroValue: { marginTop: 8, fontSize: 38, fontWeight: 900 },

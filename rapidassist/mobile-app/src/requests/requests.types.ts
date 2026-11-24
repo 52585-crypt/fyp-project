@@ -27,9 +27,22 @@ export type RequestStatus =
   | "completed"
   | "cancelled";
 
+export type PriceLineKind = "service" | "fuel_cost" | "delivery_fee" | "platform_fee" | "extra_work";
+
 export type PriceLine = {
   label: string;
   amount: number;
+  kind?: PriceLineKind | null;
+};
+
+export type RequestSettlement = {
+  commissionRate: number;
+  commissionBase: number;
+  commission: number;
+  platformFee: number;
+  providerEarning: number;
+  platformRevenue: number;
+  settledAt: string | null;
 };
 
 export type ChatMessage = {
@@ -93,6 +106,7 @@ export type ServiceRequest = {
     lines: PriceLine[];
     total: number;
   };
+  settlement?: RequestSettlement | null;
   status: RequestStatus;
   review: RequestReview | null;
   createdAt: string;
@@ -135,12 +149,66 @@ export type CreateRequestInput = {
   };
 };
 
+export type ProviderWallet = {
+  providerId: string;
+  currency: "PKR";
+  balance: number;
+  dues: number;
+  debtLimit: number | null;
+  remainingLimit: number | null;
+  totalEarned: number;
+  totalPlatformRevenue: number;
+  totalPaid: number;
+  settledJobs: number;
+  isBlocked: boolean;
+  blockedAt: string | null;
+  pendingTopupAmount: number;
+  pendingTopupCount: number;
+  minTopupAmount: number;
+};
+
+export type TopupMethod = "jazzcash" | "easypaisa" | "bank_transfer" | "cash" | "other";
+
+export type WalletTransaction = {
+  id: string;
+  requestId: string | null;
+  type: "commission_debit" | "topup_credit" | "adjustment";
+  amount: number;
+  balanceAfter: number | null;
+  status: "pending" | "approved" | "rejected";
+  method: TopupMethod | null;
+  reference: string | null;
+  hasProof: boolean;
+  breakdown?: {
+    category: RequestCategory | null;
+    requestTotal: number | null;
+    commission: number | null;
+    platformFee: number | null;
+    providerEarning: number | null;
+  };
+  note: string | null;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
+export type TopupInput = {
+  amount: number;
+  method: TopupMethod;
+  reference?: string | null;
+  proofImage?: string | null;
+  note?: string | null;
+};
+
 export type ProviderEarnings = {
   currency: "PKR";
   today: number;
   week: number;
   total: number;
+  collected: number;
+  platformShare: number;
   completedJobs: number;
+  wallet: ProviderWallet;
   recent: ServiceRequest[];
 };
 

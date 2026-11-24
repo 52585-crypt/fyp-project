@@ -181,6 +181,25 @@ export default function ProviderDashboard() {
           <View style={styles.heroIcon}><Ionicons name="construct" size={42} color="white" /></View>
         </Card>
 
+        {earnings?.wallet?.dues ? (
+          <Pressable onPress={() => router.push("/(provider)/earnings")}>
+            <Card style={[styles.duesCard, earnings.wallet.isBlocked ? styles.duesBlocked : null] as any}>
+              <Ionicons name={earnings.wallet.isBlocked ? "lock-closed" : "wallet"} size={22} color={earnings.wallet.isBlocked ? ui.colors.danger : ui.colors.warning} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.duesTitle}>
+                  {earnings.wallet.isBlocked ? "New jobs paused" : "Platform dues"}: PKR {Math.round(earnings.wallet.dues).toLocaleString()}
+                </Text>
+                <Text style={styles.duesText}>
+                  {earnings.wallet.isBlocked
+                    ? "Pay your dues to start receiving requests again."
+                    : `Jobs pause when dues pass PKR ${Number(earnings.wallet.debtLimit || 0).toLocaleString()}. Tap to pay.`}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={ui.colors.muted} />
+            </Card>
+          </Pressable>
+        ) : null}
+
         <View style={styles.metrics}>
           <Metric label="Open jobs" value={String(requests.length)} icon="briefcase" />
           <Metric label="Today earning" value={`PKR ${earnings?.today?.toLocaleString() || 0}`} icon="wallet" />
@@ -263,6 +282,10 @@ export default function ProviderDashboard() {
 }
 
 const styles = StyleSheet.create({
+  duesCard: { marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12, borderColor: ui.colors.warning, backgroundColor: ui.colors.warningSoft },
+  duesBlocked: { borderColor: ui.colors.danger, backgroundColor: ui.colors.dangerSoft },
+  duesTitle: { color: ui.colors.text, fontSize: 14, fontWeight: "900" },
+  duesText: { marginTop: 3, color: ui.colors.muted, fontSize: 12, fontWeight: "700" },
   toggle: { width: 58, height: 34, borderRadius: 17, backgroundColor: ui.colors.border, padding: 4, justifyContent: "center" },
   toggleOn: { backgroundColor: ui.colors.successSoft },
   toggleDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: ui.colors.muted },

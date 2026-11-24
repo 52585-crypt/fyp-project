@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test:monetization": "node scripts/monetization-e2e.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

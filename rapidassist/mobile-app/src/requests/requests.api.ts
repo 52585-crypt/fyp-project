@@ -1,5 +1,17 @@
 import { api } from "../config/api";
-import type { ChatMessage, CreateRequestInput, ExtraWorkInput, NearbyProvider, ProviderEarnings, RequestCategory, RequestLocation, ServiceRequest } from "./requests.types";
+import type {
+  ChatMessage,
+  CreateRequestInput,
+  ExtraWorkInput,
+  NearbyProvider,
+  ProviderEarnings,
+  ProviderWallet,
+  RequestCategory,
+  RequestLocation,
+  ServiceRequest,
+  TopupInput,
+  WalletTransaction
+} from "./requests.types";
 
 export async function createRequest(token: string, input: CreateRequestInput) {
   const res = await api.post<{ ok: boolean; request: ServiceRequest }>("/api/requests", input, {
@@ -144,3 +156,17 @@ export async function sendRequestMessage(token: string, id: string, body: string
   return res.data.message;
 }
 
+
+export async function getMyWallet(token: string) {
+  const res = await api.get<{ ok: boolean; wallet: ProviderWallet; transactions: WalletTransaction[] }>("/api/wallet/me", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
+
+export async function submitWalletTopup(token: string, input: TopupInput) {
+  const res = await api.post<{ ok: boolean; transaction: WalletTransaction; wallet: ProviderWallet }>("/api/wallet/topup", input, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}

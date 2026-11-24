@@ -9,6 +9,19 @@ const {
 const { Vehicle } = require("../models/Vehicle");
 const { User } = require("../models/User");
 const { ChatMessage } = require("../models/ChatMessage");
+const {
+  computeSettlement,
+  getMonetizationSettings,
+  lineKind,
+  refreshRequestMoney
+} = require("../services/monetization.service");
+const {
+  assertProviderCanTakeJobs,
+  getBlockedProviderIds,
+  getProviderBlockState,
+  getWalletSummary,
+  settleCompletedRequest
+} = require("../services/wallet.service");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -251,34 +264,41 @@ function activeStatuses() {
   ];
 }
 
-function estimateFor(category, body) {
+function line(label, amount, kind) {
+  return { label, amount: Math.round(amount), kind };
+}
+
+function estimateFor(category, body, settings) {
+  const platformFee = settings.platformFees[category] || 0;
+  let lines;
+
   if (category === "car_towing") {
     const distanceKm = Math.max(1, parseNum(body.distanceKm) || 8);
-    const lines = [
-      { label: "Base towing fee", amount: 1200 },
-      { label: `Distance charge (${distanceKm} km)`, amount: Math.round(distanceKm * 180) },
-      { label: "Service fee", amount: 250 }
+    lines = [
+      line("Base towing fee", 1200, "service"),
+      line(`Distance charge (${distanceKm} km)`, distanceKm * 180, "service")
     ];
-    return { currency: "PKR", lines, total: lines.reduce((sum, line) => sum + line.amount, 0) };
-  }
-
-  if (category === "fuel_delivery") {
+  } else if (category === "fuel_delivery") {
     const liters = Math.max(1, parseNum(body.fuelDetails?.liters) || 5);
     const fuelType = normalizeStr(body.fuelDetails?.fuelType).toLowerCase();
     const perLiter = fuelType === "diesel" ? 290 : 275;
-    const lines = [
-      { label: `${fuelType === "diesel" ? "Diesel" : "Petrol"} (${liters}L)`, amount: Math.round(perLiter * liters) },
-      { label: "Delivery fee", amount: 450 },
-      { label: "Service fee", amount: 150 }
+    lines = [
+      line(`${fuelType === "diesel" ? "Diesel" : "Petrol"} (${liters}L)`, perLiter * liters, "fuel_cost"),
+      line("Delivery fee", 450, "delivery_fee")
     ];
-    return { currency: "PKR", lines, total: lines.reduce((sum, line) => sum + line.amount, 0) };
+  } else {
+    lines = [
+      line("Inspection fee", 900, "service"),
+      line("Visit fee", 350, "service")
+    ];
   }
 
-  const lines = [
-    { label: "Inspection fee", amount: 900 },
-    { label: "Visit fee", amount: 350 }
-  ];
-  return { currency: "PKR", lines, total: lines.reduce((sum, line) => sum + line.amount, 0) };
+  if (platformFee > 0) lines.push(line("Service fee", platformFee, "platform_fee"));
+
+  return {
+    estimate: { currency: "PKR", lines, total: lines.reduce((sum, item) => sum + item.amount, 0) },
+    settlement: computeSettlement(category, lines, settings.commissionRates[category] || 0)
+  };
 }
 
 function validateServiceDetails(category, body) {
@@ -344,7 +364,8 @@ async function createRequest(req, res, next) {
     validateServiceDetails(category, body);
 
     const vehicleData = await buildVehicleData(req, body.vehicleId, body.vehicleInfo);
-    const estimate = estimateFor(category, body);
+    const settings = await getMonetizationSettings();
+    const { estimate, settlement } = estimateFor(category, body, settings);
     const issueType =
       category === "mechanic"
         ? normalizeStr(body.mechanicDetails?.issueCategory || body.issueType).toLowerCase()
@@ -374,6 +395,7 @@ async function createRequest(req, res, next) {
             }
           : undefined,
       estimate,
+      settlement,
       status: "searching_provider"
     });
 
@@ -420,6 +442,12 @@ async function listProviderRequests(req, res, next) {
       return;
     }
 
+    const blockState = await getProviderBlockState(req.user._id);
+    if (blockState.blocked) {
+      res.json({ ok: true, requests: [], blocked: true, dues: blockState.dues, debtLimit: blockState.debtLimit });
+      return;
+    }
+
     const requests = await ServiceRequest.find({
       category,
       status: "searching_provider",
@@ -450,8 +478,10 @@ async function listNearbyProviders(req, res, next) {
     const requestedRadius = parseNum(req.query?.radiusKm);
     const radiusKm = Math.min(50, Math.max(1, requestedRadius || defaultSearchRadiusKm(category)));
     const staleAfter = new Date(Date.now() - 30 * 60 * 1000);
+    const blockedProviderIds = await getBlockedProviderIds();
 
     const candidates = await User.find({
+      _id: { $nin: blockedProviderIds },
       role: "mechanic",
       verificationStatus: "verified",
       "mechanicProfile.serviceCategory": providerCategoryForRequest(category),
@@ -508,6 +538,8 @@ async function acceptRequest(req, res, next) {
       throw forbidden("Provider service category does not match this request");
     }
 
+    await assertProviderCanTakeJobs(req.user._id);
+
     request.providerId = req.user._id;
     request.acceptedAt = new Date();
     request.addStatus("provider_assigned", req.user._id, "Provider accepted request");
@@ -554,6 +586,17 @@ async function updateRequestStatus(req, res, next) {
 
     request.addStatus(status, req.user._id, normalizeStr(req.body?.note) || null);
     await request.save();
+
+    if (status === "completed") {
+      try {
+        // Customer paid cash to the provider; charge the platform share to the provider wallet.
+        await settleCompletedRequest(request);
+      } catch (settleErr) {
+        // Completion must not fail because of wallet issues; it is retried
+        // automatically the next time the provider opens their wallet.
+        console.error("Wallet settlement failed for request", request._id.toString(), settleErr);
+      }
+    }
 
     if (status === "completed" || status === "cancelled") {
       await User.updateOne(
@@ -679,9 +722,16 @@ async function getProviderHistory(req, res, next) {
   }
 }
 
+function providerEarningFor(request) {
+  // Legacy requests (before monetization) have no settlement: the provider kept the full amount.
+  if (request.settlement) return Number(request.settlement.providerEarning || 0);
+  return Number(request.estimate?.total || 0);
+}
+
 async function getProviderEarnings(req, res, next) {
   try {
     requireProvider(req);
+    const wallet = await getWalletSummary(req.user._id);
     const completed = await ServiceRequest.find({
       providerId: req.user._id,
       status: "completed"
@@ -694,14 +744,16 @@ async function getProviderEarnings(req, res, next) {
 
     const totals = completed.reduce(
       (acc, request) => {
-        const total = request.estimate?.total || 0;
+        const earning = providerEarningFor(request);
         const completedAt = request.completedAt || request.updatedAt;
-        acc.total += total;
-        if (completedAt >= todayStart) acc.today += total;
-        if (completedAt >= weekStart) acc.week += total;
+        acc.total += earning;
+        acc.collected += Number(request.estimate?.total || 0);
+        acc.platformShare += Number(request.settlement?.platformRevenue || 0);
+        if (completedAt >= todayStart) acc.today += earning;
+        if (completedAt >= weekStart) acc.week += earning;
         return acc;
       },
-      { today: 0, week: 0, total: 0 }
+      { today: 0, week: 0, total: 0, collected: 0, platformShare: 0 }
     );
 
     res.json({
@@ -711,7 +763,10 @@ async function getProviderEarnings(req, res, next) {
         today: totals.today,
         week: totals.week,
         total: totals.total,
+        collected: totals.collected,
+        platformShare: totals.platformShare,
         completedJobs: completed.length,
+        wallet,
         recent: completed.slice(0, 10).map((r) => r.toJSONSafe())
       }
     });
@@ -743,8 +798,10 @@ async function requestExtraWork(req, res, next) {
       description,
       approvedByUser: false
     };
-    request.estimate.lines.push({ label: "Extra work estimate", amount: partPrice + laborCharge });
-    request.estimate.total += partPrice + laborCharge;
+    // Replace any earlier extra work line instead of stacking estimates.
+    request.estimate.lines = request.estimate.lines.filter((item) => lineKind(item) !== "extra_work");
+    request.estimate.lines.push({ label: "Extra work estimate", amount: partPrice + laborCharge, kind: "extra_work" });
+    refreshRequestMoney(request);
     request.addStatus("extra_work_requested", req.user._id, "Provider requested extra work approval");
     await request.save();
 
@@ -762,6 +819,11 @@ async function approveExtraWork(req, res, next) {
     if (request.category !== "mechanic") throw badRequest("Extra work is only available for mechanic requests");
 
     request.mechanicDetails.extraWork.approvedByUser = Boolean(req.body?.approved ?? true);
+    if (!request.mechanicDetails.extraWork.approvedByUser) {
+      // Rejected extra work is not billed, so it must not count in total or commission.
+      request.estimate.lines = request.estimate.lines.filter((item) => lineKind(item) !== "extra_work");
+    }
+    refreshRequestMoney(request);
     request.addStatus(request.mechanicDetails.extraWork.approvedByUser ? "work_started" : "waiting_user_approval", req.user._id, request.mechanicDetails.extraWork.approvedByUser ? "User approved extra work" : "User rejected extra work");
     await request.save();
 

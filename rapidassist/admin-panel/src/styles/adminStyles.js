@@ -1,0 +1,81 @@
+export const sharedStyles = {
+  page: { minHeight: "100vh", padding: 18, background: "var(--bg)" },
+  topbar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    flexWrap: "wrap",
+    border: "1px solid var(--border)",
+    borderRadius: 18,
+    padding: 16,
+    background: "white",
+    boxShadow: "var(--shadow)"
+  },
+  title: { fontSize: 22, fontWeight: 900, color: "var(--text)" },
+  subtitle: { marginTop: 4, color: "var(--muted)", fontSize: 13 },
+  nav: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" },
+  link: { color: "var(--primary)", fontWeight: 900 },
+  button: {
+    height: 38,
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "0 14px",
+    fontWeight: 900,
+    cursor: "pointer"
+  },
+  primaryButton: {
+    height: 40,
+    border: 0,
+    borderRadius: 12,
+    background: "var(--primary)",
+    color: "white",
+    padding: "0 16px",
+    fontWeight: 900,
+    cursor: "pointer"
+  },
+  error: {
+    marginTop: 14,
+    border: "1px solid #fecaca",
+    borderRadius: 14,
+    background: "#fee2e2",
+    color: "#b91c1c",
+    padding: 12,
+    fontWeight: 800
+  },
+  panel: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 16, boxShadow: "var(--shadow)", minWidth: 0 },
+  panelTitle: { color: "var(--text)", fontSize: 17, fontWeight: 900 },
+  twoColumn: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: 16, alignItems: "start" },
+  stack: { display: "grid", gap: 10 },
+  row: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    background: "var(--surface)",
+    padding: 12
+  },
+  rowTitle: { color: "var(--text)", fontSize: 14, fontWeight: 900 },
+  rowMeta: { marginTop: 3, color: "var(--muted)", fontSize: 12, fontWeight: 700, textTransform: "none" },
+  amount: { color: "var(--text)", fontWeight: 900, textAlign: "right", whiteSpace: "nowrap" },
+  empty: { color: "var(--muted)", fontSize: 13, fontWeight: 800 },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  th: { textAlign: "left", color: "var(--muted)", fontSize: 11, fontWeight: 900, padding: "6px 8px", borderBottom: "1px solid var(--border)" },
+  thRight: { textAlign: "right", color: "var(--muted)", fontSize: 11, fontWeight: 900, padding: "6px 8px", borderBottom: "1px solid var(--border)" },
+  td: { padding: "8px", color: "var(--text)", fontWeight: 700, borderBottom: "1px solid var(--border)" },
+  tdRight: { padding: "8px", color: "var(--text)", fontWeight: 700, textAlign: "right", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" },
+  input: {
+    width: "100%",
+    height: 36,
+    borderRadius: 10,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    padding: "0 10px",
+    fontSize: 13,
+    boxSizing: "border-box"
+  }
+};

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { PRICE_LINE_KINDS } = require("../config/monetization");
 
 const REQUEST_CATEGORIES = ["car_towing", "fuel_delivery", "mechanic"];
 
@@ -36,7 +37,9 @@ const locationSchema = new mongoose.Schema(
 const priceLineSchema = new mongoose.Schema(
   {
     label: { type: String, required: true, trim: true },
-    amount: { type: Number, required: true, min: 0 }
+    amount: { type: Number, required: true, min: 0 },
+    // null on legacy requests; the kind is then inferred from the label.
+    kind: { type: String, enum: [...PRICE_LINE_KINDS, null], default: null }
   },
   { _id: false }
 );
@@ -57,6 +60,20 @@ const reviewSchema = new mongoose.Schema(
     comment: { type: String, default: null, trim: true, maxlength: 400 },
     byUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     reviewedAt: { type: Date, default: null }
+  },
+  { _id: false }
+);
+
+const settlementSchema = new mongoose.Schema(
+  {
+    commissionRate: { type: Number, required: true, min: 0, max: 1 },
+    commissionBase: { type: Number, default: 0, min: 0 },
+    commission: { type: Number, default: 0, min: 0 },
+    platformFee: { type: Number, default: 0, min: 0 },
+    providerEarning: { type: Number, default: 0, min: 0 },
+    platformRevenue: { type: Number, default: 0, min: 0 },
+    settledAt: { type: Date, default: null },
+    walletTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: "WalletTransaction", default: null }
   },
   { _id: false }
 );
@@ -106,6 +123,11 @@ const serviceRequestSchema = new mongoose.Schema(
       total: { type: Number, default: 0, min: 0 }
     },
 
+    // How the customer's payment is split between provider and platform.
+    // Rates are snapshotted at creation; amounts are recalculated when the
+    // estimate changes (e.g. mechanic extra work).
+    settlement: { type: settlementSchema, default: null },
+
     status: { type: String, enum: REQUEST_STATUSES, default: "searching_provider", index: true },
     statusTimeline: [statusTimelineSchema],
     acceptedAt: { type: Date, default: null },
@@ -115,6 +137,8 @@ const serviceRequestSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+serviceRequestSchema.index({ status: 1, "settlement.settledAt": 1 });
 
 serviceRequestSchema.methods.addStatus = function addStatus(status, byUserId, note) {
   this.status = status;
@@ -139,6 +163,17 @@ serviceRequestSchema.methods.toJSONSafe = function toJSONSafe() {
     fuelDetails: this.fuelDetails,
     mechanicDetails: this.mechanicDetails,
     estimate: this.estimate,
+    settlement: this.settlement
+      ? {
+          commissionRate: this.settlement.commissionRate,
+          commissionBase: this.settlement.commissionBase,
+          commission: this.settlement.commission,
+          platformFee: this.settlement.platformFee,
+          providerEarning: this.settlement.providerEarning,
+          platformRevenue: this.settlement.platformRevenue,
+          settledAt: this.settlement.settledAt
+        }
+      : null,
     status: this.status,
     statusTimeline: this.statusTimeline,
     acceptedAt: this.acceptedAt,
