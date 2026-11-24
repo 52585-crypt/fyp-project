@@ -120,7 +120,7 @@ const text = {
   micro: preset(font.medium, "micro"),
   button: preset(font.semibold, "body"),
   price: preset(font.displayBold, "headline"),
-  /** Large numerals: fares, ETAs, the arrival PIN. */
+  /** Large numerals: fares and ETAs. */
   figure: preset(font.displayBold, "display")
 } as const;
 

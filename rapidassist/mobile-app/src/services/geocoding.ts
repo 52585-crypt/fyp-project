@@ -80,3 +80,23 @@ function formatPhotonLabel(feature: PhotonFeature) {
     .filter(Boolean)
     .join(", ") || "Selected location";
 }
+
+const PHOTON_REVERSE_URL = "https://photon.komoot.io/reverse";
+
+/** Short street address for a point (Photon reverse geocoding), or null when nothing readable is found. */
+export async function reverseGeocode(point: Coordinate): Promise<string | null> {
+  const params = new URLSearchParams({ lat: String(point.latitude), lon: String(point.longitude), limit: "1", lang: "en" });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${PHOTON_REVERSE_URL}?${params.toString()}`, { signal: controller.signal, headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { features?: PhotonFeature[] };
+    const props = data?.features?.[0]?.properties;
+    if (!props) return null;
+    const parts = [props.name, props.street, props.district, props.city].filter((v): v is string => Boolean(v?.trim()));
+    return parts.filter((v, i) => parts.indexOf(v) === i).slice(0, 3).join(", ") || null;
+  } catch {
+    return null;
+  } finally { clearTimeout(timeout); }
+}

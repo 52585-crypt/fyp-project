@@ -4,10 +4,9 @@ import { tokens } from "../../design/tokens";
 import { clockIn } from "../../utils/format";
 import { getServiceTitle } from "../serviceCatalog";
 import { customerCanCancel, providerNoun, type CustomerStage } from "../stages";
-import { ArrivalPinCard } from "./ArrivalPinCard";
 import { CancelRequest, QuickActions, TripStatus, type StageProps } from "./shared";
 
-/** Live tracking sheet for assigned / tracking / arrived: ETA, provider, arrival PIN, actions, trip status. */
+/** Live tracking sheet for assigned / tracking / arrived: ETA, provider, actions, trip status. */
 export function TrackingSheet({ stage, state, request }: StageProps & { stage: CustomerStage }) {
   const who = providerNoun(request.category).toLowerCase();
   const name = request.provider?.name?.split(/\s+/)[0] ?? `Your ${who}`;
@@ -57,7 +56,6 @@ export function TrackingSheet({ stage, state, request }: StageProps & { stage: C
         </View>
       ) : null}
 
-      <ArrivalPinCard providerName={request.provider?.name} arrived={arrived} />
       <QuickActions request={request} />
 
       {state.locationRefreshError ? (

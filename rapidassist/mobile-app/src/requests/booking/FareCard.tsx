@@ -8,10 +8,7 @@ import type { PriceLine } from "../requests.types";
 
 type Props = { estimate: { lines: PriceLine[]; total: number } | null; pending?: boolean };
 
-/**
- * Fare panel on the problem screen. The backend prices every request itself (no customer fare offers yet),
- * so the fare is shown as a fixed amount with its breakdown, and offers are marked as coming soon.
- */
+/** Fare panel on the problem screen: the backend prices every request, so the fare is a fixed amount with its breakdown. */
 export function FareCard({ estimate, pending }: Props) {
   const [open, setOpen] = useState(false);
   return (
@@ -36,10 +33,6 @@ export function FareCard({ estimate, pending }: Props) {
       {open && estimate ? (
         <View style={styles.breakdown}><PriceBreakdown lines={estimate.lines} total={estimate.total} totalLabel="Fare" /></View>
       ) : null}
-      <View style={styles.soon}>
-        <Icon name="pricetags-outline" color="muted" size={tokens.sizes.iconSmall} />
-        <Text variant="caption" color="muted" style={styles.flex}>Offering your own fare is coming soon.</Text>
-      </View>
     </View>
   );
 }
@@ -51,6 +44,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   tag: { paddingHorizontal: tokens.space.sm, paddingVertical: tokens.space.xxs, borderRadius: tokens.radius.pill, backgroundColor: tokens.color.amber },
   toggle: { flexDirection: "row", alignItems: "center", gap: tokens.space.xs, alignSelf: "flex-start", minHeight: tokens.sizes.touchMin },
-  breakdown: { padding: tokens.space.lg, borderRadius: tokens.radius.card, borderWidth: tokens.sizes.hairline, borderColor: tokens.color.line },
-  soon: { flexDirection: "row", alignItems: "center", gap: tokens.space.sm, paddingHorizontal: tokens.space.xs }
+  breakdown: { padding: tokens.space.lg, borderRadius: tokens.radius.card, borderWidth: tokens.sizes.hairline, borderColor: tokens.color.line }
 });

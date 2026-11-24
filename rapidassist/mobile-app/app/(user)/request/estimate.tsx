@@ -106,10 +106,11 @@ export default function ProblemAndFare() {
               action={<Button title="Set drop-off" size="small" variant="secondary" fullWidth={false}
                 onPress={() => router.push({ pathname: "/request/new/[service]", params: { service: "car_towing", step: "destination" } })} />} />
           ) : null}
-          {b.error ? <Banner tone="danger" message={b.error} /> : null}
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + tokens.space.lg }]}>
+          {/* Errors sit next to the button that caused them, never off-screen in the scroll area. */}
+          {b.error ? <Banner tone="danger" message={b.error} /> : null}
           <View style={styles.summary}>
             <View style={styles.flex}>
               <Text variant="caption" color="muted">Fixed fare</Text>

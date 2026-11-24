@@ -1,4 +1,3 @@
-import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
@@ -123,11 +122,7 @@ export function useBookingState() {
       const loc = normalizeLocation({ ...coordinate, source: "gps" });
       setPickup({ ...loc, address: "Locating address…" });
       const same = (v: NormalizedLocation | null) => v?.source === "gps" && v.latitude === loc.latitude && v.longitude === loc.longitude;
-      let readable = "";
-      try {
-        const [a] = await Location.reverseGeocodeAsync(loc);
-        readable = a ? [a.name, a.street, a.city, a.region].filter(Boolean).join(", ") : "";
-      } catch { /* keep generic label */ }
+      const readable = await readableAddress(loc);
       setPickup((v) => same(v) ? { ...v!, address: readable || "Current location" } : v);
     } finally { setLocating(false); }
   }

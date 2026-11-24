@@ -1,5 +1,6 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, StyleSheet } from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback } from "react";
+import { BackHandler, Pressable, StyleSheet } from "react-native";
 import { Banner, Button, ErrorState, Header, Screen, SkeletonCard, Text } from "../../../../src/design/components";
 import { tapFeedback } from "../../../../src/design/haptics";
 import { tokens } from "../../../../src/design/tokens";
@@ -29,6 +30,13 @@ export default function CustomerRequestScreen() {
   const state = useCustomerRequest(requestId);
   const { request, stage } = state;
 
+  // The booking screens share this stack, so Android back must go home like the header back button
+  // (otherwise it reopens the finished booking form).
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => { router.dismissTo(customerRoutes.home); return true; });
+    return () => sub.remove();
+  }, []));
+
   const sos = stage && sosStages.includes(stage) ? (
     <Pressable accessibilityRole="button" accessibilityLabel="SOS emergency help" accessibilityHint="Opens emergency numbers"
       onPress={() => { tapFeedback(); router.push(customerRoutes.support); }} style={styles.sos}>
@@ -45,7 +53,7 @@ export default function CustomerRequestScreen() {
     const searching = stage === "searching" || stage === "no_provider";
     return (
       <LiveRequestMap stage={stage} request={request} state={state} right={sos} peek={searching ? OFFERS_PEEK : TRACKING_PEEK}
-        title={titleFor(stage, request.category)} subtitle={searching || stage === "arrived" ? getServiceTitle(request.category) : `ETA ${state.eta}`}>
+        title={titleFor(stage, request.category)} subtitle={searching || stage === "arrived" ? getServiceTitle(request.category) : /\d/.test(state.eta) ? `ETA ${state.eta}` : state.eta}>
         {paused}
         <StageView stage={stage} state={state} request={request} />
       </LiveRequestMap>

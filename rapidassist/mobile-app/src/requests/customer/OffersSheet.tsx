@@ -13,8 +13,7 @@ const nouns = { car_towing: "tow drivers", fuel_delivery: "fuel riders", mechani
 
 /**
  * Provider offers (searching / no_provider). Dispatch is automatic: the backend offers the request to one
- * nearby provider at a time and the first to accept is assigned, so this lists who is nearby and the
- * search progress. Picking a provider yourself is shown as coming soon (no backend endpoint).
+ * nearby provider at a time and the first to accept is assigned, so this shows search progress and who is nearby.
  */
 export function OffersSheet({ state, request, unavailable }: StageProps & { unavailable: boolean }) {
   const d = request.dispatch;
@@ -52,10 +51,6 @@ export function OffersSheet({ state, request, unavailable }: StageProps & { unav
             <Banner icon="time-outline" message={`No ${providerNoun(request.category).toLowerCase()}s online nearby right now. We'll keep searching.`} />
           ) : null}
           {list.map((p) => <ProviderRowCard key={p.id} provider={p} />)}
-          <View style={styles.soon}>
-            <Icon name="hand-left-outline" color="muted" size={tokens.sizes.iconSmall} />
-            <Text variant="caption" color="muted" style={styles.flex}>Choosing a provider yourself is coming soon.</Text>
-          </View>
         </View>
       ) : null}
 
@@ -101,16 +96,17 @@ function SearchBar() {
 }
 
 function ProviderRowCard({ provider }: { provider: NearbyProvider }) {
+  const jobs = `${provider.completedJobs} job${provider.completedJobs === 1 ? "" : "s"}`;
   const rating = provider.ratingCount ? `${provider.ratingAvg.toFixed(1)} (${provider.ratingCount})` : "New";
   return (
     <View style={styles.card} accessible
-      accessibilityLabel={`${provider.name}, rating ${rating}, ${provider.completedJobs} jobs completed, online nearby`}>
+      accessibilityLabel={`${provider.name}, rating ${rating}, ${jobs} completed, online nearby`}>
       <Avatar name={provider.name} />
       <View style={styles.flex}>
         <Text variant="bodyStrong" numberOfLines={1}>{provider.name}</Text>
         <View style={styles.meta}>
           <Icon name="star" color="amber" size={tokens.sizes.iconSmall - 2} />
-          <Text variant="caption" color="muted">{rating} · {provider.completedJobs} jobs</Text>
+          <Text variant="caption" color="muted">{rating} · {jobs}</Text>
         </View>
       </View>
       <View style={styles.online}><View style={styles.dot} /><Text variant="micro" color="green">Online</Text></View>
@@ -132,6 +128,5 @@ const styles = StyleSheet.create({
   },
   meta: { flexDirection: "row", alignItems: "center", gap: tokens.space.xs },
   online: { flexDirection: "row", alignItems: "center", gap: tokens.space.xs },
-  dot: { width: tokens.space.sm, height: tokens.space.sm, borderRadius: tokens.space.xs, backgroundColor: tokens.color.green },
-  soon: { flexDirection: "row", alignItems: "center", gap: tokens.space.sm, paddingHorizontal: tokens.space.xs, paddingTop: tokens.space.xs }
+  dot: { width: tokens.space.sm, height: tokens.space.sm, borderRadius: tokens.space.xs, backgroundColor: tokens.color.green }
 });

@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   sheet: {
     position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: tokens.color.surface,
     borderTopLeftRadius: tokens.radius.sheet, borderTopRightRadius: tokens.radius.sheet, overflow: "hidden",
-    width: "100%", maxWidth: tokens.sizes.maxContent, alignSelf: "center", ...tokens.shadow.sheet
+    width: "100%", maxWidth: tokens.sizes.maxContent, alignSelf: "center", marginHorizontal: "auto", ...tokens.shadow.sheet
   },
   docked: { position: "relative", marginTop: -tokens.radius.sheet },
   flex: { flex: 1 },

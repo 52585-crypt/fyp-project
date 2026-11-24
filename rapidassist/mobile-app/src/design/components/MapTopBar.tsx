@@ -32,7 +32,7 @@ export function MapPill({ title, subtitle }: { title: string; subtitle?: string 
 const styles = StyleSheet.create({
   bar: {
     position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: tokens.space.sm,
-    paddingHorizontal: tokens.space.lg, width: "100%", maxWidth: tokens.sizes.maxContent, alignSelf: "center"
+    paddingHorizontal: tokens.space.lg, width: "100%", maxWidth: tokens.sizes.maxContent, alignSelf: "center", marginHorizontal: "auto"
   },
   side: { minWidth: tokens.sizes.iconButton, flexDirection: "row", gap: tokens.space.sm },
   end: { justifyContent: "flex-end" },
