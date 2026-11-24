@@ -134,6 +134,12 @@ The customer location picker, tracking map, and provider job maps use Google Map
 
 Google Maps requires access to the configured Google Cloud project and enabled APIs. See [Google's Maps security guidance](https://developers.google.com/maps/api-security-best-practices) and [Expo's map setup](https://docs.expo.dev/versions/v54.0.0/sdk/map-view/).
 
+## CARTO basemaps (non-Google maps)
+
+Without Google Maps keys, every map uses CARTO Voyager raster tiles (`tile.openstreetmap.org` blocks app traffic). Set `EXPO_PUBLIC_CARTO_BASEMAP_API_KEY` in `mobile-app/.env` and restart Expo with `npx expo start -c`; without a key CARTO returns an "API KEY REQUIRED" placeholder tile.
+
+CARTO key is restricted to localhost; add the production domain in the CARTO dashboard or use a separate unrestricted key for mobile builds. Requests from the Android WebView, a LAN IP, or a deployed domain otherwise get 403 tiles.
+
 ## Verification report (2026-11-11)
 
 - `npm run android:doctor`: passed; Java 21, ADB, and the emulator configuration detected.

@@ -30,7 +30,7 @@ export function TileCanvas(props: MapCanvasProps) {
 
   return (
     <View style={[styles.fill, props.style]} testID={props.testID} accessibilityLabel={props.accessibilityLabel}>
-      <iframe ref={frame} title={props.accessibilityLabel || "Map"} srcDoc={html} sandbox="allow-scripts allow-popups"
+      <iframe ref={frame} title={props.accessibilityLabel || "Map"} srcDoc={html} sandbox="allow-scripts allow-same-origin allow-popups"
         onLoad={() => frame.current?.contentWindow?.postMessage({ rapidassistMapState: state }, "*")}
         style={{ border: 0, width: "100%", height: "100%" }} />
     </View>

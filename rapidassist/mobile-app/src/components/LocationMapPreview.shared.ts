@@ -1,6 +1,7 @@
 import type { Coordinate } from "../utils/distance";
 import { tokens } from "../design/tokens";
 import { LEGACY_MAP_TILES } from "./maps/legacyMapTiles";
+import { safePoint, safePoints, safeText, scriptJson } from "./maps/mapHtmlSafety";
 
 const c = tokens.color;
 
@@ -18,12 +19,22 @@ export type MapPreviewProps = {
 
 // One renderer for web iframe and native WebView. Text never enters HTML markup.
 export function buildPreviewHtml(props: MapPreviewProps) {
-  const payload = JSON.stringify({
-    ...props,
-    route: props.route || [],
-    providers: props.providers || [],
+  // Explicit allow-list: coordinates through Number(), text through String(); nothing else reaches the document.
+  const pickup = safePoint(props.pickup) ?? { latitude: 0, longitude: 0 };
+  const payload = scriptJson({
+    pickup,
+    destination: safePoint(props.destination),
+    route: safePoints(props.route),
+    providers: (props.providers || []).flatMap((p) => {
+      const location = safePoint(p.location);
+      return location ? [{ id: String(p.id), name: String(p.name ?? ""), location }] : [];
+    }),
+    pickupLabel: safeText(props.pickupLabel),
+    destinationLabel: safeText(props.destinationLabel),
+    title: safeText(props.title),
+    interactive: Boolean(props.interactive),
     tileConfig: LEGACY_MAP_TILES
-  }).replace(/</g, "\\u003c");
+  });
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
   html,body,#map{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-family:Arial,sans-serif}
   .tile{position:absolute;width:256px;height:256px}.pin{position:absolute;width:18px;height:18px;border:3px solid ${c.surface};border-radius:50%;margin:-12px;z-index:3;box-shadow:0 2px 8px ${c.overlay}}
@@ -57,7 +68,7 @@ export function buildPreviewHtml(props: MapPreviewProps) {
     function pin(c,color,text){const p=point(c,z);const dot=document.createElement('div');dot.className='pin';dot.style.cssText='left:'+(p.x-left)+'px;top:'+(p.y-top)+'px;background:'+color;const label=document.createElement('div');label.className='label';label.style.left=(p.x-left)+'px';label.style.top=(p.y-top)+'px';label.textContent=text;map.append(dot,label);}
     pin(data.pickup,'${c.primary}',data.pickupLabel||'Pickup');if(data.destination)pin(data.destination,'${c.danger}',data.destinationLabel||'Destination');data.providers.forEach(p=>pin(p.location,'${c.primary}',p.name));
     if(data.title){const hint=document.createElement('div');hint.className='hint';hint.textContent=data.title;map.append(hint);}
-    const credit=document.createElement('div');credit.className='credit';const osm=document.createElement('a');osm.href='https://www.openstreetmap.org/copyright';osm.textContent='© OpenStreetMap';osm.target='_blank';osm.rel='noreferrer';credit.append(osm);if(data.tileConfig.usesCarto){const carto=document.createElement('a');carto.href='https://carto.com/attributions';carto.textContent=' © CARTO';carto.target='_blank';carto.rel='noreferrer';credit.append(carto);}map.append(credit);
+    const credit=document.createElement('div');credit.className='credit';const osm=document.createElement('a');osm.href='https://www.openstreetmap.org/copyright';osm.textContent='© OpenStreetMap contributors';osm.target='_blank';osm.rel='noreferrer';credit.append(osm);if(data.tileConfig.usesCarto){const carto=document.createElement('a');carto.href='https://carto.com/attributions';carto.textContent=' © CARTO';carto.target='_blank';carto.rel='noreferrer';credit.append(carto);}map.append(credit);
   }
   if(data.interactive){
     map.classList.add('interactive');

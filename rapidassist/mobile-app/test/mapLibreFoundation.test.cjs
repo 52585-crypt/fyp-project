@@ -132,11 +132,13 @@ test("MapLibre foundation uses OpenFreeMap without a Google Maps key", () => {
   assert.equal(maps.OPENSTREETMAP_ATTRIBUTION.url, "https://www.openstreetmap.org/copyright");
 });
 
-test("legacy tiles stay operational without CARTO and support CARTO when keyed", () => {
+test("legacy tiles use keyless CARTO Voyager (never tile.openstreetmap.org) and add the key when set", () => {
   const osm = loadLegacyTiles();
-  assert.equal(osm.LEGACY_MAP_TILES.baseUrl, "https://tile.openstreetmap.org");
-  assert.equal(osm.LEGACY_MAP_TILES.usesCarto, false);
-  assert.equal(osm.legacyMapTileUrl(14, 11575, 6678), "https://tile.openstreetmap.org/14/11575/6678.png");
+  assert.equal(osm.LEGACY_MAP_TILES.baseUrl, "https://basemaps.cartocdn.com/rastertiles/voyager");
+  assert.equal(osm.LEGACY_MAP_TILES.usesCarto, true);
+  assert.equal(osm.LEGACY_MAP_TILES.query, "");
+  assert.equal(osm.LEGACY_MAP_TILES.attribution, "© OpenStreetMap contributors © CARTO");
+  assert.equal(osm.legacyMapTileUrl(14, 11575, 6678), "https://basemaps.cartocdn.com/rastertiles/voyager/14/11575/6678.png");
 
   const carto = loadLegacyTiles("key with spaces");
   assert.equal(carto.LEGACY_MAP_TILES.usesCarto, true);

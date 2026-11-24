@@ -2,20 +2,39 @@ import { tokens } from "../../design/tokens";
 import { LEGACY_MAP_TILES } from "./legacyMapTiles";
 import { MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasProps } from "./MapCanvas.types";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
+import { safeNumber, safePoint, safePoints, safeText, scriptJson } from "./mapHtmlSafety";
+import type { MapCanvasMarker } from "./MapCanvas.types";
 
 const c = tokens.color;
 const s = tokens.sizes;
 
-/** Serialisable state pushed into the tile canvas document (initially and on every update). */
+const MARKER_KINDS: ReadonlyArray<MapCanvasMarker["kind"]> = ["pickup", "destination", "provider", "user"];
+
+/**
+ * Serialisable state pushed into the tile canvas document (initially and on every update).
+ * Coordinates are forced through Number(), text through String(), and the marker kind (used as a CSS class)
+ * is whitelisted, so nothing from requests, providers or addresses can change the document's structure.
+ */
 export function tileCanvasState(props: MapCanvasProps) {
+  const focusPoint = props.focus ? safePoint(props.focus.coordinate) : null;
   return {
-    markers: props.markers ?? [],
-    route: props.route ?? [],
-    focus: props.focus ?? null,
-    inset: props.inset ?? { top: 0, bottom: 0 },
+    markers: (props.markers ?? []).flatMap((m) => {
+      const coordinate = safePoint(m.coordinate);
+      if (!coordinate) return [];
+      const kind = MARKER_KINDS.includes(m.kind) ? m.kind : "pickup";
+      return [{ id: String(m.id), kind, coordinate, label: safeText(m.label) }];
+    }),
+    route: safePoints(props.route),
+    focus: focusPoint ? { coordinate: focusPoint, requestId: safeNumber(props.focus!.requestId) } : null,
+    inset: { top: safeNumber(props.inset?.top), bottom: safeNumber(props.inset?.bottom) },
     pinMode: Boolean(props.onCenterChange),
-    initialCenter: props.initialCenter ?? BOOKING_MAP_CENTER
+    initialCenter: safePoint(props.initialCenter) ?? BOOKING_MAP_CENTER
   };
+}
+
+/** JS expression for the live-update call (Android injectJavaScript); escaped like the boot payload. */
+export function tileCanvasUpdateScript(props: MapCanvasProps) {
+  return `window.rapidassistUpdate(${scriptJson(tileCanvasState(props))});true;`;
 }
 
 /**
@@ -24,7 +43,7 @@ export function tileCanvasState(props: MapCanvasProps) {
  * Text values only ever reach the DOM through textContent.
  */
 export function buildTileCanvasHtml(instance: string, props: MapCanvasProps) {
-  const boot = JSON.stringify({ id: instance, tiles: LEGACY_MAP_TILES, state: tileCanvasState(props) }).replace(/</g, "\\u003c");
+  const boot = scriptJson({ id: String(instance), tiles: LEGACY_MAP_TILES, state: tileCanvasState(props) });
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>
 html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-family:Inter,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
 #map{position:absolute;inset:0;touch-action:none;cursor:grab;user-select:none}
@@ -75,7 +94,7 @@ map.addEventListener('pointermove',e=>{if(!drag)return;panBy(e.clientX-drag.x,e.
 map.addEventListener('pointerup',()=>{if(drag){drag=null;report();}});map.addEventListener('pointercancel',()=>{drag=null;});
 map.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1:-1);},{passive:false});
 document.getElementById('zin').onclick=()=>zoom(1);document.getElementById('zout').onclick=()=>zoom(-1);
-const cr=document.getElementById('credit');const a=document.createElement('a');a.href='https://www.openstreetmap.org/copyright';a.target='_blank';a.rel='noreferrer';a.textContent='© OpenStreetMap'+(boot.tiles.usesCarto?' © CARTO':'');cr.append(a);
+const cr=document.getElementById('credit');const a=document.createElement('a');a.href='https://www.openstreetmap.org/copyright';a.target='_blank';a.rel='noreferrer';a.textContent='© OpenStreetMap contributors'+(boot.tiles.usesCarto?' © CARTO':'');cr.append(a);
 addEventListener('resize',()=>{if(!moved&&!st.pinMode)fit();draw();});update(st);
 </script></body></html>`;
 }

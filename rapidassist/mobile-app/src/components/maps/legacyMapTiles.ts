@@ -7,19 +7,18 @@ export type LegacyMapTileConfig = {
   usesCarto: boolean;
 };
 
-export const LEGACY_MAP_TILES: LegacyMapTileConfig = CARTO_API_KEY
-  ? {
-      baseUrl: "https://basemaps.cartocdn.com/rastertiles/voyager",
-      query: `?key=${encodeURIComponent(CARTO_API_KEY)}`,
-      attribution: "OpenStreetMap, CARTO",
-      usesCarto: true
-    }
-  : {
-      baseUrl: "https://tile.openstreetmap.org",
-      query: "",
-      attribution: "OpenStreetMap",
-      usesCarto: false
-    };
+/**
+ * Raster tiles for the non-Google maps (tile canvas, previews, legacy pickers).
+ * CARTO Voyager, not tile.openstreetmap.org: OSM's volunteer servers block app/localhost traffic
+ * (403 "not following the tile usage policy"). Tiles are rendered manually, so the plain host is used
+ * instead of the {s} subdomain template. The key is optional and only sent when configured.
+ */
+export const LEGACY_MAP_TILES: LegacyMapTileConfig = {
+  baseUrl: "https://basemaps.cartocdn.com/rastertiles/voyager",
+  query: CARTO_API_KEY ? `?key=${encodeURIComponent(CARTO_API_KEY)}` : "",
+  attribution: "© OpenStreetMap contributors © CARTO",
+  usesCarto: true
+};
 
 export function legacyMapTileUrl(zoom: number, x: number, y: number) {
   return `${LEGACY_MAP_TILES.baseUrl}/${zoom}/${x}/${y}.png${LEGACY_MAP_TILES.query}`;
