@@ -138,3 +138,18 @@ export async function getCurrentForegroundLocation(
 
   return { coordinate, accuracyMeters: accuracy };
 }
+
+/**
+ * A current position for provider location sharing.
+ * - maximumAge: 0, because expo-location's web default (Infinity) returns the browser's cached position forever.
+ * - Some platforms answer a fresh request for an unchanged position with the original fix timestamp
+ *   (stationary desktop/phone location services, emulated geolocation). Since we asked for a current reading,
+ *   the position is confirmed current as of the request, so the reported time is never earlier than that.
+ *   Without this, a parked provider's fix never "advances", the server treats every update as a duplicate,
+ *   and dispatch drops the provider after 180 s while the app still shows Online.
+ */
+export async function getFreshPosition(accuracy: Location.Accuracy) {
+  const requestedAt = Date.now();
+  const position = await Location.getCurrentPositionAsync({ accuracy, maximumAge: 0 } as Location.LocationOptions);
+  return { ...position, timestamp: Math.max(position.timestamp, requestedAt) };
+}

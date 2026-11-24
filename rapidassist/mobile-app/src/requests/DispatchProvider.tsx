@@ -6,6 +6,7 @@ import { router, usePathname } from "expo-router";
 import * as Location from "expo-location";
 import { useAuth } from "../auth/AuthProvider";
 import { createSocket } from "../services/socket";
+import { getFreshPosition } from "../services/currentLocation";
 import { getDispatchOffers, getProviderActiveRequest, updateProviderLocation } from "./requests.api";
 import type { ServiceRequest } from "./requests.types";
 import { Icon, Text as DSText } from "../design/components";
@@ -155,13 +156,14 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
     if (!token || !provider || !foreground || (!online && !activeJob)) return;
     let stopped = false;
     let busy = false;
+    let shownError: string | null = null;
     async function sync() {
       if (busy || stopped) return;
       busy = true;
       try {
         const permission = await Location.requestForegroundPermissionsAsync();
         if (!permission.granted) throw new Error("Enable location permission to receive nearby jobs and share your arrival.");
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        const position = await getFreshPosition(Location.Accuracy.High);
         if (stopped) return;
         await updateProviderLocation(token!, {
           lat: position.coords.latitude,
@@ -172,8 +174,13 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
           speed: position.coords.speed,
           capturedAt: new Date(position.timestamp).toISOString()
         });
+        // A successful update clears the location error this loop raised (offer errors are left alone).
+        if (shownError) { const cleared = shownError; shownError = null; setError((current) => current === cleared ? null : current); }
       } catch (e: any) {
-        if (!stopped) setError(e?.message || "Unable to update your location.");
+        // 409 = the server already holds a newer fix (out-of-order update). The heartbeat still counted; not an error.
+        if (e?.response?.status === 409) return;
+        const text = e?.response?.data?.message || e?.message || "Unable to update your location.";
+        if (!stopped) { shownError = text; setError(text); }
       } finally { busy = false; }
     }
     void sync();

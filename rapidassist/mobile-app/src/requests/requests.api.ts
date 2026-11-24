@@ -91,10 +91,13 @@ export async function submitRequestReview(token: string, id: string, rating: num
   return res.data.request;
 }
 
+/** Adds the device clock at send time, so the server can measure the fix's age on one clock (no clock-skew drift). */
+const withSentAt = (location: RequestLocation) => ({ ...location, sentAt: new Date().toISOString() });
+
 export async function updateProviderAvailability(token: string, isOnline: boolean, location?: RequestLocation | null) {
   const res = await api.patch(
     "/api/requests/provider/availability",
-    { isOnline, location },
+    { isOnline, location: location ? withSentAt(location) : location },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data.provider;
@@ -103,7 +106,7 @@ export async function updateProviderAvailability(token: string, isOnline: boolea
 export async function updateProviderLocation(token: string, location: RequestLocation) {
   const res = await api.patch(
     "/api/requests/provider/location",
-    { location },
+    { location: withSentAt(location) },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data.provider;

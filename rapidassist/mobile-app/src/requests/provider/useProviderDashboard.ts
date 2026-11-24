@@ -2,6 +2,7 @@ import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
+import { getFreshPosition } from "../../services/currentLocation";
 import { useVerification } from "../../verification/VerificationProvider";
 import { canAcceptServiceRequests } from "../../verification/verification";
 import { useDispatchUpdates } from "../DispatchProvider";
@@ -13,7 +14,7 @@ const message = (e: any, fallback: string) => e?.response?.data?.message || e?.m
 async function availabilityLocation() {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) throw new Error("GPS location permission is required to go online.");
-  const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  const current = await getFreshPosition(Location.Accuracy.Balanced);
   let addressText = "Provider live location";
   try {
     const [a] = await Location.reverseGeocodeAsync({ latitude: current.coords.latitude, longitude: current.coords.longitude });
@@ -50,13 +51,16 @@ export function useProviderDashboard() {
     const next = !dispatch.online;
     if (!token || toggling || (next && !canAccept)) return;
     const previous = dispatch.online;
-    dispatch.setOnline(next);
+    // Going offline is optimistic; going online waits for the server, otherwise the GPS sync starts
+    // before availability is saved and the first update is rejected ("Go online before sharing...").
+    if (!next) dispatch.setOnline(false);
     setToggling(true);
     setError(null);
     try {
       const location = next ? await availabilityLocation() : null;
       if (location) setArea(location.addressText);
       await updateProviderAvailability(token, next, location);
+      if (next) dispatch.setOnline(true);
       await dispatch.refresh();
     } catch (e) { dispatch.setOnline(previous); setError(message(e, "Failed to update availability")); } finally { setToggling(false); }
   }
