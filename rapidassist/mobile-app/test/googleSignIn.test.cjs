@@ -313,7 +313,7 @@ test("account mode switching replaces the session and routes pending providers t
   assert.deepEqual(routes, ["/verification", "/home"]);
 });
 
-test("provider onboarding resumes at identity, requires consent and both photos, then reviews and retries the same submission", async () => {
+test("provider onboarding resumes at identity, requires consent and all four photos, then reviews and retries the same submission", async () => {
   const hooks = mockHooks();
   const picked = [], uploads = [], routes = [];
   let status = { reviewState: null, verificationStatus: "pending", submissionId: null };
@@ -348,6 +348,10 @@ test("provider onboarding resumes at identity, requires consent and both photos,
   await flow().choosePhoto("camera", "profile");
   assert.equal(flow().ready, false);
   await flow().choosePhoto("library", "cnic");
+  assert.equal(flow().ready, false, "the two head-turn selfies are still missing");
+  await flow().choosePhoto("camera", "profileLeft");
+  assert.equal(flow().ready, false);
+  await flow().choosePhoto("camera", "profileRight");
   assert.equal(flow().ready, true);
   flow().review();
   assert.equal(flow().reviewing, true);
@@ -360,7 +364,9 @@ test("provider onboarding resumes at identity, requires consent and both photos,
   assert.equal(flow().actionError, "Network unavailable");
   await flow().submit();
   assert.equal(uploads.length, 2);
-  assert.equal(uploads[1].profilePhoto, "profile-photo-3");
+  assert.equal(uploads[1].profilePhoto, "profile-photo-5");
+  assert.equal(uploads[1].profilePhotoLeft, "profileLeft-photo-3");
+  assert.equal(uploads[1].profilePhotoRight, "profileRight-photo-4");
   assert.equal(uploads[1].cnicFront, "cnic-photo-2");
   assert.equal(uploads[1].biometricConsent, true);
   assert.equal(flow().awaitingReview, true);

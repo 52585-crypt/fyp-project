@@ -2,11 +2,13 @@ const sharp = require("sharp");
 const { RekognitionClient, DetectFacesCommand, CompareFacesCommand } = require("@aws-sdk/client-rekognition");
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { createAwsClientConfig } = require("../config/aws");
+const { runProviderFaceChecks } = require("./providerFaceChecks");
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 16_000_000;
 const REVIEW_THRESHOLD = 90;
-const CONSENT_VERSION = "mechanic-face-verification-v1";
+// v2 adds the head-turn selfies and the face template kept to detect duplicate provider accounts.
+const CONSENT_VERSION = "mechanic-face-verification-v2";
 
 function verificationError(statusCode, message, publicCode) {
   return Object.assign(new Error(message), { statusCode, expose: true, publicMessage: message, publicCode });
@@ -105,8 +107,10 @@ async function send(client, command, failureCode = "VERIFICATION_AI_UNAVAILABLE"
   }
 }
 
+const toDataUri = (buffer) => `data:image/jpeg;base64,${buffer.toString("base64")}`;
+
 function createMechanicVerificationService({
-  rekognition, s3, bucket = process.env.MECHANIC_VERIFICATION_BUCKET, region
+  rekognition, s3, bucket = process.env.MECHANIC_VERIFICATION_BUCKET, region, faceChecker = runProviderFaceChecks
 } = {}) {
   const config = createAwsClientConfig(region);
   rekognition ??= new RekognitionClient(config);
@@ -131,7 +135,9 @@ function createMechanicVerificationService({
     return failed;
   }
 
-  async function submit({ submissionId, profilePhoto, cnicFront, cnicPortraitRegion, biometricConsent }) {
+  async function submit({
+    submissionId, mechanicId, profilePhoto, profilePhotoLeft, profilePhotoRight, cnicFront, cnicPortraitRegion, biometricConsent
+  }) {
     if (biometricConsent !== true) throw verificationError(400, "Explicit biometric processing consent is required.");
     bucketName();
     const selectedRegion = cnicPortraitRegion === undefined ? null : portraitRegion(cnicPortraitRegion);
@@ -140,8 +146,20 @@ function createMechanicVerificationService({
     try {
       const profile = await normalizeImage(profilePhoto, "Profile photo");
       buffers.push(profile.data);
+      const profileLeft = await normalizeImage(profilePhotoLeft, "Selfie with head turned left");
+      buffers.push(profileLeft.data);
+      const profileRight = await normalizeImage(profilePhotoRight, "Selfie with head turned right");
+      buffers.push(profileRight.data);
       const cnic = await normalizeImage(cnicFront, "CNIC front");
       buffers.push(cnic.data);
+
+      // Free local head-turn liveness + duplicate-account check, before any paid AWS call or upload.
+      // A printed photo or a phone screen cannot turn its head, so it is rejected here.
+      const face = await faceChecker(
+        { front: toDataUri(profile.data), left: toDataUri(profileLeft.data), right: toDataUri(profileRight.data) },
+        { excludeUserId: mechanicId }
+      );
+      if (face.rejectMessage) throw verificationError(422, face.rejectMessage, "FACE_LIVENESS_FAILED");
 
       const profileFaces = await detect(profile.data);
       const cnicFaces = await detect(cnic.data);
@@ -163,7 +181,7 @@ function createMechanicVerificationService({
         throw verificationError(503, "Face verification did not return a similarity score. Please retry.", "VERIFICATION_AI_UNAVAILABLE");
       }
 
-      for (const [kind, image] of [["profile", profile], ["cnic", cnic]]) {
+      for (const [kind, image] of [["profile", profile], ["profileLeft", profileLeft], ["profileRight", profileRight], ["cnic", cnic]]) {
         const key = `mechanic-verification/${submissionId}/${kind}.jpg`;
         const uploaded = await send(s3, new PutObjectCommand({
           Bucket: bucket, Key: key, Body: image.data, ContentType: "image/jpeg",
@@ -172,7 +190,10 @@ function createMechanicVerificationService({
         images[kind] = { key, ...(uploaded.VersionId ? { versionId: uploaded.VersionId } : {}) };
       }
 
-      return { images, score, comparedRegion, matchStatus: score !== null && score >= REVIEW_THRESHOLD ? "matched" : "mismatch" };
+      return {
+        images, score, comparedRegion, matchStatus: score !== null && score >= REVIEW_THRESHOLD ? "matched" : "mismatch",
+        faceChecks: face.faceChecks, faceDescriptor: face.descriptor
+      };
     } catch (error) {
       await deleteImages(Object.values(images));
       throw error;

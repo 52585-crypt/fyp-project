@@ -43,9 +43,12 @@ test("uses the shared client for consented evidence and retains only mechanic-fa
     get: async (...args) => { calls.push(args); return { data: response }; },
     post: async (...args) => { calls.push(args); return { data: response }; }
   } } });
-  const draft = { biometricConsent: true, profilePhoto: "data:image/jpeg;base64,/9j/", cnicFront: "data:image/png;base64,iVBORw0KGgo=" };
+  const draft = { biometricConsent: true, profilePhoto: "data:image/jpeg;base64,/9j/", profilePhotoLeft: "data:image/jpeg;base64,/9j/L",
+    profilePhotoRight: "data:image/jpeg;base64,/9j/R", cnicFront: "data:image/png;base64,iVBORw0KGgo=" };
   await assert.rejects(submitMechanicVerification("token", { ...draft, biometricConsent: false }), /consent/);
-  await assert.rejects(submitMechanicVerification("token", { ...draft, cnicFront: null }), /both/);
+  for (const missing of ["profilePhoto", "profilePhotoLeft", "profilePhotoRight", "cnicFront"]) {
+    await assert.rejects(submitMechanicVerification("token", { ...draft, [missing]: null }), /all four verification photos/);
+  }
   assert.equal(calls.length, 0);
   assert.deepEqual(await getMechanicVerification("token"), pending);
   assert.deepEqual(await submitMechanicVerification("token", draft), pending);
@@ -66,8 +69,9 @@ test("preserves actionable API failures and reconciles ambiguous submissions", a
   const { submitMechanicVerification } = load("verification.api.ts", { "../config/api": { api: {
     post: async () => { throw error; }
   } } });
-  await assert.rejects(submitMechanicVerification("token", { biometricConsent: true, profilePhoto: "a", cnicFront: "b" }),
-    failure => failure === error);
+  await assert.rejects(submitMechanicVerification("token", {
+    biometricConsent: true, profilePhoto: "a", profilePhotoLeft: "l", profilePhotoRight: "r", cnicFront: "b"
+  }), failure => failure === error);
   const { shouldCheckSubmissionStatus } = load("verification.ts");
   assert.equal(shouldCheckSubmissionStatus(error), false);
   assert.equal(shouldCheckSubmissionStatus(new Error("Network unavailable")), true);
@@ -114,7 +118,7 @@ test("the shared verification provider retries after a network failure, prevents
     stateIndex = refIndex = 0;
     return VerificationProvider({ token: "provider-token" }).props.value;
   };
-  const draft = { biometricConsent: true, profilePhoto: "selfie", cnicFront: "cnic" };
+  const draft = { biometricConsent: true, profilePhoto: "selfie", profilePhotoLeft: "left", profilePhotoRight: "right", cnicFront: "cnic" };
   await context().refresh();
   const contextBeforeRetry = context();
   const outcomes = await Promise.allSettled([contextBeforeRetry.submit(draft), contextBeforeRetry.submit(draft)]);
@@ -149,6 +153,11 @@ test("Android requests camera access, uses the front camera and accepts actual J
   assert.equal(android.calls[1][1].cameraType, "front");
   assert.equal(android.calls[1][1].exif, false);
   await assert.rejects(picker("android", result, false).selectVerificationImage("camera", "profile"), /Allow camera access/);
+  for (const kind of ["profileLeft", "profileRight"]) {
+    const turned = picker("android", result);
+    await turned.selectVerificationImage("camera", kind);
+    assert.equal(turned.calls[1][1].cameraType, "front", `${kind} selfie uses the front camera`);
+  }
   const cnic = picker("android", result);
   await cnic.selectVerificationImage("camera", "cnic");
   assert.equal(cnic.calls[1][1].cameraType, "back");

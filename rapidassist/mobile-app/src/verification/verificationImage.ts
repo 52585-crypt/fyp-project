@@ -4,7 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 const maxBytes = 4 * 1024 * 1024;
 const maxPixels = 16_000_000;
 
-export async function selectVerificationImage(source: "camera" | "library", kind: "profile" | "cnic") {
+export async function selectVerificationImage(source: "camera" | "library", kind: "profile" | "profileLeft" | "profileRight" | "cnic") {
   if (source === "camera" && Platform.OS !== "web") {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) throw new Error("Allow camera access in Settings or choose an existing photo.");
@@ -20,7 +20,8 @@ export async function selectVerificationImage(source: "camera" | "library", kind
   const result = source === "camera"
     ? await ImagePicker.launchCameraAsync({
         ...options,
-        cameraType: kind === "profile" ? ImagePicker.CameraType.front : ImagePicker.CameraType.back
+        // All three selfies (straight, head turned left, head turned right) use the front camera.
+        cameraType: kind === "cnic" ? ImagePicker.CameraType.back : ImagePicker.CameraType.front
       })
     : await ImagePicker.launchImageLibraryAsync(options);
   if (result.canceled) return null;

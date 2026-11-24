@@ -13,6 +13,25 @@ const verificationImageSchema = new mongoose.Schema({
   versionId: String
 }, { _id: false });
 
+// Free local face checks run on the verification selfies (head-turn liveness + duplicate account).
+// passed = liveness ok, no duplicate | flagged = possible duplicate account | error = models failed (admin checks manually)
+const FACE_CHECK_STATUSES = ["passed", "flagged", "error"];
+const faceChecksSchema = new mongoose.Schema({
+  status: { type: String, enum: FACE_CHECK_STATUSES, required: true },
+  provider: { type: String, default: null },
+  yaw: { front: Number, left: Number, right: Number },
+  samePersonDistance: { left: Number, right: Number },
+  duplicate: {
+    found: { type: Boolean, default: false },
+    matchedUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    matchedName: { type: String, default: null },
+    matchedPhone: { type: String, default: null },
+    distance: { type: Number, default: null }
+  },
+  error: { type: String, default: null },
+  checkedAt: { type: Date, default: null }
+}, { _id: false });
+
 const mechanicVerificationSchema = new mongoose.Schema({
   submissionId: String,
   reviewState: { type: String, enum: ["awaiting_review", "approved", "rejected", "resubmission_requested"] },
@@ -22,8 +41,13 @@ const mechanicVerificationSchema = new mongoose.Schema({
   },
   images: {
     profile: verificationImageSchema,
+    // Head-turn liveness selfies (private S3, admin detail view only)
+    profileLeft: verificationImageSchema,
+    profileRight: verificationImageSchema,
     cnic: verificationImageSchema
   },
+  // Admin-only: may name another provider when a duplicate face is found. mechanicVerification is select: false.
+  faceChecks: { type: faceChecksSchema, default: undefined },
   cnicPortraitRegion: { left: Number, top: Number, width: Number, height: Number },
   retiredImages: { type: [verificationImageSchema], default: undefined },
   reviewedAt: Date,
@@ -80,6 +104,9 @@ const userSchema = new mongoose.Schema(
       default: "unverified"
     },
     mechanicVerification: { type: mechanicVerificationSchema, select: false, default: undefined },
+    // 128-number face descriptor of the verified straight selfie, used only to detect one person opening several
+    // provider accounts. Never sent to clients.
+    faceDescriptor: { type: [Number], default: undefined, select: false },
     mechanicProfile: {
       serviceCategory: {
         type: String,

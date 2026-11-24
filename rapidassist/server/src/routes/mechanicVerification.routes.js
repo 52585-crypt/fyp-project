@@ -9,6 +9,20 @@ const { isObjectIdOrHexString } = require("mongoose");
 const { CONSENT_VERSION, verificationError } = require("../services/mechanicVerification");
 
 const decisions = new Map([["pending", "resubmit"], ["verified", "approve"], ["rejected", "reject"]]);
+const IMAGE_KINDS = ["profile", "profileLeft", "profileRight", "cnic"];
+
+/** Admin-only view of the local face checks (may name another provider for a possible duplicate). */
+function faceChecksForAdmin(verification) {
+  const checks = verification?.faceChecks;
+  if (!checks) return null;
+  const plain = typeof checks.toObject === "function" ? checks.toObject() : checks;
+  return {
+    ...plain,
+    duplicate: plain.duplicate
+      ? { ...plain.duplicate, matchedUserId: plain.duplicate.matchedUserId ? String(plain.duplicate.matchedUserId) : null }
+      : null
+  };
+}
 
 function summary(user, { includeScore = false } = {}) {
   const verification = user.mechanicVerification;
@@ -86,15 +100,22 @@ function createMechanicVerificationRouter(service) {
       }
       const submissionId = randomUUID();
       const grantedAt = new Date();
-      const { profilePhoto, cnicFront, cnicPortraitRegion, biometricConsent } = req.body || {};
-      const result = await service.submit({ submissionId, profilePhoto, cnicFront, cnicPortraitRegion, biometricConsent });
+      const { profilePhoto, profilePhotoLeft, profilePhotoRight, cnicFront, cnicPortraitRegion, biometricConsent } = req.body || {};
+      const result = await service.submit({
+        submissionId, mechanicId: mechanic._id, profilePhoto, profilePhotoLeft, profilePhotoRight,
+        cnicFront, cnicPortraitRegion, biometricConsent
+      });
       const retiredImages = [
-        ...(previous?.retiredImages || []), previous?.images?.profile, previous?.images?.cnic
+        ...(previous?.retiredImages || []), ...IMAGE_KINDS.map((kind) => previous?.images?.[kind])
       ].filter(Boolean);
 
       let updated;
       try {
-        updated = await User.findOneAndUpdate(currentState(mechanic), { $set: {
+        updated = await User.findOneAndUpdate(currentState(mechanic), {
+          // A face template is kept only from a submission whose local face check ran.
+          ...(result.faceDescriptor ? {} : { $unset: { faceDescriptor: 1 } }),
+          $set: {
+          ...(result.faceDescriptor ? { faceDescriptor: result.faceDescriptor } : {}),
           verificationStatus: "pending",
           isCertified: false,
           "providerState.isOnline": false,
@@ -107,6 +128,7 @@ function createMechanicVerificationRouter(service) {
           mechanicVerification: {
             submissionId, reviewState: "awaiting_review", images: result.images, retiredImages,
             cnicPortraitRegion: result.comparedRegion,
+            faceChecks: result.faceChecks || undefined,
             consent: { version: CONSENT_VERSION, grantedAt }
           }
         } }, { new: true, runValidators: true }).select("+mechanicVerification");
@@ -140,9 +162,13 @@ function createAdminMechanicVerificationRouter(service) {
   router.get("/", async (req, res, next) => {
     try {
       const mechanic = await findMechanic(req.params.id);
+      const verification = mechanic.mechanicVerification;
       res.json({ ok: true, verification: {
         ...summary(mechanic, { includeScore: true }),
-        cnicPortraitRegion: mechanic.mechanicVerification?.cnicPortraitRegion ?? null
+        cnicPortraitRegion: verification?.cnicPortraitRegion ?? null,
+        faceChecks: faceChecksForAdmin(verification),
+        // Names only: each image is fetched separately through /images/:kind (detail view only).
+        images: IMAGE_KINDS.filter((kind) => verification?.images?.[kind]?.key)
       } });
     } catch (error) { next(error); }
   });
@@ -152,7 +178,7 @@ function createAdminMechanicVerificationRouter(service) {
       const mechanic = await findMechanic(req.params.id);
       const verification = mechanic.mechanicVerification;
       const kind = req.params.kind;
-      const image = ["profile", "cnic"].includes(kind) && verification?.images?.[kind];
+      const image = IMAGE_KINDS.includes(kind) && verification?.images?.[kind];
       if (!image || req.query.submissionId !== verification.submissionId) {
         throw verificationError(404, "Verification image not found.");
       }

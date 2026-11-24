@@ -19,10 +19,20 @@ const fixture = sharp({
 
 async function submission(overrides = {}) {
   return { submissionId: "test-submission", biometricConsent: true, profilePhoto: await fixture,
-    cnicFront: await fixture, ...overrides };
+    profilePhotoLeft: await fixture, profilePhotoRight: await fixture, cnicFront: await fixture, ...overrides };
 }
 
-function mockAws({ detections = [[face], [face], [face]], score = 99.9, failAt, errorName = "AccessDeniedException" } = {}) {
+const passedFaceChecks = { status: "passed", provider: "test-face-checker", yaw: { front: 0.01, left: -0.3, right: 0.3 },
+  samePersonDistance: { left: 0.3, right: 0.32 }, duplicate: { found: false, distance: null }, error: null, checkedAt: new Date() };
+
+/** Stand-in for the local face-api checks (the real models are exercised in faceChecks.test.js). */
+function fakeFaceChecker(result = { rejectMessage: null, faceChecks: passedFaceChecks, descriptor: Array(128).fill(0.01) }) {
+  const calls = [];
+  const checker = async (selfies, options) => { calls.push({ selfies, options }); return result; };
+  return Object.assign(checker, { calls });
+}
+
+function mockAws({ detections = [[face], [face], [face]], score = 99.9, failAt, errorName = "AccessDeniedException", faceChecker = fakeFaceChecker() } = {}) {
   const operations = [];
   const objects = new Map();
   const aws = {
@@ -57,7 +67,7 @@ function mockAws({ detections = [[face], [face], [face]], score = 99.9, failAt, 
       throw new Error(`Unexpected mock operation: ${operation}`);
     }
   };
-  return { service: createMechanicVerificationService({ rekognition: aws, s3: aws, bucket: "mock" }), operations, objects };
+  return { service: createMechanicVerificationService({ rekognition: aws, s3: aws, bucket: "mock", faceChecker }), operations, objects, faceChecker };
 }
 
 test("requires consent, validates format and size, and makes no AWS calls for invalid input", async () => {
@@ -85,7 +95,7 @@ test("accepts a one-face CNIC crop and retains a low similarity for manual revie
   }));
   assert.equal(result.matchStatus, "mismatch");
   assert.equal(result.score, 24.5);
-  assert.equal(objects.size, 2);
+  assert.equal(objects.size, 4);
   assert.deepEqual(await service.deleteImages(Object.values(result.images)), []);
   assert.equal(objects.size, 0);
 });
@@ -97,9 +107,9 @@ test("records a match at the existing threshold and stores both normalized image
   assert.equal(result.score, 90);
   assert.deepEqual(operations, [
     "DetectFacesCommand", "DetectFacesCommand", "DetectFacesCommand",
-    "CompareFacesCommand", "PutObjectCommand", "PutObjectCommand"
+    "CompareFacesCommand", "PutObjectCommand", "PutObjectCommand", "PutObjectCommand", "PutObjectCommand"
   ]);
-  assert.equal(objects.size, 2);
+  assert.equal(objects.size, 4);
 });
 
 test("retains evidence and records a mismatch when Rekognition returns no face matches", async () => {
@@ -107,7 +117,7 @@ test("retains evidence and records a mismatch when Rekognition returns no face m
   const result = await service.submit(await submission());
   assert.equal(result.matchStatus, "mismatch");
   assert.equal(result.score, null);
-  assert.equal(objects.size, 2);
+  assert.equal(objects.size, 4);
 });
 
 test("sanitizes AWS failures and removes partial S3 uploads", async () => {
@@ -121,7 +131,9 @@ test("sanitizes AWS failures and removes partial S3 uploads", async () => {
     await assert.rejects(service.submit(await submission()), error => error.statusCode === 503
       && error.publicCode === publicCode && !error.message.includes("private AWS details"));
     if (operations.includes("PutObjectCommand")) {
-      assert.equal(operations.filter(operation => operation === "DeleteObjectCommand").length, 1);
+      // Every image uploaded before the failure (profile, head-turned left and right) is deleted again.
+      assert.equal(operations.filter(operation => operation === "DeleteObjectCommand").length,
+        operations.filter(operation => operation === "PutObjectCommand").length - 1);
     }
     assert.equal(objects.size, 0);
   }
@@ -181,9 +193,22 @@ test("verification survives concurrent submissions and decisions and gates dispa
     assert.equal(first.images, undefined);
     const saved = await User.findById(mechanic.id).select("+mechanicVerification");
     assert.equal(Object.hasOwn(saved.toSafeJSON().mechanicProfile.identityMatch, "score"), false);
-    assert.equal(saved.mechanicVerification.consent.version, "mechanic-face-verification-v1");
+    assert.equal(saved.mechanicVerification.consent.version, "mechanic-face-verification-v2");
+    // Face checks are admin-only: stored under mechanicVerification, never in the provider's own JSON or status.
+    assert.equal(saved.mechanicVerification.faceChecks.status, "passed");
+    assert.equal(saved.toSafeJSON().mechanicProfile.faceChecks, undefined);
+    assert.equal(first.faceChecks, undefined);
+    assert.equal((await User.findById(mechanic.id)).faceDescriptor, undefined, "face template is never selected by default");
+    assert.equal((await User.findById(mechanic.id).select("+faceDescriptor")).faceDescriptor.length, 128);
+    assert.equal(adminVerification.verification.faceChecks.status, "passed");
+    assert.deepEqual(adminVerification.verification.images, ["profile", "profileLeft", "profileRight", "cnic"]);
+    const leftSelfie = await api(admin, `${review}/images/profileLeft?submissionId=${first.submissionId}`);
+    assert.equal(leftSelfie.status, 200);
+    assert.equal(leftSelfie.headers.get("content-type"), "image/jpeg");
+    assert.equal(leftSelfie.headers.get("cache-control"), "no-store");
+    assert.equal((await api(mechanic, `${review}/images/profileLeft?submissionId=${first.submissionId}`)).status, 403);
     assert.ok(saved.mechanicVerification.consent.grantedAt);
-    assert.equal(objects.size, 2);
+    assert.equal(objects.size, 4);
     for (const field of ["selfieUrl", "idCardFrontUrl", "idCardBackUrl"]) assert.equal(saved.mechanicProfile[field], null);
     assert.match(saved.mechanicVerification.images.cnic.key, /\/cnic.jpg$/);
     assert.equal((await api(mechanic, own, "POST", body)).status, 409);
@@ -253,7 +278,7 @@ test("verification survives concurrent submissions and decisions and gates dispa
     assert.equal(replacement.status, 201);
     const second = (await replacement.json()).verification;
     assert.notEqual(first.submissionId, second.submissionId);
-    assert.equal(objects.size, 2);
+    assert.equal(objects.size, 4);
     assert.equal((await api(admin, evidence)).status, 404);
     const newRecord = await User.findById(mechanic.id).select("+mechanicVerification");
     assert.ok(newRecord.mechanicVerification.consent.grantedAt > saved.mechanicVerification.consent.grantedAt);
@@ -299,4 +324,49 @@ test("verification survives concurrent submissions and decisions and gates dispa
     await mongoose.disconnect();
     await database.stop();
   }
+});
+
+test("requires both head-turn selfies and makes no AWS calls without them", async () => {
+  for (const missing of ["profilePhotoLeft", "profilePhotoRight"]) {
+    const { service, operations, faceChecker } = mockAws();
+    await assert.rejects(service.submit(await submission({ [missing]: undefined })), { statusCode: 400 });
+    assert.deepEqual(operations, []);
+    assert.equal(faceChecker.calls.length, 0);
+  }
+});
+
+test("a failed head-turn check rejects before any AWS call or upload", async () => {
+  const faceChecker = fakeFaceChecker({
+    rejectMessage: "Head-turn check failed. Turn your head clearly to the left and to the right.", faceChecks: null, descriptor: undefined
+  });
+  const { service, operations, objects } = mockAws({ faceChecker });
+  await assert.rejects(service.submit(await submission()), {
+    statusCode: 422, publicCode: "FACE_LIVENESS_FAILED", message: /Head-turn check failed/
+  });
+  assert.deepEqual(operations, [], "no Rekognition call and no S3 upload for a still photo");
+  assert.equal(objects.size, 0);
+});
+
+test("passes the three normalized selfies to the face checker and excludes the submitting provider", async () => {
+  const { service, faceChecker } = mockAws();
+  const result = await service.submit(await submission({ mechanicId: "provider-under-review" }));
+  assert.equal(faceChecker.calls.length, 1);
+  const [{ selfies, options }] = faceChecker.calls;
+  for (const key of ["front", "left", "right"]) assert.match(selfies[key], /^data:image\/jpeg;base64,/);
+  assert.deepEqual(options, { excludeUserId: "provider-under-review" });
+  assert.equal(result.faceChecks.status, "passed");
+  assert.equal(result.faceDescriptor.length, 128);
+  assert.deepEqual(Object.keys(result.images).sort(), ["cnic", "profile", "profileLeft", "profileRight"]);
+});
+
+test("a face-model failure does not block verification and leaves no face template", async () => {
+  const faceChecker = fakeFaceChecker({
+    rejectMessage: null, descriptor: undefined,
+    faceChecks: { status: "error", provider: "test-face-checker", error: "model crashed", checkedAt: new Date() }
+  });
+  const { service } = mockAws({ faceChecker });
+  const result = await service.submit(await submission());
+  assert.equal(result.faceChecks.status, "error");
+  assert.equal(result.faceDescriptor, undefined);
+  assert.equal(result.matchStatus, "matched");
 });

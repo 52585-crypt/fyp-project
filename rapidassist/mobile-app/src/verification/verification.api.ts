@@ -7,6 +7,9 @@ type VerificationResponse = { ok: true; verification: VerificationStatus & { ide
 export type VerificationDraft = {
   biometricConsent: boolean;
   profilePhoto: string | null;
+  /** Head-turn liveness selfies: a printed photo or a screen cannot turn its head. */
+  profilePhotoLeft: string | null;
+  profilePhotoRight: string | null;
   cnicFront: string | null;
 };
 
@@ -23,11 +26,13 @@ export async function getMechanicVerification(token: string): Promise<Verificati
 }
 
 export async function submitMechanicVerification(token: string, draft: VerificationDraft): Promise<VerificationStatus> {
-  const { biometricConsent, profilePhoto, cnicFront } = draft;
+  const { biometricConsent, profilePhoto, profilePhotoLeft, profilePhotoRight, cnicFront } = draft;
   if (biometricConsent !== true) throw new Error("Biometric processing consent is required.");
-  if (!profilePhoto || !cnicFront) throw new Error("Select both verification photos before submitting.");
+  if (!profilePhoto || !profilePhotoLeft || !profilePhotoRight || !cnicFront) {
+    throw new Error("Add all four verification photos (three selfies and your CNIC) before submitting.");
+  }
 
-  const { data } = await api.post<VerificationResponse>(endpoint, { biometricConsent, profilePhoto, cnicFront }, {
+  const { data } = await api.post<VerificationResponse>(endpoint, { biometricConsent, profilePhoto, profilePhotoLeft, profilePhotoRight, cnicFront }, {
     headers: { Authorization: `Bearer ${token}` },
     timeout: 90_000
   });

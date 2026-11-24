@@ -5,11 +5,12 @@ import { useVerification } from "./VerificationProvider";
 import { canSubmitVerification, verificationPresentation } from "./verification";
 import { selectVerificationImage } from "./verificationImage";
 
-export type PhotoKind = "profile" | "cnic";
+export type PhotoKind = "profile" | "profileLeft" | "profileRight" | "cnic";
+const NO_PHOTOS: Record<PhotoKind, string | null> = { profile: null, profileLeft: null, profileRight: null, cnic: null };
 type Step = "identity" | "review" | null;
 
 /**
- * Identity verification (selfie + CNIC front) state. Photos require biometric consent first;
+ * Identity verification (three selfies: straight, head turned left, head turned right + CNIC front) state. Photos require biometric consent first;
  * withdrawing consent clears them; a stale picker result never overwrites a newer one.
  */
 export function useVerificationFlow() {
@@ -18,7 +19,7 @@ export function useVerificationFlow() {
   const v = useVerification();
   const [step, setStep] = useState<Step>(inOnboarding ? "identity" : null);
   const [consent, setConsent] = useState(false);
-  const [photos, setPhotos] = useState<Record<PhotoKind, string | null>>({ profile: null, cnic: null });
+  const [photos, setPhotos] = useState<Record<PhotoKind, string | null>>(NO_PHOTOS);
   const [picking, setPicking] = useState<PhotoKind | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const latestPick = useRef(0);
@@ -27,19 +28,19 @@ export function useVerificationFlow() {
   const presentation = v.status ? verificationPresentation(v.status) : null;
   const editing = canSubmit && step !== null;
   const reviewing = editing && step === "review";
-  const ready = consent && Boolean(photos.profile && photos.cnic);
+  const ready = consent && Boolean(photos.profile && photos.profileLeft && photos.profileRight && photos.cnic);
 
   useEffect(() => {
     if (!v.status || canSubmitVerification(v.status)) return;
     latestPick.current += 1;
-    setPhotos({ profile: null, cnic: null });
+    setPhotos(NO_PHOTOS);
     setPicking(null);
     setConsent(false);
     setStep(null);
   }, [v.status]);
 
   function goTo(next: Step) { latestPick.current += 1; setActionError(null); setStep(next); }
-  function clearPhotos() { latestPick.current += 1; setPhotos({ profile: null, cnic: null }); setPicking(null); }
+  function clearPhotos() { latestPick.current += 1; setPhotos(NO_PHOTOS); setPicking(null); }
 
   function toggleConsent() {
     if (consent) clearPhotos();
@@ -67,7 +68,10 @@ export function useVerificationFlow() {
     if (!ready || v.submitting || v.loading || v.error) return;
     setActionError(null);
     try {
-      if (await v.submit({ biometricConsent: consent, profilePhoto: photos.profile, cnicFront: photos.cnic })) {
+      if (await v.submit({
+        biometricConsent: consent, profilePhoto: photos.profile, profilePhotoLeft: photos.profileLeft,
+        profilePhotoRight: photos.profileRight, cnicFront: photos.cnic
+      })) {
         clearPhotos();
         setConsent(false);
         goTo(null);

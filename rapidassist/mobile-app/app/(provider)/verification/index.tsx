@@ -9,10 +9,12 @@ import { ProviderRegistrationProgress } from "../../../src/verification/Provider
 import { useVerificationFlow, type PhotoKind } from "../../../src/verification/useVerificationFlow";
 
 const photoInfo: Record<PhotoKind, { label: string; subject: string; instructions: string }> = {
-  profile: { label: "Selfie", subject: "selfie", instructions: "Centre your face, look straight at the camera in even light, keep your face uncovered and make sure only you are in the photo." },
+  profile: { label: "Selfie: look straight", subject: "selfie", instructions: "Centre your face, look straight at the camera in even light, keep your face uncovered and make sure only you are in the photo." },
+  profileLeft: { label: "Selfie: head turned left", subject: "selfie", instructions: "Keep the phone still and turn your head clearly to your left, about a quarter turn, with your whole face still visible." },
+  profileRight: { label: "Selfie: head turned right", subject: "selfie", instructions: "Keep the phone still and turn your head clearly to your right, about a quarter turn. Use your real face, not a printed or on-screen photo." },
   cnic: { label: "CNIC front", subject: "CNIC photo", instructions: "Lay your CNIC flat and photograph the entire front. Keep all four corners and the portrait visible. Avoid glare, blur and shadows." }
 };
-const kinds: PhotoKind[] = ["profile", "cnic"];
+const kinds: PhotoKind[] = ["profile", "profileLeft", "profileRight", "cnic"];
 
 function Preview({ label, uri }: { label: string; uri: string }) {
   return <Image accessibilityLabel={label} source={{ uri }} resizeMode="contain" style={styles.preview} />;
@@ -88,8 +90,8 @@ export default function ProviderVerification() {
         <>
           <Card>
             <Text variant="headline">Biometric consent</Text>
-            <Text variant="bodySmall" color="muted">RapidAssist compares your selfie with the portrait on your CNIC. Photos are stored privately and an admin makes the final decision.</Text>
-            <Checkbox label="I consent to RapidAssist processing facial information in my selfie and CNIC for identity verification."
+            <Text variant="bodySmall" color="muted">RapidAssist compares your selfie with the portrait on your CNIC, checks that your three selfies show a real person turning their head, and keeps a numeric face template to detect duplicate provider accounts. Photos are stored privately and an admin makes the final decision.</Text>
+            <Checkbox label="I consent to RapidAssist processing facial information in my selfies and CNIC for identity verification and duplicate-account checks."
               checked={f.consent} disabled={Boolean(f.picking)} onChange={f.toggleConsent} />
           </Card>
           {kinds.map((kind) => {
@@ -121,7 +123,7 @@ export default function ProviderVerification() {
             <View style={styles.grid}>
               {kinds.map((k) => <View key={k} style={styles.cell}><Text variant="caption" color="muted">{photoInfo[k].label}</Text>{f.photos[k] ? <Preview label={photoInfo[k].label} uri={f.photos[k]!} /> : null}</View>)}
             </View>
-            <Banner tone="success" title="Consent confirmed" message="You agreed to biometric processing for identity verification." />
+            <Banner tone="success" title="Consent confirmed" message="You agreed to biometric processing for identity verification and duplicate-account checks." />
             {f.submitting ? <Text variant="bodySmall" color="muted" accessibilityLiveRegion="polite">Submitting your photos. This may take a moment.</Text> : null}
           </Card>
         </>
