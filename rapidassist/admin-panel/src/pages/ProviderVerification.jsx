@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../config/api";
+import { EvidenceImages, FaceCheckBadge, FaceChecksSection } from "./ProviderEvidence";
+import { useProviderEvidence } from "./providerEvidenceData";
 const filters = ["pending", "verified", "rejected", "all"];
 
 function serviceTitle(serviceCategory) {
@@ -15,13 +17,10 @@ function statusTone(status) {
   return { background: "#fef3c7", color: "#92400e" };
 }
 
+// Selfies and the CNIC are verification evidence (private storage, see EvidenceImages); these are the sign-up photos.
 function providerDocs(provider) {
   const profile = provider?.mechanicProfile || {};
-  const docs = [
-    { label: "Selfie", value: profile.selfieUrl },
-    { label: "ID front", value: profile.idCardFrontUrl },
-    { label: "ID back", value: profile.idCardBackUrl }
-  ];
+  const docs = [];
 
   if (profile.serviceCategory === "mechanic") {
     docs.push(
@@ -48,6 +47,8 @@ export function ProviderVerification() {
     () => providers.find((provider) => provider.id === selectedId) || providers[0] || null,
     [providers, selectedId]
   );
+  // Images and face checks load for the selected provider only (the list carries no image data).
+  const evidence = useProviderEvidence(selected?.id, selected?.verificationStatus);
 
   function refreshProviders(nextFilter = filter) {
     if (nextFilter !== filter) {
@@ -62,11 +63,19 @@ export function ProviderVerification() {
 
   async function updateVerification(status) {
     if (!selected) return;
+    // The server requires a reason when rejecting or asking for new photos.
+    let note;
+    if (status !== "verified") {
+      note = window.prompt(status === "rejected" ? "Reason for rejection (shown to the provider):" : "What should the provider resubmit?");
+      if (!note || !note.trim()) return;
+    }
 
     try {
       setActionLoading(true);
       setError("");
-      const res = await adminApi.patch(`/api/admin/providers/${selected.id}/verification`, { status });
+      const res = await adminApi.patch(`/api/admin/providers/${selected.id}/verification`, {
+        status, submissionId: evidence.verification?.submissionId ?? undefined, ...(note ? { note: note.trim() } : {})
+      });
       const updated = res.data.provider;
       setProviders((current) => {
         if (filter !== "all" && updated.verificationStatus !== filter) {
@@ -153,6 +162,7 @@ export function ProviderVerification() {
                   <div style={styles.providerName}>{provider.name}</div>
                   <div style={styles.providerMeta}>{serviceTitle(provider.mechanicProfile?.serviceCategory)} - {provider.phone}</div>
                   <span style={{ ...styles.status, ...statusTone(provider.verificationStatus) }}>{provider.verificationStatus}</span>
+                  <FaceCheckBadge status={provider.faceCheckStatus} />
                 </button>
               );
             })
@@ -176,14 +186,22 @@ export function ProviderVerification() {
                 <Info label="Phone" value={selected.phone} />
                 <Info label="Completed jobs" value={selected.completedJobs || 0} />
                 <Info label="Rating" value={`${selected.ratingAvg || 0} (${selected.ratingCount || 0})`} />
-                <Info label="Identity match" value={selected.mechanicProfile?.identityMatch?.status || "pending"} />
+                <Info label="Identity match (CNIC)" value={evidence.verification?.identityMatch
+                  ? `${evidence.verification.identityMatch.status}${evidence.verification.identityMatch.score != null ? ` (${Math.round(evidence.verification.identityMatch.score)}%)` : ""}`
+                  : "pending"} />
                 <Info label="Live location" value={selected.mechanicProfile?.liveLocation?.addressText || "Not captured"} />
                 <Info label="Joined" value={new Date(selected.createdAt).toLocaleDateString()} />
               </div>
 
+              {evidence.error ? <div role="alert" style={styles.error}>{evidence.error}</div> : null}
+              <FaceChecksSection faceChecks={evidence.verification?.faceChecks} />
+
+              <div style={styles.sectionTitle}>Verification photos</div>
+              <EvidenceImages images={evidence.images} loading={evidence.loading} />
+
               <div style={styles.sectionTitle}>Documents</div>
               <div className="detail-grid">
-                {providerDocs(selected).map((doc) => (
+                {providerDocs(evidence.provider || selected).map((doc) => (
                   <div key={doc.label} style={styles.doc}>
                     <div style={styles.docLabel}>{doc.label}</div>
                     {doc.value ? (
@@ -217,7 +235,7 @@ export function ProviderVerification() {
                 </button>
                 <button
                   type="button"
-                  disabled={actionLoading || loading || Boolean(error)}
+                  disabled={actionLoading || loading || Boolean(error) || evidence.loading}
                   onClick={() => updateVerification("verified")}
                   style={{ ...styles.actionButton, ...styles.approveButton }}
                 >

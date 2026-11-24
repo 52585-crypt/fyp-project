@@ -36,7 +36,11 @@ function badRequest(message) {
   return err;
 }
 
-function providerToAdminJSON(provider) {
+// Provider list rows carry no image data (up to 100 rows); a single provider (?id=) includes the stored photos.
+const PROVIDER_LIST_FIELDS = "name phone verificationStatus isCertified ratingAvg ratingCount completedJobs complaintsCount createdAt updatedAt mechanicProfile.serviceCategory mechanicProfile.liveLocation.addressText mechanicVerification.faceChecks.status";
+const PROVIDER_IMAGE_FIELDS = "mechanicProfile.workshopPhotoUrl mechanicProfile.certificateUrl mechanicProfile.drivingLicenseUrl";
+
+function providerToAdminJSON(provider, { includeImages = false } = {}) {
   const profile = provider.mechanicProfile;
   return {
     id: provider._id.toString(),
@@ -51,11 +55,15 @@ function providerToAdminJSON(provider) {
     complaintsCount: provider.complaintsCount,
     mechanicProfile: profile ? {
       serviceCategory: profile.serviceCategory,
-      workshopPhotoUrl: profile.workshopPhotoUrl,
-      certificateUrl: profile.certificateUrl,
-      drivingLicenseUrl: profile.drivingLicenseUrl,
+      ...(includeImages ? {
+        workshopPhotoUrl: profile.workshopPhotoUrl,
+        certificateUrl: profile.certificateUrl,
+        drivingLicenseUrl: profile.drivingLicenseUrl
+      } : {}),
       liveLocation: profile.liveLocation?.addressText ? { addressText: profile.liveLocation.addressText } : null
     } : null,
+    // passed | flagged (possible duplicate account) | error | null (no verification submitted yet)
+    faceCheckStatus: provider.mechanicVerification?.faceChecks?.status ?? null,
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt
   };
@@ -241,8 +249,10 @@ router.get("/providers", async (req, res, next) => {
       query.verificationStatus = status;
     }
 
-    const providers = await User.find(query, "name phone verificationStatus isCertified ratingAvg ratingCount completedJobs complaintsCount createdAt updatedAt mechanicProfile.serviceCategory mechanicProfile.workshopPhotoUrl mechanicProfile.certificateUrl mechanicProfile.drivingLicenseUrl mechanicProfile.liveLocation.addressText").sort({ createdAt: -1 }).limit(100);
-    res.json({ ok: true, providers: providers.map(providerToAdminJSON) });
+    const includeImages = Boolean(query._id);
+    const fields = includeImages ? `${PROVIDER_LIST_FIELDS} ${PROVIDER_IMAGE_FIELDS}` : PROVIDER_LIST_FIELDS;
+    const providers = await User.find(query, fields).sort({ createdAt: -1 }).limit(100);
+    res.json({ ok: true, providers: providers.map((provider) => providerToAdminJSON(provider, { includeImages })) });
   } catch (err) {
     next(err);
   }
