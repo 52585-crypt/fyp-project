@@ -18,3 +18,7 @@ pnpm-debug.log*
 *.err.log
 rebase-staged-backup.patch
 *.docx
+
+# Google OAuth client secrets (downloaded credential files) must never be committed
+client_secret_*.json
+*.apps.googleusercontent.com.json
