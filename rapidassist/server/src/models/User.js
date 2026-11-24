@@ -119,7 +119,9 @@ const userSchema = new mongoose.Schema(
       averageResponseSeconds: { type: Number, default: null },
       responseSamples: { type: Number, default: 0 },
       acceptedOffers: { type: Number, default: 0 },
-      declinedOffers: { type: Number, default: 0 }
+      declinedOffers: { type: Number, default: 0 },
+      // Offers that expired without an answer; counted against acceptance by smart matching.
+      expiredOffers: { type: Number, default: 0 }
     },
     providerState: {
       isOnline: { type: Boolean, default: false },

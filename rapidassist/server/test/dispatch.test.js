@@ -21,6 +21,7 @@ const { newDispatch, advanceDispatch, acceptOffer, declineOffer, recoverReservat
 const { ensureOperationalLocation } = require("../src/services/operationalLocation");
 const { fallbackBlock } = require("../src/services/travelTimeMatrix");
 const { cleanupGoogleLocations } = require("../src/services/googleLocationCleanup");
+const { ensurePendingOfferIndex } = require("../src/services/pendingOfferIndex");
 
 process.env.JWT_SECRET = "isolated-dispatch-test-secret";
 process.env.NODE_ENV = "test";
@@ -91,6 +92,8 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     db = await MongoMemoryServer.create();
     await mongoose.connect(db.getUri(), { dbName: "rapidassist_dispatch_test" });
     await Promise.all([User.init(), ServiceRequest.init()]);
+    // Run every existing dispatch scenario with the one-pending-offer-per-provider index in place.
+    assert.equal((await ensurePendingOfferIndex()).ok, true);
     server = createServer(createApp()); realtime = attachRealtime(server);
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     base = `http://127.0.0.1:${server.address().port}`;

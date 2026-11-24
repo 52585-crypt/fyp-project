@@ -3,13 +3,16 @@ const mongoose = require("mongoose");
 const { ServiceRequest } = require("../models/ServiceRequest");
 const { User } = require("../models/User");
 const { DispatchOffer } = require("../models/DispatchOffer");
-const { solveAssignment, waitingCostFor } = require("./assignmentSolver");
+const { priorityWeight, solveAssignment, waitingCostFor } = require("./assignmentSolver");
 const { getTravelTimeMatrix } = require("./travelTimeMatrix");
 const { createNotificationSafely } = require("./notifications");
 const { notifyRequest, notifyUser } = require("./realtime");
 const { ensureOperationalLocation } = require("./operationalLocation");
 const { isGoogleLocationExpired } = require("./googleLocationPolicy");
 const { roleFilter } = require("../utils/accountRoles");
+const { getMatchingConfig, isSmartMatchingEnabled } = require("../config/matching");
+const { planSmartBatch } = require("../matching/smartBatch");
+const { isPendingOfferConflict } = require("./pendingOfferIndex");
 
 const OFFER_MS = 20000;
 const SEARCH_MS = 180000;
@@ -18,6 +21,7 @@ const BATCH_WINDOW_MS = 2000;
 const categoryFor = (category) => category === "car_towing" ? "towing" : category;
 const radiusFor = () => 8;
 const conflict = (message) => Object.assign(new Error(message), { statusCode: 409 });
+const SMART_ALGORITHM_VERSION = "smart-hungarian-v1";
 
 function distanceKm(a, b) {
   const rad = Math.PI / 180;
@@ -93,7 +97,7 @@ function eligibleQuery(category, now = new Date()) {
   return { ...baseEligibleQuery(category, now), ...reservationAvailable(now) };
 }
 
-async function recordOffer(request, selected, offerId, batchId, offeredAt, expiresAt) {
+async function recordOffer(request, selected, offerId, batchId, offeredAt, expiresAt, attempt) {
   const scoring = scoreBreakdown(selected.provider, selected.distanceKm, request.dispatch.radiusKm);
   await DispatchOffer.updateOne(
     { offerId },
@@ -101,7 +105,7 @@ async function recordOffer(request, selected, offerId, batchId, offeredAt, expir
       requestId: request._id,
       providerId: selected.provider._id,
       offerId,
-      algorithmVersion: "batch-mincost-v1",
+      algorithmVersion: selected.smart ? SMART_ALGORITHM_VERSION : "batch-mincost-v1",
       batchId,
       priority: request.priority || "normal",
       distanceKm: selected.distanceKm,
@@ -109,13 +113,18 @@ async function recordOffer(request, selected, offerId, batchId, offeredAt, expir
       travelDurationSeconds: selected.durationSeconds,
       routeSource: selected.source,
       assignmentCost: selected.cost,
-      waitingCost: waitingCostFor(request, offeredAt),
+      // Smart offers store only the real 0-100 pair cost; unmatched penalties are solver-internal.
+      waitingCost: selected.smart ? null : waitingCostFor(request, offeredAt),
       baselineNearestDistanceKm: selected.baselineNearestDistanceKm,
       score: scoring.score,
       components: scoring.components,
       offeredAt,
       expiresAt,
-      outcome: "offered"
+      outcome: "offered",
+      ...(selected.smart ? {
+        costBreakdown: selected.smart.costBreakdown,
+        attempt
+      } : {})
     } },
     { upsert: true }
   );
@@ -123,28 +132,45 @@ async function recordOffer(request, selected, offerId, batchId, offeredAt, expir
 
 async function refreshResponseMetrics(providerId) {
   const [summary] = await DispatchOffer.aggregate([
-    { $match: { providerId: providerId instanceof mongoose.Types.ObjectId ? providerId : new mongoose.Types.ObjectId(providerId), outcome: { $in: ["accepted", "declined"] } } },
-    { $group: { _id: null, average: { $avg: "$responseSeconds" }, samples: { $sum: 1 }, accepted: { $sum: { $cond: [{ $eq: ["$outcome", "accepted"] }, 1, 0] } }, declined: { $sum: { $cond: [{ $eq: ["$outcome", "declined"] }, 1, 0] } } } }
+    { $match: { providerId: providerId instanceof mongoose.Types.ObjectId ? providerId : new mongoose.Types.ObjectId(providerId), outcome: { $in: ["accepted", "declined", "expired"] } } },
+    { $group: {
+      _id: null,
+      // Response time is measured on answered offers only ($avg ignores the nulls produced for expired offers).
+      average: { $avg: { $cond: [{ $in: ["$outcome", ["accepted", "declined"]] }, "$responseSeconds", null] } },
+      samples: { $sum: { $cond: [{ $in: ["$outcome", ["accepted", "declined"]] }, 1, 0] } },
+      accepted: { $sum: { $cond: [{ $eq: ["$outcome", "accepted"] }, 1, 0] } },
+      declined: { $sum: { $cond: [{ $eq: ["$outcome", "declined"] }, 1, 0] } },
+      expired: { $sum: { $cond: [{ $eq: ["$outcome", "expired"] }, 1, 0] } }
+    } }
   ]);
   await User.updateOne({ _id: providerId }, { $set: {
     "providerPerformance.averageResponseSeconds": summary?.average ?? null,
     "providerPerformance.responseSamples": summary?.samples || 0,
     "providerPerformance.acceptedOffers": summary?.accepted || 0,
-    "providerPerformance.declinedOffers": summary?.declined || 0
+    "providerPerformance.declinedOffers": summary?.declined || 0,
+    "providerPerformance.expiredOffers": summary?.expired || 0
   } });
 }
 
+/**
+ * Resolves a pending offer in ONE atomic write: outcome, respondedAt and responseSeconds (computed by MongoDB from
+ * the stored offeredAt) land together, so no zero or partial response time can be left behind, and of several
+ * concurrent resolutions exactly one wins (the filter requires outcome "offered").
+ */
 async function resolveOffer(offerId, outcome, respondedAt = new Date()) {
   if (!offerId) return;
-  const offer = await DispatchOffer.findOneAndUpdate(
+  const offer = await DispatchOffer.collection.findOneAndUpdate(
     { offerId, outcome: "offered" },
-    { $set: { outcome, respondedAt, responseSeconds: 0 } },
-    { new: true }
+    [{ $set: {
+      outcome,
+      respondedAt,
+      responseSeconds: { $max: [0, { $divide: [{ $subtract: [respondedAt, "$offeredAt"] }, 1000] }] },
+      updatedAt: new Date()
+    } }],
+    { returnDocument: "after", includeResultMetadata: false }
   );
   if (!offer) return;
-  offer.responseSeconds = Math.max(0, (respondedAt.getTime() - offer.offeredAt.getTime()) / 1000);
-  await offer.save();
-  if (["accepted", "declined"].includes(outcome)) await refreshResponseMetrics(offer.providerId);
+  if (["accepted", "declined", "expired"].includes(outcome)) await refreshResponseMetrics(offer.providerId);
 }
 
 async function releaseOfferReservation(providerId, offerId) {
@@ -324,6 +350,18 @@ function candidatePairs(requests, providers) {
   return pairs;
 }
 
+/** Batch processing order: urgent > high > normal, then oldest first, then id (deterministic). */
+function byDispatchPriority(a, b) {
+  return priorityWeight(b.priority) - priorityWeight(a.priority)
+    || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    || String(a._id ?? a.id).localeCompare(String(b._id ?? b.id));
+}
+
+/**
+ * Offers `request` to `selected.provider`. Order: reserve provider → persist the DispatchOffer (MongoDB enforces one
+ * pending offer per provider) → claim the request → notify. Every failure undoes the earlier steps.
+ * @returns {{ request: object|null, reason: null|"provider_unavailable"|"duplicate_pending_offer"|"request_changed" }}
+ */
 async function createOffer(request, selected, batchId, now) {
   const offerId = randomUUID();
   const expiresAt = new Date(Math.min(+now + OFFER_MS, +request.dispatch.deadline));
@@ -336,7 +374,18 @@ async function createOffer(request, selected, batchId, now) {
     } },
     { new: true }
   );
-  if (!reserved) return null;
+  if (!reserved) return { request: null, reason: "provider_unavailable" };
+
+  // Persisted before the request becomes visible as offered, so a duplicate fails before anything is exposed.
+  const attempt = (request.dispatch.attemptedProviderIds || []).length + 1;
+  try {
+    await recordOffer(request, { ...selected, provider: reserved }, offerId, batchId, now, expiresAt, attempt);
+  } catch (error) {
+    await releaseOfferReservation(reserved._id, offerId);
+    if (!isPendingOfferConflict(error)) throw error;
+    console.warn(`[dispatch] provider ${reserved.id} already has a pending offer; skipped offering request ${request.id}. The next batch re-plans.`);
+    return { request: null, reason: "duplicate_pending_offer" };
+  }
 
   const updated = await ServiceRequest.findOneAndUpdate(
     {
@@ -362,11 +411,12 @@ async function createOffer(request, selected, batchId, now) {
     { new: true }
   );
   if (!updated) {
+    // The request changed (cancelled, already offered, deadline passed): the offer never existed for anyone.
+    await DispatchOffer.deleteOne({ offerId, outcome: "offered" });
     await releaseOfferReservation(reserved._id, offerId);
-    return null;
+    return { request: null, reason: "request_changed" };
   }
 
-  await recordOffer(updated, { ...selected, provider: reserved }, offerId, batchId, now, expiresAt);
   createNotificationSafely({
     userId: reserved._id,
     type: "job_offer",
@@ -375,12 +425,25 @@ async function createOffer(request, selected, batchId, now) {
     data: { requestId: updated.id, route: "/(provider)/requests", offerId }
   });
   notifyRequest(updated, "offer");
-  return updated;
+  return { request: updated, reason: null };
+}
+
+/** Accumulates actual createOffer outcomes for a batch result. */
+function offerTally() {
+  const tally = { offersCreated: 0, offersFailed: [] };
+  tally.record = (requestId, providerId, outcome) => {
+    if (outcome.request) tally.offersCreated += 1;
+    else tally.offersFailed.push({ requestId: String(requestId), providerId: String(providerId), reason: outcome.reason });
+    return Boolean(outcome.request);
+  };
+  return tally;
 }
 
 async function runDispatchBatchCore(now = new Date()) {
+  const smart = smartMatchingConfig();
   await reconcileOffers(now);
   await expireSearches(now);
+  if (smart?.maxAttempts) await exhaustAttempts(now, smart.maxAttempts);
   const pendingRequests = await ServiceRequest.find({
     "dispatch.enabled": true,
     status: "searching_provider",
@@ -389,8 +452,10 @@ async function runDispatchBatchCore(now = new Date()) {
     // Retry delays on individual requests must not hide urgent work from a batch.
     // The worker's shared interval throttles rounds for all requests together.
     "dispatch.deadline": { $gt: now }
-  }).sort({ priority: -1, createdAt: 1 });
-  if (!pendingRequests.length) return { assignments: [], unassignedRequestIds: [], totalCost: 0 };
+  });
+  // MongoDB's string sort would order priorities alphabetically (urgent, normal, high); order by weight instead.
+  pendingRequests.sort(byDispatchPriority);
+  if (!pendingRequests.length) return { assignments: [], unassignedRequestIds: [], totalCost: 0, offersCreated: 0, offersFailed: [] };
   const requests = [];
   const unavailableRequestIds = [];
   for (const request of pendingRequests) {
@@ -401,12 +466,12 @@ async function runDispatchBatchCore(now = new Date()) {
       console.warn("Dispatch location unavailable:", request.id, error.message);
     }
   }
-  if (!requests.length) return { assignments: [], unassignedRequestIds: unavailableRequestIds, totalCost: 0 };
+  if (!requests.length) return { assignments: [], unassignedRequestIds: unavailableRequestIds, totalCost: 0, offersCreated: 0, offersFailed: [] };
 
   const providers = await User.find(eligibleQuery(null, now));
   if (!providers.length) {
     await logDispatchDiagnostics(requests, now).catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
-    return { assignments: [], unassignedRequestIds: [...unavailableRequestIds, ...requests.map((request) => request.id)], totalCost: 0 };
+    return { assignments: [], unassignedRequestIds: [...unavailableRequestIds, ...requests.map((request) => request.id)], totalCost: 0, offersCreated: 0, offersFailed: [] };
   }
 
   const pairs = candidatePairs(requests, providers);
@@ -416,14 +481,16 @@ async function runDispatchBatchCore(now = new Date()) {
     const travel = rawMatrix.get(key);
     if (travel) travelTimes.set(key, travel);
   });
+  if (smart) return dispatchSmartBatch({ requests, providers, pairs, travelTimes, unavailableRequestIds, now, config: smart });
   const solution = solveAssignment({ requests, providers, travelTimes, now });
   const batchId = randomUUID();
 
+  const tally = offerTally();
   for (const assignment of solution.assignments) {
     const pair = pairs.get(`${assignment.providerId}:${assignment.requestId}`);
     if (!pair) continue;
     const distanceFromRoute = Number.isFinite(assignment.distanceMeters) ? assignment.distanceMeters / 1000 : null;
-    await createOffer(pair.request, {
+    const outcome = await createOffer(pair.request, {
       provider: pair.provider,
       durationSeconds: assignment.durationSeconds,
       cost: assignment.cost,
@@ -432,12 +499,147 @@ async function runDispatchBatchCore(now = new Date()) {
       routeDistanceKm: distanceFromRoute,
       baselineNearestDistanceKm: pair.baselineNearestDistanceKm
     }, batchId, now);
+    tally.record(assignment.requestId, assignment.providerId, outcome);
   }
 
   const offered = new Set(solution.assignments.map((assignment) => String(assignment.requestId)));
   await logDispatchDiagnostics(requests.filter((request) => !offered.has(request.id)), now)
     .catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
-  return { ...solution, unassignedRequestIds: [...solution.unassignedRequestIds, ...unavailableRequestIds], batchId };
+  // `assignments` is the solver's plan (unchanged); offersCreated / offersFailed are what actually happened.
+  return {
+    ...solution,
+    unassignedRequestIds: [...solution.unassignedRequestIds, ...unavailableRequestIds],
+    batchId,
+    offersCreated: tally.offersCreated,
+    offersFailed: tally.offersFailed
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Smart matching (SMART_MATCHING_ENABLED=true). Same eligibility, reservations, offers, expiry and accept path as
+// above; only the batch decision differs: multi-objective cost + Hungarian, solved per service category.
+
+let lastSmartConfigError = null;
+/** The smart matching config, or null when the flag is off or the config is invalid (then the existing solver runs). */
+function smartMatchingConfig() {
+  if (!isSmartMatchingEnabled()) return null;
+  try {
+    const config = getMatchingConfig();
+    lastSmartConfigError = null;
+    return config;
+  } catch (error) {
+    if (lastSmartConfigError !== error.message) {
+      console.error("Smart matching disabled for this batch, invalid config; using the existing dispatcher:", error.message);
+      lastSmartConfigError = error.message;
+    }
+    return null;
+  }
+}
+
+/**
+ * Opt-in (MATCHING_MAX_ATTEMPTS): requests that already received maxAttempts distinct offers stop searching early,
+ * exactly like the search timeout (dispatch.state "unavailable", same "dispatch" event; the customer can retry).
+ * Off by default, so with the flag on a search never ends earlier than the existing 180 s timeout.
+ */
+async function exhaustAttempts(now, maxAttempts) {
+  const exhausted = await ServiceRequest.find({
+    "dispatch.enabled": true,
+    status: "searching_provider",
+    providerId: null,
+    "dispatch.state": "searching",
+    [`dispatch.attemptedProviderIds.${maxAttempts - 1}`]: { $exists: true }
+  });
+  for (const request of exhausted) {
+    const updated = await ServiceRequest.findOneAndUpdate(
+      { _id: request._id, "dispatch.state": "searching", "dispatch.version": request.dispatch.version },
+      { $set: { "dispatch.state": "unavailable", "dispatch.nextAttemptAt": null }, $inc: { "dispatch.version": 1 } },
+      { new: true }
+    );
+    if (updated) notifyRequest(updated, "dispatch");
+  }
+}
+
+/** Assignments per provider in the trailing fairness window (provider_assigned counts, whatever happened after). */
+async function recentAssignmentCounts(providers, now, windowHours) {
+  if (!providers.length) return new Map();
+  const rows = await ServiceRequest.aggregate([
+    { $match: { providerId: { $in: providers.map((provider) => provider._id) }, acceptedAt: { $gte: new Date(+now - windowHours * 3600 * 1000) } } },
+    { $group: { _id: "$providerId", count: { $sum: 1 } } }
+  ]);
+  return new Map(rows.map((row) => [String(row._id), row.count]));
+}
+
+async function dispatchSmartBatch({ requests, providers, pairs, travelTimes, unavailableRequestIds, now, config }) {
+  const workload = await recentAssignmentCounts(providers, now, config.fairnessWindowHours);
+  const plan = planSmartBatch({
+    requests, providers, pairs, travelTimes, workload, now, config, categoryFor,
+    offerTtlSeconds: OFFER_MS / 1000,
+    searchTimeoutSeconds: SEARCH_MS / 1000
+  });
+  const batchId = randomUUID();
+  const tally = offerTally();
+  const created = [];
+
+  for (const assignment of plan.assignments) {
+    const { pair, travel } = assignment;
+    const outcome = await createOffer(pair.request, {
+      provider: pair.provider,
+      durationSeconds: Math.max(1, Math.round(travel.durationSeconds)),
+      cost: assignment.pairCost,
+      source: travel.source || "provided",
+      distanceKm: pair.directDistanceKm,
+      routeDistanceKm: Number.isFinite(travel.distanceMeters) ? travel.distanceMeters / 1000 : null,
+      baselineNearestDistanceKm: pair.baselineNearestDistanceKm,
+      smart: { costBreakdown: { ...assignment.breakdown, pairCost: assignment.pairCost, weights: assignment.weights } }
+    }, batchId, now);
+    if (tally.record(assignment.request.id, assignment.provider.id, outcome)) created.push(assignment);
+  }
+
+  const offered = new Set(created.map((assignment) => String(assignment.request.id)));
+  const categories = plan.categories.map((summary) => {
+    const mine = created.filter((assignment) => assignment.category === summary.category);
+    const failed = plan.assignments.filter((assignment) => assignment.category === summary.category).length - mine.length;
+    return {
+      ...summary,
+      plannedMatches: summary.matched,
+      offersCreated: mine.length,
+      offersFailed: failed,
+      assignedCost: mine.reduce((sum, assignment) => sum + assignment.pairCost, 0),
+      unmatchedCount: summary.requests + summary.deferredCount - mine.length
+    };
+  });
+  if (diagnosticsEnabled()) {
+    for (const summary of categories) {
+      console.info(`[matching] batch ${batchId} ${summary.category}: ${summary.requests} request(s), ${summary.providers} provider(s), `
+        + `planned ${summary.plannedMatches}, offers created ${summary.offersCreated}, failed ${summary.offersFailed}, `
+        + `unmatched ${summary.unmatchedCount}${summary.deferredCount ? ` (${summary.deferredCount} over batch cap)` : ""}, `
+        + `real pair cost ${summary.assignedCost.toFixed(3)} (unmatched penalties excluded, U_batch ${summary.unmatchedBaseCost})`);
+    }
+  }
+  await logDispatchDiagnostics(requests.filter((request) => !offered.has(request.id)), now)
+    .catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
+
+  const unassignedRequestIds = [...requests.map((request) => request.id).filter((id) => !offered.has(id)), ...unavailableRequestIds];
+  return {
+    algorithmVersion: SMART_ALGORITHM_VERSION,
+    batchId,
+    // Actual offers only (a planned pair whose offer failed is not an assignment).
+    assignments: created.map((assignment) => ({
+      requestId: String(assignment.request.id),
+      providerId: String(assignment.provider.id),
+      cost: assignment.pairCost,
+      durationSeconds: Math.max(1, Math.round(assignment.travel.durationSeconds)),
+      source: assignment.travel.source || "provided"
+    })),
+    plannedMatches: plan.assignments.length,
+    offersCreated: tally.offersCreated,
+    offersFailed: tally.offersFailed,
+    unassignedRequestIds,
+    // Sum of real pair costs of created offers only; unmatched requests are counted, never priced.
+    assignedCost: created.reduce((sum, assignment) => sum + assignment.pairCost, 0),
+    unmatchedCount: unassignedRequestIds.length,
+    categories
+  };
 }
 
 let activeBatch = null;
@@ -585,6 +787,16 @@ async function recoverReservations(now = new Date()) {
     });
     if (!request) await releaseOfferReservation(provider._id, provider.providerState.reservedOfferId);
   }
+
+  // Orphaned pending offers: past expiry by more than one offer window and no longer referenced by their request.
+  // Live offers are always reconciled by the batch within seconds, so these come only from interrupted flows.
+  // Marked "withdrawn" (not "expired"): the provider did not ignore them, so they must not count against acceptance.
+  const orphans = await DispatchOffer.find({ outcome: "offered", expiresAt: { $lt: new Date(+now - OFFER_MS) } });
+  for (const offer of orphans) {
+    const live = await ServiceRequest.exists({ _id: offer.requestId, "dispatch.state": "offered", "dispatch.offerId": offer.offerId });
+    if (live) continue;
+    await DispatchOffer.updateOne({ _id: offer._id, outcome: "offered" }, { $set: { outcome: "withdrawn", respondedAt: now, responseSeconds: null } });
+  }
 }
 
 function startDispatchWorker() {
@@ -613,6 +825,7 @@ function startDispatchWorker() {
 
 module.exports = {
   OFFER_MS,
+  byDispatchPriority,
   acceptOffer,
   advanceDispatch,
   cancelDispatchOffer,

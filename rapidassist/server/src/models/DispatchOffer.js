@@ -12,6 +12,26 @@ const componentSchema = new mongoose.Schema(
 
 const ROUTE_SOURCES = ["osrm", "haversine_fallback", "provided"];
 
+const termNumbers = {
+  E: { type: Number, required: true },
+  Q: { type: Number, required: true },
+  A: { type: Number, required: true },
+  S: { type: Number, required: true },
+  F: { type: Number, required: true },
+  T: { type: Number, required: true }
+};
+
+// Smart matching only (algorithmVersion "smart-hungarian-v1"). pairCost is the real 0-100 cost of this offer;
+// solver-internal unmatched penalties are never stored here.
+const costBreakdownSchema = new mongoose.Schema(
+  {
+    ...termNumbers,
+    pairCost: { type: Number, required: true },
+    weights: new mongoose.Schema(termNumbers, { _id: false })
+  },
+  { _id: false }
+);
+
 const dispatchOfferSchema = new mongoose.Schema(
   {
     requestId: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceRequest", required: true, index: true },
@@ -37,6 +57,9 @@ const dispatchOfferSchema = new mongoose.Schema(
       default: "offered",
       index: true
     },
+    // Smart matching only; absent (not null) on offers from the existing solver.
+    costBreakdown: { type: costBreakdownSchema, default: undefined },
+    attempt: { type: Number, default: undefined },
     respondedAt: { type: Date, default: null },
     responseSeconds: { type: Number, default: null }
   },

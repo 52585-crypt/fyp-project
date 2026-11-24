@@ -7,6 +7,7 @@ const { connectDB } = require("./config/db");
 const { createServer } = require("node:http");
 const { attachRealtime } = require("./services/realtime");
 const { startDispatchWorker } = require("./services/dispatch");
+const { ensurePendingOfferIndex } = require("./services/pendingOfferIndex");
 const { ensureAdminAccount } = require("./services/adminBootstrap");
 const { startGoogleLocationCleanup } = require("./services/googleLocationCleanup");
 
@@ -31,6 +32,7 @@ async function main() {
   });
   await connectDB(process.env.MONGODB_URI);
   await ensureAdminAccount();
+  await ensurePendingOfferIndex(); // never throws; logs a warning and keeps serving if duplicates block it
   const stopLocationCleanup = await startGoogleLocationCleanup();
   attachRealtime(server);
   const stopDispatch = startDispatchWorker();

@@ -1,0 +1,587 @@
+{
+  "round1": {
+    "result": {
+      "assignments": [
+        {
+          "request": "RF1",
+          "provider": "F1",
+          "cost": 144,
+          "durationSeconds": 144,
+          "source": "haversine_fallback"
+        },
+        {
+          "request": "RF2",
+          "provider": "F2",
+          "cost": 576,
+          "durationSeconds": 288,
+          "source": "haversine_fallback"
+        },
+        {
+          "request": "RM1",
+          "provider": "M2",
+          "cost": 455,
+          "durationSeconds": 455,
+          "source": "haversine_fallback"
+        },
+        {
+          "request": "RM2",
+          "provider": "M1",
+          "cost": 1188,
+          "durationSeconds": 297,
+          "source": "haversine_fallback"
+        },
+        {
+          "request": "RM3",
+          "provider": "M3",
+          "cost": 2304,
+          "durationSeconds": 1152,
+          "source": "haversine_fallback"
+        },
+        {
+          "request": "RT2",
+          "provider": "T1",
+          "cost": 576,
+          "durationSeconds": 144,
+          "source": "haversine_fallback"
+        }
+      ],
+      "unassigned": [
+        "RT1"
+      ],
+      "totalCost": 7983
+    },
+    "requests": [
+      {
+        "request": "RM1",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "M2",
+        "attempts": [
+          "M2"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      },
+      {
+        "request": "RM2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "M1",
+        "attempts": [
+          "M1"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      },
+      {
+        "request": "RM3",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "M3",
+        "attempts": [
+          "M3"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      },
+      {
+        "request": "RF1",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "F1",
+        "attempts": [
+          "F1"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      },
+      {
+        "request": "RF2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "F2",
+        "attempts": [
+          "F2"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      },
+      {
+        "request": "RT1",
+        "status": "searching_provider",
+        "state": "searching",
+        "offeredTo": null,
+        "attempts": [],
+        "expiresInMs": null,
+        "version": 0
+      },
+      {
+        "request": "RT2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "T1",
+        "attempts": [
+          "T1"
+        ],
+        "expiresInMs": 20000,
+        "version": 1
+      }
+    ],
+    "offers": [
+      {
+        "request": "RM1",
+        "provider": "M2",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "normal",
+        "distanceKm": 3.1622319872641733,
+        "routeDistanceKm": 3.162,
+        "travelDurationSeconds": 455,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 455,
+        "waitingCost": 2800,
+        "baselineNearestDistanceKm": 0.5000000000000703,
+        "score": 58.569587928781885,
+        "components": {
+          "proximity": 0.6047210015919784,
+          "rating": 0.8342857142857143,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RM2",
+        "provider": "M1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "urgent",
+        "distanceKm": 2.061506113679247,
+        "routeDistanceKm": 2.062,
+        "travelDurationSeconds": 297,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 1188,
+        "waitingCost": 10840,
+        "baselineNearestDistanceKm": 2.061506113679247,
+        "score": 66.5706947772209,
+        "components": {
+          "proximity": 0.7423117357900941,
+          "rating": 0.9066666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RM3",
+        "provider": "M3",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "high",
+        "distanceKm": 7.999999999999939,
+        "routeDistanceKm": 8,
+        "travelDurationSeconds": 1152,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 2304,
+        "waitingCost": 5500,
+        "baselineNearestDistanceKm": 0.5000000000000703,
+        "score": 32.16666666666701,
+        "components": {
+          "proximity": 7.66053886991358e-15,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RF1",
+        "provider": "F1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "normal",
+        "distanceKm": 0.9999999999997454,
+        "routeDistanceKm": 1,
+        "travelDurationSeconds": 144,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 144,
+        "waitingCost": 2720,
+        "baselineNearestDistanceKm": 0.9999999999997454,
+        "score": 71.5416666666681,
+        "components": {
+          "proximity": 0.8750000000000319,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RF2",
+        "provider": "F2",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "high",
+        "distanceKm": 1.9999999969108602,
+        "routeDistanceKm": 2,
+        "travelDurationSeconds": 288,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 576,
+        "waitingCost": 5520,
+        "baselineNearestDistanceKm": 1.9999999969108602,
+        "score": 65.67857144594784,
+        "components": {
+          "proximity": 0.7500000003861425,
+          "rating": 0.8571428571428571,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RT2",
+        "provider": "T1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "urgent",
+        "distanceKm": 1.0000000000001406,
+        "routeDistanceKm": 1,
+        "travelDurationSeconds": 144,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 576,
+        "waitingCost": 10820,
+        "baselineNearestDistanceKm": 1.0000000000001406,
+        "score": 71.54166666666588,
+        "components": {
+          "proximity": 0.8749999999999825,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": 0,
+        "expiresInMs": 20000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      }
+    ],
+    "reservations": [
+      {
+        "provider": "M1",
+        "reservedFor": "RM2",
+        "reservedUntilMs": 20000
+      },
+      {
+        "provider": "M2",
+        "reservedFor": "RM1",
+        "reservedUntilMs": 20000
+      },
+      {
+        "provider": "M3",
+        "reservedFor": "RM3",
+        "reservedUntilMs": 20000
+      },
+      {
+        "provider": "F1",
+        "reservedFor": "RF1",
+        "reservedUntilMs": 20000
+      },
+      {
+        "provider": "F2",
+        "reservedFor": "RF2",
+        "reservedUntilMs": 20000
+      },
+      {
+        "provider": "T1",
+        "reservedFor": "RT2",
+        "reservedUntilMs": 20000
+      }
+    ]
+  },
+  "declined": "RM1",
+  "round2": {
+    "result": {
+      "assignments": [],
+      "unassigned": [
+        "RM1",
+        "RT1"
+      ],
+      "totalCost": 5550
+    },
+    "requests": [
+      {
+        "request": "RM1",
+        "status": "searching_provider",
+        "state": "searching",
+        "offeredTo": null,
+        "attempts": [
+          "M2"
+        ],
+        "expiresInMs": null,
+        "version": 2
+      },
+      {
+        "request": "RM2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "M1",
+        "attempts": [
+          "M1"
+        ],
+        "expiresInMs": 15000,
+        "version": 1
+      },
+      {
+        "request": "RM3",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "M3",
+        "attempts": [
+          "M3"
+        ],
+        "expiresInMs": 15000,
+        "version": 1
+      },
+      {
+        "request": "RF1",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "F1",
+        "attempts": [
+          "F1"
+        ],
+        "expiresInMs": 15000,
+        "version": 1
+      },
+      {
+        "request": "RF2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "F2",
+        "attempts": [
+          "F2"
+        ],
+        "expiresInMs": 15000,
+        "version": 1
+      },
+      {
+        "request": "RT1",
+        "status": "searching_provider",
+        "state": "searching",
+        "offeredTo": null,
+        "attempts": [],
+        "expiresInMs": null,
+        "version": 0
+      },
+      {
+        "request": "RT2",
+        "status": "searching_provider",
+        "state": "offered",
+        "offeredTo": "T1",
+        "attempts": [
+          "T1"
+        ],
+        "expiresInMs": 15000,
+        "version": 1
+      }
+    ],
+    "offers": [
+      {
+        "request": "RM1",
+        "provider": "M2",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "normal",
+        "distanceKm": 3.1622319872641733,
+        "routeDistanceKm": 3.162,
+        "travelDurationSeconds": 455,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 455,
+        "waitingCost": 2800,
+        "baselineNearestDistanceKm": 0.5000000000000703,
+        "score": 58.569587928781885,
+        "components": {
+          "proximity": 0.6047210015919784,
+          "rating": 0.8342857142857143,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "declined",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RM2",
+        "provider": "M1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "urgent",
+        "distanceKm": 2.061506113679247,
+        "routeDistanceKm": 2.062,
+        "travelDurationSeconds": 297,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 1188,
+        "waitingCost": 10840,
+        "baselineNearestDistanceKm": 2.061506113679247,
+        "score": 66.5706947772209,
+        "components": {
+          "proximity": 0.7423117357900941,
+          "rating": 0.9066666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RM3",
+        "provider": "M3",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "high",
+        "distanceKm": 7.999999999999939,
+        "routeDistanceKm": 8,
+        "travelDurationSeconds": 1152,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 2304,
+        "waitingCost": 5500,
+        "baselineNearestDistanceKm": 0.5000000000000703,
+        "score": 32.16666666666701,
+        "components": {
+          "proximity": 7.66053886991358e-15,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RF1",
+        "provider": "F1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "normal",
+        "distanceKm": 0.9999999999997454,
+        "routeDistanceKm": 1,
+        "travelDurationSeconds": 144,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 144,
+        "waitingCost": 2720,
+        "baselineNearestDistanceKm": 0.9999999999997454,
+        "score": 71.5416666666681,
+        "components": {
+          "proximity": 0.8750000000000319,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RF2",
+        "provider": "F2",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "high",
+        "distanceKm": 1.9999999969108602,
+        "routeDistanceKm": 2,
+        "travelDurationSeconds": 288,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 576,
+        "waitingCost": 5520,
+        "baselineNearestDistanceKm": 1.9999999969108602,
+        "score": 65.67857144594784,
+        "components": {
+          "proximity": 0.7500000003861425,
+          "rating": 0.8571428571428571,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      },
+      {
+        "request": "RT2",
+        "provider": "T1",
+        "algorithmVersion": "batch-mincost-v1",
+        "priority": "urgent",
+        "distanceKm": 1.0000000000001406,
+        "routeDistanceKm": 1,
+        "travelDurationSeconds": 144,
+        "routeSource": "haversine_fallback",
+        "assignmentCost": 576,
+        "waitingCost": 10820,
+        "baselineNearestDistanceKm": 1.0000000000001406,
+        "score": 71.54166666666588,
+        "components": {
+          "proximity": 0.8749999999999825,
+          "rating": 0.8666666666666666,
+          "experience": 0.2,
+          "responseSpeed": 0.5
+        },
+        "outcome": "offered",
+        "offeredAtMs": -5000,
+        "expiresInMs": 15000,
+        "hasCostBreakdown": false,
+        "hasAttempt": false
+      }
+    ],
+    "reservations": [
+      {
+        "provider": "M1",
+        "reservedFor": "RM2",
+        "reservedUntilMs": 15000
+      },
+      {
+        "provider": "M2",
+        "reservedFor": null,
+        "reservedUntilMs": null
+      },
+      {
+        "provider": "M3",
+        "reservedFor": "RM3",
+        "reservedUntilMs": 15000
+      },
+      {
+        "provider": "F1",
+        "reservedFor": "RF1",
+        "reservedUntilMs": 15000
+      },
+      {
+        "provider": "F2",
+        "reservedFor": "RF2",
+        "reservedUntilMs": 15000
+      },
+      {
+        "provider": "T1",
+        "reservedFor": "RT2",
+        "reservedUntilMs": 15000
+      }
+    ]
+  }
+}
