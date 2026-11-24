@@ -1,5 +1,5 @@
 const express = require("express");
-const { User, USER_ROLES, MECHANIC_SERVICE_CATEGORIES } = require("../models/User");
+const { User, PUBLIC_ROLES, MECHANIC_SERVICE_CATEGORIES } = require("../models/User");
 const { signAccessToken } = require("../utils/jwt");
 const { requireAuth } = require("../middleware/auth.middleware");
 const { clearAccessTokenCookie, setAccessTokenCookie } = require("../utils/authCookie");
@@ -104,7 +104,7 @@ router.post("/register", async (req, res, next) => {
   try {
     const { role, name, phone, password, isCertified, certificateUrl, mechanicProfile } = req.body || {};
 
-    if (!role || !USER_ROLES.includes(role)) throw badRequest("Invalid role");
+    if (!role || !PUBLIC_ROLES.includes(role)) throw badRequest("Invalid role");
     if (!name || String(name).trim().length < 2) throw badRequest("Name is required");
     if (!phone || String(phone).trim().length < 10) throw badRequest("Phone is required");
     if (!password || String(password).length < 6) throw badRequest("Password must be at least 6 characters");
@@ -165,6 +165,12 @@ router.post("/login", async (req, res, next) => {
     if (!ok) {
       const err = new Error("Invalid credentials");
       err.statusCode = 401;
+      throw err;
+    }
+
+    if (user.isBlocked) {
+      const err = new Error("Your account has been suspended. Please contact support.");
+      err.statusCode = 403;
       throw err;
     }
 

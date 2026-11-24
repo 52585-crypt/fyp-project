@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const USER_ROLES = ["user", "mechanic"];
+const USER_ROLES = ["user", "mechanic", "admin"];
+// Roles that may self-register through the public /api/auth/register endpoint.
+const PUBLIC_ROLES = ["user", "mechanic"];
 const VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
 const MECHANIC_SERVICE_CATEGORIES = ["mechanic", "fuel_delivery", "towing"];
 const IDENTITY_MATCH_STATUSES = ["pending", "matched", "mismatch", "manual_review"];
@@ -14,6 +16,11 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, required: true, unique: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
 
+    // Admin moderation
+    isBlocked: { type: Boolean, default: false },
+    blockedReason: { type: String, default: null, trim: true },
+    blockedAt: { type: Date, default: null },
+
     // Mechanic trust/verification (hybrid)
     isCertified: { type: Boolean, default: false },
     certificateUrl: { type: String, default: null },
@@ -21,6 +28,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: VERIFICATION_STATUSES,
       default: "unverified"
+    },
+    verificationReview: {
+      note: { type: String, default: null, trim: true },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      reviewedAt: { type: Date, default: null }
     },
     mechanicProfile: {
       serviceCategory: {
@@ -88,9 +100,12 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
     role: this.role,
     name: this.name,
     phone: this.phone,
+    isBlocked: Boolean(this.isBlocked),
     isCertified: this.isCertified,
     certificateUrl: this.certificateUrl,
     verificationStatus: this.verificationStatus,
+    // Admin's note on the last verification decision (e.g. why documents were rejected).
+    verificationNote: this.verificationReview?.note || null,
     mechanicProfile: this.mechanicProfile
       ? {
           serviceCategory: this.mechanicProfile.serviceCategory,
@@ -123,5 +138,5 @@ userSchema.methods.toSafeJSON = function toSafeJSON() {
 
 const User = mongoose.model("User", userSchema);
 
-module.exports = { User, USER_ROLES, VERIFICATION_STATUSES, MECHANIC_SERVICE_CATEGORIES };
+module.exports = { User, USER_ROLES, PUBLIC_ROLES, VERIFICATION_STATUSES, MECHANIC_SERVICE_CATEGORIES };
 

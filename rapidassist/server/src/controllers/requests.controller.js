@@ -502,6 +502,10 @@ async function acceptRequest(req, res, next) {
     const request = await ServiceRequest.findById(req.params.id);
     if (!request) throw notFound("Request not found");
     if (request.providerId) throw badRequest("Request already assigned");
+    if (["completed", "cancelled"].includes(request.status)) throw badRequest(`Request is already ${request.status}`);
+    if (req.user.verificationStatus !== "verified") {
+      throw forbidden("Your account must be verified by RapidAssist before you can accept jobs");
+    }
 
     const providerCategory = req.user?.mechanicProfile?.serviceCategory;
     if (providerCategoryForRequest(request.category) !== providerCategory) {

@@ -1,16 +1,57 @@
-# React + Vite
+# RapidAssist Admin Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web console for RapidAssist operators: verify provider documents, monitor service requests and moderate accounts.
 
-Currently, two official plugins are available:
+Built with React 19, React Router 7 and Vite. No UI library — styles live in `src/styles/` (light + dark theme tokens in `theme.css`, components in `app.css`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+| Page | What you can do |
+|---|---|
+| **Dashboard** | KPIs (active requests, pending verifications, revenue, rating), 7-day request chart, service/status breakdowns, verification queue, recent requests. Auto-refreshes every 30 s while the tab is visible. |
+| **Provider verification** | Filter by status/service, search by name or phone, view documents in a full-screen viewer, approve / reject (reason required) / move back to pending. Every decision records the admin and time. |
+| **Service requests** | Filter by status/service, search by customer, provider, address or number plate, open a request to see people, price breakdown, review and full status timeline, cancel an active request (reason required). |
+| **Users & providers** | Search all customers and providers, see request counts, suspend (reason required) or restore accounts. Suspended accounts cannot sign in and providers are taken offline. |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Also: real admin sign-in (httpOnly cookie), protected routes, session-expiry redirect, toasts, confirm dialogs, loading skeletons, empty states, keyboard support, dark mode toggle and a mobile layout.
 
-## Expanding the ESLint configuration
+## Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Start the API (`../server`) with `MONGODB_URI` and `JWT_SECRET` set.
+2. Create an admin account (only once):
+
+   ```bash
+   cd ../server
+   npm run create-admin -- --name "Admin" --phone 03001234567 --password "a-strong-password"
+   ```
+
+   Running it again with the same phone resets that admin's password.
+3. Start the panel:
+
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+   Open http://localhost:5173 and sign in with the admin phone and password.
+
+The panel calls the API on port 4000 of the same host by default. Set `VITE_API_BASE_URL` to point elsewhere. In production, set `CORS_ORIGIN` on the server to the panel's URL.
+
+## Admin API (all under `/api/admin`)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/auth/login` | `{ phone, password }`, admins only; sets the auth cookie |
+| POST | `/auth/logout` | clears the cookie |
+| GET | `/auth/me` | current admin |
+| GET | `/dashboard` | stats, breakdowns, 7-day trend, queue, recent requests |
+| GET | `/providers` | `status`, `category`, `search`, `page`, `limit` — no images in list |
+| GET | `/providers/:id` | full profile with documents + recent jobs |
+| PATCH | `/providers/:id/verification` | `{ status, note }` — note required for `rejected` |
+| GET | `/users` | `role`, `status` (`active`/`blocked`), `search`, `page` |
+| PATCH | `/users/:id/block` | `{ blocked, reason }` |
+| GET | `/requests` | `status` (incl. `active`), `category`, `search`, `page` |
+| GET | `/requests/:id` | full request with timeline |
+| PATCH | `/requests/:id/cancel` | `{ reason }` |
+
+Everything except login/logout requires an `admin` account.

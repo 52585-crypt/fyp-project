@@ -1,126 +1,117 @@
-import React, { useMemo, useState } from "react";
-import { adminApi, API_BASE_URL } from "../config/api";
+import { useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { apiErrorMessage } from "../config/api";
+import { Icon } from "../components/Icon";
+import { Button, FullPageLoader } from "../components/ui";
+import { useDocumentTitle } from "../lib/hooks";
 
 export function AdminLogin() {
-  const [email, setEmail] = useState("");
+  useDocumentTitle("Sign in");
+  const { status, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const canSubmit = useMemo(() => email.trim().length > 3 && password.length >= 6, [email, password]);
+  const redirectTo = location.state?.from || "/dashboard";
+
+  if (status === "checking") return <FullPageLoader label="Checking your session…" />;
+  if (status === "authenticated") return <Navigate to={redirectTo} replace />;
+
+  const canSubmit = phone.trim().length >= 10 && password.length >= 6 && !loading;
 
   async function onSubmit(e) {
     e.preventDefault();
+    if (!canSubmit) return;
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError("");
-
-      // Placeholder: will be wired to real admin auth endpoint in backend V1.5 / V5
-      await adminApi.get("/health");
-
-      window.location.href = "/dashboard";
+      await login(phone.trim(), password);
+      navigate(redirectTo, { replace: true });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || "Login failed";
-      setError(`${message}. API: ${API_BASE_URL}`);
+      setError(apiErrorMessage(err, "Sign in failed"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={styles.brandRow}>
-          <div style={styles.logo} />
+    <div className="login-page">
+      <div className="login-aside" aria-hidden="true">
+        <div className="brand brand-light">
+          <span className="brand-mark">
+            <Icon name="car" size={18} />
+          </span>
           <div>
-            <div style={styles.brand}>RapidAssist</div>
-            <div style={styles.tagline}>Admin Panel</div>
+            <div className="brand-name">RapidAssist</div>
+            <div className="brand-tag">Admin console</div>
           </div>
         </div>
-
-        <h1 style={styles.title}>Sign in</h1>
-        <p style={styles.subtitle}>Manage users, mechanics, complaints and requests.</p>
-
-        <form onSubmit={onSubmit} style={{ marginTop: 14 }}>
-          <label style={styles.label}>Email</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@rapidassist.pk"
-            style={styles.input}
-          />
-
-          <div style={{ height: 10 }} />
-          <label style={styles.label}>Password</label>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            type="password"
-            style={styles.input}
-          />
-
-          {error ? <div style={styles.error}>{error}</div> : null}
-
-          <button type="submit" disabled={!canSubmit || loading} style={{ ...styles.button, opacity: !canSubmit || loading ? 0.6 : 1 }}>
-            {loading ? "Please wait..." : "Login"}
-          </button>
-        </form>
+        <div className="login-pitch">
+          <h2>Keep roadside help safe and moving.</h2>
+          <ul>
+            <li><Icon name="shield" /> Verify provider identity documents</li>
+            <li><Icon name="activity" /> Watch live requests and step in when needed</li>
+            <li><Icon name="users" /> Suspend accounts that break the rules</li>
+          </ul>
+        </div>
       </div>
+
+      <main className="login-main">
+        <form className="login-card" onSubmit={onSubmit} noValidate>
+          <h1 className="login-title">Sign in</h1>
+          <p className="muted">Use your RapidAssist admin phone number and password.</p>
+
+          {error ? (
+            <div className="banner banner-danger" role="alert">
+              <Icon name="alert" />
+              <span className="banner-text">{error}</span>
+            </div>
+          ) : null}
+
+          <label className="field">
+            <span className="field-label">Phone number</span>
+            <input
+              className="input"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="03001234567"
+              inputMode="tel"
+              autoComplete="username"
+              autoFocus
+            />
+          </label>
+
+          <label className="field">
+            <span className="field-label">Password</span>
+            <div className="input-with-action">
+              <input
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+              />
+              <button type="button" className="input-action" onClick={() => setShowPassword((v) => !v)}>
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </label>
+
+          <Button type="submit" variant="primary" className="btn-block" loading={loading} disabled={!canSubmit}>
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+
+          <p className="login-help muted">
+            No admin account yet? Run <code>npm run create-admin</code> in the server folder.
+          </p>
+        </form>
+      </main>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: 18,
-    background: "var(--bg)"
-  },
-  card: {
-    width: "100%",
-    maxWidth: 440,
-    border: "1px solid var(--border)",
-    borderRadius: 18,
-    boxShadow: "var(--shadow)",
-    background: "white",
-    padding: 18
-  },
-  brandRow: { display: "flex", gap: 12, alignItems: "center" },
-  logo: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    background: "var(--primary)"
-  },
-  brand: { fontWeight: 900, color: "var(--text)", fontSize: 18 },
-  tagline: { color: "var(--muted)", fontSize: 12 },
-  title: { margin: "16px 0 0", fontSize: 28, fontWeight: 900, color: "var(--text)" },
-  subtitle: { margin: "8px 0 0", color: "var(--muted)" },
-  label: { display: "block", marginTop: 12, marginBottom: 6, color: "var(--muted)", fontSize: 12, fontWeight: 800 },
-  input: {
-    width: "100%",
-    height: 44,
-    borderRadius: 14,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    padding: "0 12px",
-    outline: "none",
-    fontSize: 14
-  },
-  button: {
-    marginTop: 14,
-    width: "100%",
-    height: 46,
-    border: 0,
-    borderRadius: 14,
-    background: "var(--primary)",
-    color: "white",
-    fontWeight: 900,
-    cursor: "pointer"
-  },
-  error: { marginTop: 10, color: "var(--danger)", fontSize: 13, fontWeight: 700 }
-};
-

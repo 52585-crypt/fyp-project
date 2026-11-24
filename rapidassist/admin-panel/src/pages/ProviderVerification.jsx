@@ -1,327 +1,353 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { adminApi } from "../config/api";
-const filters = ["pending", "verified", "rejected", "all"];
+import { useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { adminApi, apiErrorMessage } from "../config/api";
+import { Icon } from "../components/Icon";
+import { Lightbox } from "../components/Lightbox";
+import { useToast } from "../components/Toast";
+import {
+  Avatar,
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorBanner,
+  KeyValue,
+  PageHeader,
+  Pagination,
+  Panel,
+  SearchInput,
+  Select,
+  Skeleton,
+  SkeletonRows,
+  StatusBadge,
+  Tabs
+} from "../components/ui";
+import { formatCurrency, formatDateTime, serviceTitle, statusLabel, timeAgo } from "../lib/format";
+import { useApiResource, useDocumentTitle, useSearchParamInput, useUpdateParams } from "../lib/hooks";
 
-function serviceTitle(serviceCategory) {
-  if (serviceCategory === "fuel_delivery") return "Fuel Delivery";
-  if (serviceCategory === "towing") return "Car Towing";
-  return "Mechanic Service";
-}
+const STATUS_TABS = [
+  { value: "pending", label: "Pending" },
+  { value: "verified", label: "Verified" },
+  { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All" }
+];
 
-function statusTone(status) {
-  if (status === "verified") return { background: "#dcfce7", color: "#166534" };
-  if (status === "rejected") return { background: "#fee2e2", color: "#991b1b" };
-  return { background: "#fef3c7", color: "#92400e" };
-}
+const CATEGORY_OPTIONS = [
+  { value: "", label: "All services" },
+  { value: "mechanic", label: "Mechanic" },
+  { value: "towing", label: "Towing" },
+  { value: "fuel_delivery", label: "Fuel delivery" }
+];
 
 function providerDocs(provider) {
   const profile = provider?.mechanicProfile || {};
   const docs = [
-    { label: "Selfie", value: profile.selfieUrl },
-    { label: "ID front", value: profile.idCardFrontUrl },
-    { label: "ID back", value: profile.idCardBackUrl }
+    { label: "Live selfie", src: profile.selfieUrl },
+    { label: "CNIC front", src: profile.idCardFrontUrl },
+    { label: "CNIC back", src: profile.idCardBackUrl }
   ];
-
   if (profile.serviceCategory === "mechanic") {
-    docs.push(
-      { label: "Workshop photo", value: profile.workshopPhotoUrl },
-      { label: "Certificate", value: profile.certificateUrl }
-    );
+    docs.push({ label: "Workshop photo", src: profile.workshopPhotoUrl }, { label: "Certificate", src: profile.certificateUrl });
   } else {
-    docs.push({ label: "Driving licence", value: profile.drivingLicenseUrl });
+    docs.push({ label: "Driving licence", src: profile.drivingLicenseUrl });
   }
-
   return docs;
 }
 
+function identityTone(status) {
+  if (status === "matched") return "success";
+  if (status === "mismatch") return "danger";
+  if (status === "manual_review") return "warning";
+  return "neutral";
+}
+
 export function ProviderVerification() {
-  const [filter, setFilter] = useState("pending");
-  const [providers, setProviders] = useState([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState("");
+  useDocumentTitle("Provider verification");
+  const toast = useToast();
+  const [params, setParams] = useSearchParams();
+  const status = params.get("status") || "pending";
+  const category = params.get("category") || "";
+  const page = Number(params.get("page")) || 1;
+  const selectedId = params.get("id") || "";
 
-  const selected = useMemo(
-    () => providers.find((provider) => provider.id === selectedId) || providers[0] || null,
-    [providers, selectedId]
-  );
+  const [dialog, setDialog] = useState(null); // "verified" | "rejected" | "pending"
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const detailRef = useRef(null);
 
-  async function loadProviders(nextFilter = filter) {
-    try {
-      setLoading(true);
-      setError("");
-      const res = await adminApi.get("/api/admin/providers", { params: { status: nextFilter } });
-      setProviders(res.data.providers || []);
-      setSelectedId((current) => {
-        const exists = (res.data.providers || []).some((provider) => provider.id === current);
-        return exists ? current : res.data.providers?.[0]?.id || "";
-      });
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Failed to load providers");
-    } finally {
-      setLoading(false);
+  const updateParams = useUpdateParams(setParams);
+  const [search, setSearch] = useSearchParamInput(params, updateParams);
+  const q = params.get("q") || "";
+
+  const listQuery = useApiResource("/api/admin/providers", {
+    status,
+    category: category || undefined,
+    search: q || undefined,
+    page,
+    limit: 15
+  });
+  const list = listQuery.data || { providers: [], counts: {}, pagination: null };
+  const listLoading = listQuery.loading;
+  const listError = listQuery.error;
+  const loadList = listQuery.reload;
+
+  // On desktop, show the first provider when nothing is picked so the detail pane is never blank.
+  const isDesktop = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+  const activeId = selectedId || (isDesktop ? list.providers[0]?.id || "" : "");
+
+  const detailQuery = useApiResource(activeId ? `/api/admin/providers/${activeId}` : null);
+  // Ignore a stale detail payload while the next provider is loading.
+  const detail = detailQuery.data?.provider?.id === activeId ? detailQuery.data : null;
+  const detailLoading = detailQuery.loading;
+  const detailError = detailQuery.error;
+
+  function selectProvider(id) {
+    updateParams({ id });
+    if (!window.matchMedia("(min-width: 1024px)").matches) {
+      setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     }
   }
 
-  async function updateVerification(status) {
-    if (!selected) return;
-
+  async function submitDecision(nextStatus, note) {
+    const provider = detail?.provider;
+    if (!provider) return;
     try {
-      setActionLoading(true);
-      setError("");
-      const res = await adminApi.patch(`/api/admin/providers/${selected.id}/verification`, { status });
-      const updated = res.data.provider;
-      setProviders((current) => {
-        if (filter !== "all" && updated.verificationStatus !== filter) {
-          return current.filter((provider) => provider.id !== updated.id);
-        }
+      await adminApi.patch(`/api/admin/providers/${provider.id}/verification`, { status: nextStatus, note });
+      toast.success(
+        nextStatus === "verified"
+          ? `${provider.name} is now verified`
+          : nextStatus === "rejected"
+            ? `${provider.name} was rejected`
+            : `${provider.name} moved back to pending`
+      );
+      setDialog(null);
 
-        return current.map((provider) => (provider.id === updated.id ? updated : provider));
-      });
-      setSelectedId((current) => (current === updated.id && filter !== "all" && updated.verificationStatus !== filter ? "" : current));
+      // Advance to the next provider in the queue when the current one leaves this filter.
+      const leavesFilter = status !== "all" && nextStatus !== status;
+      if (leavesFilter) {
+        const index = list.providers.findIndex((p) => p.id === provider.id);
+        const next = list.providers[index + 1] || list.providers[index - 1];
+        updateParams({ id: next ? next.id : "" });
+      } else {
+        detailQuery.reload();
+      }
+      loadList();
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Failed to update provider");
-    } finally {
-      setActionLoading(false);
+      toast.error(apiErrorMessage(err, "Could not update provider"));
     }
   }
 
-  useEffect(() => {
-    loadProviders(filter);
-  }, [filter]);
+  const tabs = STATUS_TABS.map((tab) => ({ ...tab, count: list.counts?.[tab.value] }));
+  const provider = detail?.provider;
+  const docs = provider ? providerDocs(provider) : [];
+  const viewableDocs = docs.filter((d) => d.src);
 
   return (
-    <div style={styles.page}>
-      <div style={styles.topbar}>
-        <div>
-          <div style={styles.title}>Provider Verification</div>
-          <div style={styles.subtitle}>Review identity documents and approve service providers.</div>
-        </div>
-        <div style={styles.nav}>
-          <Link to="/dashboard" style={styles.link}>Dashboard</Link>
-          <Link to="/login" style={styles.link}>Logout</Link>
+    <div className="page">
+      <PageHeader title="Provider verification" subtitle="Check identity documents before a provider can take jobs." />
+
+      <div className="toolbar">
+        <Tabs label="Verification status" options={tabs} value={status} onChange={(value) => updateParams({ status: value, page: "", id: "" })} />
+        <div className="toolbar-right">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search name or phone" />
+          <Select label="Service" value={category} onChange={(value) => updateParams({ category: value, page: "", id: "" })} options={CATEGORY_OPTIONS} />
         </div>
       </div>
 
-      <div style={styles.filterRow}>
-        {filters.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setFilter(item)}
-            style={{ ...styles.filterButton, ...(filter === item ? styles.filterButtonActive : null) }}
-          >
-            {item}
-          </button>
-        ))}
-        <button type="button" onClick={() => loadProviders(filter)} style={styles.refreshButton}>
-          {loading ? "Loading..." : "Refresh"}
-        </button>
-      </div>
+      <ErrorBanner message={listError} onRetry={loadList} />
 
-      {error ? <div style={styles.error}>{error}</div> : null}
-
-      <div style={styles.layout}>
-        <div style={styles.list}>
-          {providers.length === 0 ? (
-            <div style={styles.empty}>No providers found for this filter.</div>
+      <div className="split">
+        <Panel className="split-list" bodyClassName="flush">
+          {listLoading && !list.providers.length ? (
+            <div className="pad">
+              <SkeletonRows rows={6} />
+            </div>
+          ) : list.providers.length === 0 ? (
+            <EmptyState
+              icon={status === "pending" ? "check" : "users"}
+              title={status === "pending" && !q ? "Queue is empty" : "No providers found"}
+              text={status === "pending" && !q ? "Every provider has been reviewed." : "Try a different filter or search."}
+            />
           ) : (
-            providers.map((provider) => {
-              const selectedProvider = selected?.id === provider.id;
-              return (
-                <button
-                  key={provider.id}
-                  type="button"
-                  onClick={() => setSelectedId(provider.id)}
-                  style={{ ...styles.providerRow, ...(selectedProvider ? styles.providerRowSelected : null) }}
-                >
-                  <div style={styles.providerName}>{provider.name}</div>
-                  <div style={styles.providerMeta}>{serviceTitle(provider.mechanicProfile?.serviceCategory)} - {provider.phone}</div>
-                  <span style={{ ...styles.status, ...statusTone(provider.verificationStatus) }}>{provider.verificationStatus}</span>
-                </button>
-              );
-            })
+            <ul className={`list selectable ${listLoading ? "is-loading" : ""}`}>
+              {list.providers.map((p) => (
+                <li key={p.id}>
+                  <button type="button" className={`list-row ${p.id === activeId ? "is-selected" : ""}`} onClick={() => selectProvider(p.id)} aria-current={p.id === activeId}>
+                    <Avatar name={p.name} />
+                    <div className="list-main">
+                      <div className="list-title">
+                        {p.name}
+                        {p.isBlocked ? <Badge tone="danger">Suspended</Badge> : null}
+                      </div>
+                      <div className="list-meta">
+                        {serviceTitle(p.mechanicProfile?.serviceCategory)} · {timeAgo(p.createdAt)}
+                      </div>
+                    </div>
+                    <StatusBadge status={p.verificationStatus} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+          <div className="pad-x">
+            <Pagination pagination={list.pagination} onPage={(n) => updateParams({ page: n })} />
+          </div>
+        </Panel>
 
-        <div style={styles.detail}>
-          {!selected ? (
-            <div style={styles.empty}>Select a provider to review.</div>
-          ) : (
-            <>
-              <div style={styles.detailHeader}>
-                <div>
-                  <div style={styles.detailTitle}>{selected.name}</div>
-                  <div style={styles.detailMeta}>{serviceTitle(selected.mechanicProfile?.serviceCategory)} provider</div>
-                </div>
-                <span style={{ ...styles.status, ...statusTone(selected.verificationStatus) }}>{selected.verificationStatus}</span>
+        <div className="split-detail" ref={detailRef}>
+          {!activeId ? (
+            <Panel>
+              <EmptyState icon="shield" title="Select a provider" text="Pick someone from the list to review their documents." />
+            </Panel>
+          ) : detailError ? (
+            <ErrorBanner message={detailError} onRetry={detailQuery.reload} />
+          ) : detailLoading && !provider ? (
+            <Panel>
+              <div className="stack">
+                <Skeleton height={48} />
+                <Skeleton height={120} />
+                <Skeleton height={180} />
               </div>
-
-              <div style={styles.infoGrid}>
-                <Info label="Phone" value={selected.phone} />
-                <Info label="Completed jobs" value={selected.completedJobs || 0} />
-                <Info label="Rating" value={`${selected.ratingAvg || 0} (${selected.ratingCount || 0})`} />
-                <Info label="Identity match" value={selected.mechanicProfile?.identityMatch?.status || "pending"} />
-                <Info label="Live location" value={selected.mechanicProfile?.liveLocation?.addressText || "Not captured"} />
-                <Info label="Joined" value={new Date(selected.createdAt).toLocaleDateString()} />
-              </div>
-
-              <div style={styles.sectionTitle}>Documents</div>
-              <div style={styles.docs}>
-                {providerDocs(selected).map((doc) => (
-                  <div key={doc.label} style={styles.doc}>
-                    <div style={styles.docLabel}>{doc.label}</div>
-                    {doc.value ? (
-                      <>
-                        <img src={doc.value} alt={doc.label} style={styles.docImage} />
-                        <a href={doc.value} target="_blank" rel="noreferrer" style={styles.docLink}>Open full image</a>
-                      </>
-                    ) : (
-                      <div style={styles.missing}>Not uploaded</div>
-                    )}
+            </Panel>
+          ) : provider ? (
+            <Panel className={detailLoading ? "is-loading" : ""}>
+              <div className="detail-head">
+                <Avatar name={provider.name} src={provider.mechanicProfile?.selfieUrl} size={56} />
+                <div className="detail-head-main">
+                  <h2 className="detail-name">{provider.name}</h2>
+                  <div className="detail-meta">
+                    <span><Icon name="phone" size={14} /> {provider.phone}</span>
+                    <span>{serviceTitle(provider.mechanicProfile?.serviceCategory)}</span>
+                    <span>Joined {formatDateTime(provider.createdAt)}</span>
                   </div>
-                ))}
+                </div>
+                <StatusBadge status={provider.verificationStatus} />
               </div>
 
-              <div style={styles.actions}>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateVerification("rejected")}
-                  style={{ ...styles.actionButton, ...styles.rejectButton }}
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateVerification("pending")}
-                  style={{ ...styles.actionButton, ...styles.pendingButton }}
-                >
-                  Mark Pending
-                </button>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateVerification("verified")}
-                  style={{ ...styles.actionButton, ...styles.approveButton }}
-                >
-                  Approve
-                </button>
+              <div className="decision-bar">
+                {provider.verificationStatus !== "verified" ? (
+                  <Button variant="primary" icon="check" onClick={() => setDialog("verified")}>
+                    Approve
+                  </Button>
+                ) : null}
+                {provider.verificationStatus !== "rejected" ? (
+                  <Button variant="danger-soft" icon="x" onClick={() => setDialog("rejected")}>
+                    Reject
+                  </Button>
+                ) : null}
+                {provider.verificationStatus !== "pending" ? (
+                  <Button variant="ghost" icon="refresh" onClick={() => setDialog("pending")}>
+                    Move to pending
+                  </Button>
+                ) : null}
               </div>
-            </>
-          )}
+
+              {provider.verificationReview?.reviewedAt ? (
+                <div className={`banner banner-${provider.verificationStatus === "rejected" ? "danger" : "info"} banner-compact`}>
+                  <Icon name="info" />
+                  <span className="banner-text">
+                    {statusLabel(provider.verificationStatus)} by {provider.verificationReview.reviewedBy?.name || "an admin"} · {timeAgo(provider.verificationReview.reviewedAt)}
+                    {provider.verificationReview.note ? <em className="banner-note">“{provider.verificationReview.note}”</em> : null}
+                  </span>
+                </div>
+              ) : null}
+
+              <h3 className="section-title">Documents</h3>
+              <div className="doc-grid">
+                {docs.map((doc) => {
+                  const viewIndex = viewableDocs.indexOf(doc);
+                  return (
+                    <figure key={doc.label} className="doc">
+                      {doc.src ? (
+                        <button type="button" className="doc-thumb" onClick={() => setLightboxIndex(viewIndex)} aria-label={`View ${doc.label}`}>
+                          <img src={doc.src} alt="" loading="lazy" />
+                          <span className="doc-zoom">
+                            <Icon name="zoom" size={16} />
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="doc-thumb doc-missing">
+                          <Icon name="image" size={22} />
+                          <span>Not uploaded</span>
+                        </div>
+                      )}
+                      <figcaption>{doc.label}</figcaption>
+                    </figure>
+                  );
+                })}
+              </div>
+
+              <h3 className="section-title">Checks</h3>
+              <div className="kv-grid">
+                <KeyValue label="Face match">
+                  <Badge tone={identityTone(provider.mechanicProfile?.identityMatch?.status)}>
+                    {statusLabel(provider.mechanicProfile?.identityMatch?.status || "pending")}
+                    {provider.mechanicProfile?.identityMatch?.score != null ? ` · ${Math.round(provider.mechanicProfile.identityMatch.score * 100)}%` : ""}
+                  </Badge>
+                </KeyValue>
+                <KeyValue label="Live location">{provider.mechanicProfile?.liveLocation?.addressText || "Not captured"}</KeyValue>
+                <KeyValue label="Rating">{provider.ratingCount ? `${Number(provider.ratingAvg).toFixed(1)} (${provider.ratingCount})` : "No ratings"}</KeyValue>
+                <KeyValue label="Completed jobs">{provider.completedJobs || 0}</KeyValue>
+                <KeyValue label="Online">{provider.providerState?.isOnline ? "Yes" : "No"}</KeyValue>
+                <KeyValue label="Last seen">{provider.providerState?.lastSeenAt ? timeAgo(provider.providerState.lastSeenAt) : "—"}</KeyValue>
+              </div>
+
+              {detail.recentJobs?.length ? (
+                <>
+                  <h3 className="section-title">Recent jobs</h3>
+                  <ul className="list compact">
+                    {detail.recentJobs.map((job) => (
+                      <li key={job.id} className="list-row static">
+                        <div className="list-main">
+                          <div className="list-title">{serviceTitle(job.category)}</div>
+                          <div className="list-meta">{formatDateTime(job.createdAt)}</div>
+                        </div>
+                        <span className="muted">{formatCurrency(job.total)}</span>
+                        <StatusBadge status={job.status} />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </Panel>
+          ) : null}
         </div>
       </div>
+
+      <Lightbox images={viewableDocs} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onIndex={setLightboxIndex} />
+
+      <ConfirmDialog
+        open={dialog === "verified"}
+        onClose={() => setDialog(null)}
+        onConfirm={(note) => submitDecision("verified", note)}
+        title={`Approve ${provider?.name || "provider"}?`}
+        message="They will be able to go online and accept jobs immediately. Make sure the selfie matches the CNIC photo."
+        confirmLabel="Approve provider"
+        reason="optional"
+        reasonLabel="Internal note"
+        reasonPlaceholder="e.g. CNIC verified against NADRA copy"
+      />
+      <ConfirmDialog
+        open={dialog === "rejected"}
+        onClose={() => setDialog(null)}
+        onConfirm={(note) => submitDecision("rejected", note)}
+        title={`Reject ${provider?.name || "provider"}?`}
+        message="The provider will not be able to take jobs. Tell them what to fix so they can re-apply."
+        confirmLabel="Reject provider"
+        tone="danger"
+        reason="required"
+        reasonLabel="Reason for rejection"
+        reasonPlaceholder="e.g. CNIC back photo is blurry, please upload a clear photo"
+      />
+      <ConfirmDialog
+        open={dialog === "pending"}
+        onClose={() => setDialog(null)}
+        onConfirm={(note) => submitDecision("pending", note)}
+        title="Move back to pending?"
+        message="The provider will return to the review queue and cannot take new jobs until approved again."
+        confirmLabel="Move to pending"
+        reason="optional"
+        reasonLabel="Internal note"
+      />
     </div>
   );
 }
-
-function Info({ label, value }) {
-  return (
-    <div style={styles.info}>
-      <div style={styles.infoLabel}>{label}</div>
-      <div style={styles.infoValue}>{value || "N/A"}</div>
-    </div>
-  );
-}
-
-const styles = {
-  page: { minHeight: "100vh", padding: 18, background: "var(--bg)" },
-  topbar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-    border: "1px solid var(--border)",
-    borderRadius: 18,
-    padding: 16,
-    background: "white",
-    boxShadow: "var(--shadow)"
-  },
-  title: { fontSize: 22, fontWeight: 900, color: "var(--text)" },
-  subtitle: { marginTop: 4, color: "var(--muted)", fontSize: 13 },
-  nav: { display: "flex", alignItems: "center", gap: 14 },
-  link: { color: "var(--primary)", fontWeight: 900 },
-  filterRow: { marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
-  filterButton: {
-    height: 38,
-    border: "1px solid var(--border)",
-    borderRadius: 12,
-    background: "white",
-    color: "var(--muted)",
-    padding: "0 14px",
-    fontWeight: 900,
-    textTransform: "capitalize",
-    cursor: "pointer"
-  },
-  filterButtonActive: { background: "var(--primary)", borderColor: "var(--primary)", color: "white" },
-  refreshButton: {
-    height: 38,
-    border: "1px solid var(--border)",
-    borderRadius: 12,
-    background: "var(--surface)",
-    color: "var(--text)",
-    padding: "0 14px",
-    fontWeight: 900,
-    cursor: "pointer"
-  },
-  error: {
-    marginTop: 14,
-    border: "1px solid #fecaca",
-    borderRadius: 14,
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: 12,
-    fontWeight: 800
-  },
-  layout: { marginTop: 16, display: "grid", gridTemplateColumns: "360px 1fr", gap: 16, alignItems: "start" },
-  list: { display: "grid", gap: 10 },
-  providerRow: {
-    position: "relative",
-    width: "100%",
-    textAlign: "left",
-    border: "1px solid var(--border)",
-    borderRadius: 14,
-    background: "white",
-    padding: 14,
-    cursor: "pointer"
-  },
-  providerRowSelected: { borderColor: "var(--primary)", boxShadow: "0 0 0 3px rgba(22, 163, 74, 0.12)" },
-  providerName: { color: "var(--text)", fontSize: 15, fontWeight: 900 },
-  providerMeta: { marginTop: 4, color: "var(--muted)", fontSize: 12, fontWeight: 700 },
-  status: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 10,
-    borderRadius: 999,
-    padding: "5px 9px",
-    fontSize: 11,
-    fontWeight: 900,
-    textTransform: "capitalize"
-  },
-  detail: { border: "1px solid var(--border)", borderRadius: 18, background: "white", padding: 16, boxShadow: "var(--shadow)" },
-  detailHeader: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" },
-  detailTitle: { color: "var(--text)", fontSize: 20, fontWeight: 900 },
-  detailMeta: { marginTop: 4, color: "var(--muted)", fontSize: 13, fontWeight: 700 },
-  infoGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
-  info: { border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", padding: 12 },
-  infoLabel: { color: "var(--muted)", fontSize: 11, fontWeight: 900 },
-  infoValue: { marginTop: 5, color: "var(--text)", fontSize: 13, fontWeight: 900, overflowWrap: "anywhere" },
-  sectionTitle: { marginTop: 18, color: "var(--text)", fontSize: 16, fontWeight: 900 },
-  docs: { marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
-  doc: { border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", padding: 10 },
-  docLabel: { color: "var(--text)", fontSize: 12, fontWeight: 900 },
-  docImage: { marginTop: 8, width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", background: "white" },
-  docLink: { display: "inline-block", marginTop: 8, color: "var(--primary)", fontSize: 12, fontWeight: 900 },
-  missing: { marginTop: 8, color: "var(--muted)", fontSize: 12, fontWeight: 800 },
-  actions: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
-  actionButton: { height: 46, border: 0, borderRadius: 14, color: "white", fontWeight: 900, cursor: "pointer" },
-  rejectButton: { background: "var(--danger)" },
-  pendingButton: { background: "#f59e0b" },
-  approveButton: { background: "var(--primary)" },
-  empty: { border: "1px solid var(--border)", borderRadius: 14, background: "white", padding: 14, color: "var(--muted)", fontWeight: 800 }
-};

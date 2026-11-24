@@ -29,6 +29,12 @@ async function requireAuth(req, res, next) {
       throw err;
     }
 
+    if (user.isBlocked) {
+      const err = new Error("Account suspended");
+      err.statusCode = 403;
+      throw err;
+    }
+
     req.user = user;
     next();
   } catch (err) {
@@ -37,5 +43,15 @@ async function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    const err = new Error("Admin access required");
+    err.statusCode = 403;
+    next(err);
+    return;
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin };
 
