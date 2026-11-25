@@ -29,6 +29,8 @@ export type MapCanvasFocus = { coordinate: Coordinate; requestId: number };
 export type MapCanvasProps = {
   markers?: MapCanvasMarker[];
   route?: Coordinate[];
+  /** The whole planned trip (e.g. tow pickup → drop-off), drawn muted and dotted under `route`; not used for fitting. */
+  plannedRoute?: Coordinate[];
   /** Explicit camera target; bump `requestId` to re-centre. Otherwise the camera fits markers + route. */
   focus?: MapCanvasFocus | null;
   /** Pixels covered by overlays (top bar, bottom sheet) that the camera keeps content clear of. In pin mode it only moves controls. */

@@ -19,7 +19,7 @@ export function MapCanvas(props: MapCanvasProps) {
   return isGoogleMapConfigured() ? <GoogleCanvas {...props} /> : <TileCanvas {...props} />;
 }
 
-function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID }: MapCanvasProps) {
+function GoogleCanvas({ markers = [], route = [], plannedRoute = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID }: MapCanvasProps) {
   // Loaded lazily so builds that only use the tile canvas never touch the native map module.
   const { default: MapView, Circle, Marker, Polyline, PROVIDER_GOOGLE } = require("react-native-maps") as typeof import("react-native-maps");
   const map = useRef<MapViewType>(null);
@@ -53,6 +53,9 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
         onRegionChangeComplete={onCenterChange ? (region: Region, details?: Details) => {
           if (details?.isGesture) onCenterChange({ latitude: region.latitude, longitude: region.longitude });
         } : undefined}>
+        {plannedRoute.length > 1 ? (
+          <Polyline coordinates={plannedRoute} strokeColor={tokens.color.routePlanned} strokeWidth={5} lineCap="round" lineDashPattern={[2, 10]} />
+        ) : null}
         {route.length > 1 ? (
           <>
             <Polyline coordinates={route} strokeColor={tokens.color.surface} strokeWidth={10} lineCap="round" lineJoin="round" />

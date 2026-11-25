@@ -1,11 +1,10 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Linking, Pressable, Share, StyleSheet, View } from "react-native";
-import { Button, Card, Icon, Input, MapCard, PersonCard, StatusTimeline, Text, type IconName } from "../../design/components";
+import { Button, Card, Icon, Input, PersonCard, StatusTimeline, Text, type IconName } from "../../design/components";
 import { tapFeedback } from "../../design/haptics";
 import { tokens } from "../../design/tokens";
 import { customerRoutes } from "../../navigation/routes";
-import { requiresGoogleMap } from "../../services/locationMapPolicy";
 import { formatTime } from "../../utils/format";
 import { getServiceTitle } from "../serviceCatalog";
 import { providerNoun, requestTimeline } from "../stages";
@@ -27,26 +26,6 @@ export function shareTrip(request: ServiceRequest) {
 }
 
 /** Map with provider + target and a floating ETA chip. */
-export function LiveMap({ state, request, height }: StageProps & { height?: number }) {
-  const r = state.route;
-  const centre = r.provider ?? r.target;
-  const targetLabel = r.toDestination ? "Drop-off" : request.category === "car_towing" ? "Pickup" : "You";
-  return (
-    <MapCard
-      height={height ?? tokens.sizes.map}
-      badge={state.eta !== "—" ? `${state.eta}${/min/.test(state.eta) ? " away" : ""}` : null}
-      pickup={centre ?? undefined}
-      destination={r.provider ? r.target : null}
-      route={r.route}
-      pickupLabel={r.provider ? providerNoun(request.category) : targetLabel}
-      destinationLabel={targetLabel}
-      title={r.stale ? "Last known provider location" : undefined}
-      requiresGoogleMap={requiresGoogleMap(request.pickupLocation, request.destinationLocation)}
-      interactive
-    />
-  );
-}
-
 /** Assigned provider row with call + chat. */
 export function ProviderRow({ state, request, variant = "plain" }: StageProps & { variant?: "plain" | "hero" }) {
   const p = request.provider;

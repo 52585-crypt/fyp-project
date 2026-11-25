@@ -10,6 +10,7 @@ import { getCustomerStage } from "./stages";
 import { trackingLoadFailure } from "./trackingLoadState";
 import { useActiveLocationRefresh } from "./useActiveLocationRefresh";
 import { customerEta, useCustomerRoute } from "./useCustomerRoute";
+import { useTowTrip } from "./useTowTrip";
 
 const REFRESH_MS = 5000;
 type LoadState = "loading" | "loaded" | "failed" | "unavailable";
@@ -32,6 +33,7 @@ export function useCustomerRequest(requestId: string | null) {
   const sequence = useRef(0);
   const { locationRefreshError, retryLocationRefresh } = useActiveLocationRefresh(token, request, setRequest);
   const route = useCustomerRoute(request);
+  const towTrip = useTowTrip(request);
 
   const load = useCallback(async () => {
     if (!token || !customerId || !requestId) return;
@@ -75,7 +77,7 @@ export function useCustomerRequest(requestId: string | null) {
   }
 
   return {
-    request, loadState, loadError, error, updating, refreshing, connected, route, locationRefreshError,
+    request, loadState, loadError, error, updating, refreshing, connected, route, towTrip, locationRefreshError,
     stage: request ? getCustomerStage(request) : null,
     eta: request ? customerEta(request.status, route) : "—",
     distance: route.loading ? "Calculating…" : route.distance === null ? "—" : `${route.approximate ? "~" : ""}${route.distance.toFixed(1)} km`,

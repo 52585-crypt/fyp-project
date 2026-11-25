@@ -1,22 +1,31 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import { Banner, Button, Card, InfoRow, PriceBreakdown, SuccessHero } from "../../design/components";
+import { StyleSheet, View } from "react-native";
+import { Banner, Button, Card, InfoRow, PriceBreakdown, StatTile, SuccessHero, Text } from "../../design/components";
+import { tokens } from "../../design/tokens";
 import { customerRoutes } from "../../navigation/routes";
 import { providerNoun } from "../stages";
-import { LiveMap, ProviderRow, TripStatus, type StageProps } from "./shared";
+import { ProviderRow, TripStatus, type StageProps } from "./shared";
 
+/** Towing after loading: shown over the live map (planned trip dotted, remaining route live). */
 export function VehiclePickedUpStage(props: StageProps) {
-  const [showMap, setShowMap] = useState(false);
   const { request, state } = props;
+  const total = state.towTrip.km;
   return (
     <>
-      <SuccessHero tone="primary" icon="car-sport" title="Vehicle Picked Up" message="Your vehicle is on the way to the destination." />
-      <Card>
-        <InfoRow icon="flag-outline" label="Destination" value={request.destinationLocation?.addressText ?? "Drop-off location"} stacked />
-        <InfoRow icon="time-outline" label="ETA" value={state.eta} />
-      </Card>
-      {showMap ? <LiveMap {...props} /> : <Button title="View Live Tracking" icon="navigate" onPress={() => setShowMap(true)} />}
+      <View style={styles.head}>
+        <View style={styles.flex}>
+          <Text variant="title" accessibilityLiveRegion="polite">Your vehicle is on the way</Text>
+          <Text variant="bodySmall" color="muted" numberOfLines={2}>To {request.destinationLocation?.addressText ?? "the drop-off location"}</Text>
+        </View>
+      </View>
+      <View style={styles.stats}>
+        <StatTile label="Remaining" value={state.distance} />
+        <StatTile label="ETA" value={state.eta} />
+        {total != null ? <StatTile label="Whole trip" value={`${total.toFixed(1)} km`} /> : null}
+      </View>
+      {state.route.stale ? <Banner tone="warning" message="The driver's live location is delayed. Showing the last known spot." /> : null}
       <ProviderRow {...props} />
+      <TripStatus request={request} />
     </>
   );
 }
@@ -87,3 +96,8 @@ export function ConfirmCompletionStage(props: StageProps) {
   );
 }
 
+const styles = StyleSheet.create({
+  head: { flexDirection: "row", alignItems: "center", gap: tokens.space.md },
+  flex: { flex: 1 },
+  stats: { flexDirection: "row", gap: tokens.space.sm }
+});

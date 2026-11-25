@@ -23,7 +23,7 @@ const look: Record<MapCanvasMarker["kind"], { fill: string; scale: number; strok
   provider: { fill: c.amber, scale: 14, stroke: 3 }
 };
 
-function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID, onFail }:
+function GoogleCanvas({ markers = [], route = [], plannedRoute = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID, onFail }:
   MapCanvasProps & { onFail: () => void }) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -65,7 +65,7 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
   // Overlays are rebuilt only when what is drawn changes (ids, looks, labels, route); positions are moved in place
   // below, so a glide or a 20 s refresh of nearby providers never recreates markers. The camera only moves for its
   // own inputs (ambient markers excluded).
-  const overlayKey = JSON.stringify([markers.map((m) => [m.id, m.kind, m.service, m.label, m.ambient, m.accuracyMeters]), route]);
+  const overlayKey = JSON.stringify([markers.map((m) => [m.id, m.kind, m.service, m.label, m.ambient, m.accuracyMeters]), route, plannedRoute]);
   useEffect(() => {
     if (!ready || !map.current) return;
     const maps = (window as any).google.maps;
@@ -99,6 +99,11 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
       marker.addListener("click", () => onMarker.current?.(m.id));
       track(m.id, marker, (p) => marker.setPosition(p));
     });
+    if (plannedRoute.length > 1) {
+      // Dotted: an invisible stroke carrying a repeated dot symbol.
+      overlays.current.push(new maps.Polyline({ map: map.current, path: plannedRoute.map(at), strokeOpacity: 0, zIndex: 2,
+        icons: [{ icon: { path: maps.SymbolPath.CIRCLE, fillColor: c.routePlanned, fillOpacity: 1, strokeWeight: 0, scale: 2.5 }, offset: "0", repeat: "12px" }] }));
+    }
     if (route.length > 1) {
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.surface, strokeWeight: 10, zIndex: 3 }));
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.primary, strokeWeight: 6, zIndex: 4 }));

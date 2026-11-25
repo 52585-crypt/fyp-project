@@ -70,6 +70,8 @@ const palette = {
   myLocationHalo: "rgba(37, 99, 235, 0.22)",
   myLocationAccuracy: "rgba(37, 99, 235, 0.12)",
   myLocationAccuracyEdge: "rgba(37, 99, 235, 0.35)",
+  /** The planned trip (e.g. tow pickup → drop-off), drawn dotted under the live route. */
+  routePlanned: "rgba(94, 90, 107, 0.6)",
   shadow: brand.ink,
   transparent: "transparent"
 } as const;

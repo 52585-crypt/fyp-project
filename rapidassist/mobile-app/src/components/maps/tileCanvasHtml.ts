@@ -29,6 +29,7 @@ export function tileCanvasState(props: MapCanvasProps) {
       return [{ id: String(m.id), kind, coordinate, label: safeText(m.label), service, ambient: m.ambient === true, accuracyMeters }];
     }),
     route: safePoints(props.route),
+    plannedRoute: safePoints(props.plannedRoute),
     focus: focusPoint ? { coordinate: focusPoint, requestId: safeNumber(props.focus!.requestId) } : null,
     inset: { top: safeNumber(props.inset?.top), bottom: safeNumber(props.inset?.bottom) },
     pinMode: Boolean(props.onCenterChange),
@@ -99,6 +100,10 @@ function pos(m){const g=glides[m.id];let c=m.coordinate;if(g){const t=(performan
   if(t>=1)delete glides[m.id];else{const k=1-Math.pow(1-Math.max(0,t),3);c={latitude:g.from.latitude+(g.to.latitude-g.from.latitude)*k,longitude:g.from.longitude+(g.to.longitude-g.from.longitude)*k};}}
  shown[m.id]=c;return c;}
 function overlay(){const{z,L,T}=view;ov.replaceChildren();
+ // The planned trip: a muted dotted line under the live route.
+ if(st.plannedRoute.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:1';
+  const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',st.plannedRoute.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' '));
+  l.setAttribute('fill','none');l.setAttribute('stroke','${c.routePlanned}');l.setAttribute('stroke-width',5);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-dasharray','1 10');l.setAttribute('class','planned');g.append(l);ov.append(g);}
  if(st.route.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:2';const pts=st.route.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' ');
   [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});ov.append(g);}
  const at=st.markers.map(m=>pos(m));

@@ -221,6 +221,21 @@ describe("map documents treat names, labels and addresses as text", () => {
     dom.window.close();
   });
 
+  it("draws the planned trip as a dotted line under the live route and keeps only finite points", () => {
+    const state = tileCanvasState({ plannedRoute: [{ latitude: 33.71, longitude: 73.05 }, { latitude: "</script>" as never, longitude: 1 }, { latitude: 33.69, longitude: 73.04 }] });
+    expect(state.plannedRoute).toEqual([{ latitude: 33.71, longitude: 73.05 }, { latitude: 33.69, longitude: 73.04 }]);
+    const dom = new JSDOM(buildTileCanvasHtml("canvas-planned", {
+      plannedRoute: [{ latitude: 33.71, longitude: 73.05 }, { latitude: 33.69, longitude: 73.04 }],
+      route: [{ latitude: 33.705, longitude: 73.045 }, { latitude: 33.69, longitude: 73.04 }]
+    }), { runScripts: "dangerously", pretendToBeVisual: true });
+    const planned = dom.window.document.querySelector("polyline.planned")!;
+    expect(planned.getAttribute("stroke-dasharray")).toBe("1 10");
+    const layers = [...dom.window.document.querySelectorAll("svg")];
+    expect(layers.indexOf(planned.parentElement as unknown as SVGSVGElement)).toBe(0); // under the live route
+    expect(layers).toHaveLength(2);
+    dom.window.close();
+  });
+
   it("escapes script-breaking characters in embedded JSON", () => {
     const hostile = "</script><!-- & " + String.fromCharCode(0x2028, 0x2029) + " >";
     const out = scriptJson({ s: hostile });
