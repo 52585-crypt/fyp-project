@@ -1,4 +1,4 @@
-import { getLanguage, setLanguage, strings, t, tp } from "./translate";
+import { getLanguage, hasRightToLeftText, isRightToLeft, onLanguageChange, parseStoredLanguage, setLanguage, strings, t, tp } from "./translate";
 
 const placeholders = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
 
@@ -26,5 +26,33 @@ describe("translations", () => {
     setLanguage("ur");
     expect(tp("nearby", "etaAbout", { minutes: 7 })).toBe("تقریباً 7 منٹ");
     expect(t("nearby", "viewList")).toBe("فہرست");
+  });
+
+  it("notifies listeners once per real change and treats Urdu as right to left", () => {
+    const seen: string[] = [];
+    const stop = onLanguageChange((lang) => seen.push(lang));
+    setLanguage("ur");
+    setLanguage("ur");
+    expect(isRightToLeft()).toBe(true);
+    setLanguage("en");
+    stop();
+    setLanguage("ur");
+    expect(seen).toEqual(["ur", "en"]);
+    expect(isRightToLeft("en")).toBe(false);
+  });
+
+  it("reads a stored preference safely", () => {
+    expect(parseStoredLanguage("ur")).toBe("ur");
+    expect(parseStoredLanguage("en")).toBe("en");
+    for (const bad of [null, undefined, "", "fr", "UR", 1]) expect(parseStoredLanguage(bad)).toBe("en");
+  });
+
+  it("detects Urdu text so only it runs right to left", () => {
+    expect(hasRightToLeftText("زبان")).toBe(true);
+    expect(hasRightToLeftText(["Request ", "کار ٹوئنگ"])).toBe(true);
+    expect(hasRightToLeftText("Vehicles")).toBe(false);
+    expect(hasRightToLeftText(["3.8", " (5)"])).toBe(false);
+    expect(hasRightToLeftText(42)).toBe(false);
+    expect(hasRightToLeftText(null)).toBe(false);
   });
 });

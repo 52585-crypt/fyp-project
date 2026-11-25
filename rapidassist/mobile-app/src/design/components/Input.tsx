@@ -1,5 +1,6 @@
 import { forwardRef, useState, type ReactNode } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
+import { hasRightToLeftText } from "../../i18n/translate";
 import { tokens } from "../tokens";
 import { Field, fieldStyles } from "./Field";
 import { Icon, type IconName } from "./Icon";
@@ -28,7 +29,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({ label, o
           {...rest}
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
-          style={fieldStyles.input}
+          // Urdu typing (or an Urdu placeholder while empty) runs right to left; English stays as it is.
+          style={[fieldStyles.input, hasRightToLeftText(rest.value || rest.placeholder) ? fieldStyles.rtl : null]}
         />
         {right}
       </View>

@@ -33,7 +33,9 @@ export const fieldStyles = StyleSheet.create({
     flex: 1, minWidth: 0, ...tokens.text.body, color: tokens.color.text, paddingVertical: tokens.space.md,
     // The box border already shows focus; drop the browser's default outline on web.
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null)
-  }
+  },
+  /** Urdu typing: right to left, right-aligned. */
+  rtl: { writingDirection: "rtl", textAlign: "right" }
 });
 
 const styles = StyleSheet.create({ wrap: { gap: tokens.space.xs + tokens.space.xxs, minWidth: 0 } });

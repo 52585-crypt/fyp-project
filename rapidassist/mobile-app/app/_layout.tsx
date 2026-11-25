@@ -13,6 +13,7 @@ import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
 import { GoogleOAuthRoot } from "../src/auth/GoogleOAuthRoot";
 
 import { StripeRoot } from "../src/payments/StripeRoot";
+import { LanguageProvider } from "../src/i18n/LanguageProvider";
 
 export default function RootLayout() {
   const fontsReady = useAppFonts();
@@ -21,7 +22,7 @@ export default function RootLayout() {
     <AppErrorBoundary><StripeRoot><GoogleOAuthRoot><ReduxProvider store={store}>
       <PaperProvider theme={paperTheme}>
         <ConnectivityProvider><AuthProvider><NotificationProvider>
-          <DispatchProvider>
+          <DispatchProvider><LanguageProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
@@ -29,7 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="(provider)" />
             <Stack.Screen name="(dev)" />
           </Stack>
-          </DispatchProvider>
+          </LanguageProvider></DispatchProvider>
         </NotificationProvider></AuthProvider></ConnectivityProvider>
       </PaperProvider>
     </ReduxProvider></GoogleOAuthRoot></StripeRoot></AppErrorBoundary>

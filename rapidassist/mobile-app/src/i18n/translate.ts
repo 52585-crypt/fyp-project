@@ -4,13 +4,41 @@
 export type SupportedLanguage = "en" | "ur";
 
 let currentLanguage: SupportedLanguage = "en";
+const listeners = new Set<(lang: SupportedLanguage) => void>();
 
 export function setLanguage(lang: SupportedLanguage) {
+  if (lang === currentLanguage) return;
   currentLanguage = lang;
+  listeners.forEach((listener) => listener(lang));
 }
 
 export function getLanguage(): SupportedLanguage {
   return currentLanguage;
+}
+
+/** Called after every language change; returns an unsubscribe function. */
+export function onLanguageChange(listener: (lang: SupportedLanguage) => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+/** Urdu is written right to left. */
+export function isRightToLeft(lang: SupportedLanguage = currentLanguage) {
+  return lang === "ur";
+}
+
+const ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/** True when the text contains Urdu (Arabic-script) characters, so it should run right to left. */
+export function hasRightToLeftText(text: unknown): boolean {
+  if (typeof text === "string") return ARABIC_SCRIPT.test(text);
+  if (Array.isArray(text)) return text.some(hasRightToLeftText);
+  return false;
+}
+
+/** A stored preference as a supported language; anything else (missing, corrupted) means English. */
+export function parseStoredLanguage(value: unknown): SupportedLanguage {
+  return value === "ur" ? "ur" : "en";
 }
 
 // Base string dictionary supporting both English (default) and future Urdu toggle
@@ -61,6 +89,10 @@ export const strings = {
       wholeTrip: "Whole trip",
       gpsDelayed: "The driver's live location is delayed. Showing the last known spot.",
       pickedUp: "Picked up"
+    },
+    settings: {
+      language: "Language",
+      languageHint: "Labels without a translation stay in English. Messages from the server are in English for now."
     },
     providerNav: {
       toPickup: "Navigate to pickup",
@@ -161,6 +193,10 @@ export const strings = {
       wholeTrip: "کل سفر",
       gpsDelayed: "ڈرائیور کا لائیو مقام تاخیر سے آ رہا ہے۔ آخری معلوم جگہ دکھائی جا رہی ہے۔",
       pickedUp: "یہاں سے اٹھائی گئی"
+    },
+    settings: {
+      language: "زبان",
+      languageHint: "جن عبارتوں کا ترجمہ نہیں ہوا وہ انگریزی میں رہیں گی۔ سرور کے پیغامات فی الحال انگریزی میں ہیں۔"
     },
     providerNav: {
       toPickup: "پک اپ تک راستہ",

@@ -1,17 +1,23 @@
 import { router, type Href } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { Avatar, Badge, Banner, Button, Card, Header, Icon, Screen, Text, type IconName } from "../design/components";
+import { Avatar, Badge, Banner, Button, Card, Header, Icon, Screen, SegmentedControl, Text, type IconName } from "../design/components";
 import { tokens } from "../design/tokens";
 import { getNetworkErrorMessage } from "../config/api";
 import { AccountModeAction } from "./AccountModeAction";
 import { useAuth } from "./AuthProvider";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { t } from "../i18n/translate";
+
+/** Each language is offered in its own script, so either can be found whatever is selected. */
+const LANGUAGES = [{ value: "en", label: "English" }, { value: "ur", label: "اردو" }] as const;
 
 export type ProfileRow = { title: string; icon: IconName; href?: Href; comingSoon?: boolean };
 
 /** Profile tab body shared by customer and provider. */
 export function ProfileView({ rows, roleLabel, extra }: { rows: ReadonlyArray<ProfileRow>; roleLabel: string; extra?: ReactNode }) {
   const { user, logout } = useAuth();
+  const { language, changeLanguage } = useLanguage();
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +41,15 @@ export function ProfileView({ rows, roleLabel, extra }: { rows: ReadonlyArray<Pr
         </View>
       </Card>
       {extra}
+      <Card>
+        <View style={styles.language}>
+          <Icon name="language-outline" color="primary" />
+          <Text variant="bodyMedium" style={styles.flex}>{t("settings", "language")}</Text>
+          <SegmentedControl accessibilityLabel={t("settings", "language")} options={LANGUAGES} value={language}
+            onChange={(next) => void changeLanguage(next)} />
+        </View>
+        <Text variant="caption" color="muted">{t("settings", "languageHint")}</Text>
+      </Card>
       <Card padded={false}>
         {rows.map((r, i) => (
           <Card key={r.title} padded={false} style={[styles.item, i > 0 && styles.divider]}
@@ -56,6 +71,7 @@ export function ProfileView({ rows, roleLabel, extra }: { rows: ReadonlyArray<Pr
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: tokens.space.lg },
+  language: { flexDirection: "row", alignItems: "center", gap: tokens.space.md, marginBottom: tokens.space.sm },
   flex: { flex: 1, gap: tokens.space.xxs },
   item: { borderWidth: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, backgroundColor: tokens.color.transparent },
   divider: { borderTopWidth: tokens.sizes.hairline, borderTopColor: tokens.color.border },

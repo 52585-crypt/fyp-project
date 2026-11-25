@@ -1,7 +1,7 @@
 import { I18nManager } from "react-native";
 import { getLanguage } from "./translate";
 
-export { getLanguage, setLanguage, strings, t, tp, type SupportedLanguage } from "./translate";
+export { getLanguage, isRightToLeft, onLanguageChange, setLanguage, strings, t, tp, type SupportedLanguage } from "./translate";
 
 export const isRTL = () => getLanguage() === "ur" && I18nManager.isRTL;
 
