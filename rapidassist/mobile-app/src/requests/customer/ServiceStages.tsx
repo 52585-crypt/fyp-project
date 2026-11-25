@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { Banner, Button, Card, InfoRow, PriceBreakdown, StatTile, SuccessHero, Text } from "../../design/components";
 import { tokens } from "../../design/tokens";
+import { t, tp } from "../../i18n/translate";
 import { customerRoutes } from "../../navigation/routes";
 import { providerNoun } from "../stages";
 import { ProviderRow, TripStatus, type StageProps } from "./shared";
@@ -14,16 +15,18 @@ export function VehiclePickedUpStage(props: StageProps) {
     <>
       <View style={styles.head}>
         <View style={styles.flex}>
-          <Text variant="title" accessibilityLiveRegion="polite">Your vehicle is on the way</Text>
-          <Text variant="bodySmall" color="muted" numberOfLines={2}>To {request.destinationLocation?.addressText ?? "the drop-off location"}</Text>
+          <Text variant="title" accessibilityLiveRegion="polite">{t("tracking", "towOnTheWay")}</Text>
+          <Text variant="bodySmall" color="muted" numberOfLines={2}>
+            {tp("tracking", "towTo", { place: request.destinationLocation?.addressText ?? t("tracking", "towDropoffFallback") })}
+          </Text>
         </View>
       </View>
       <View style={styles.stats}>
-        <StatTile label="Remaining" value={state.distance} />
-        <StatTile label="ETA" value={state.eta} />
-        {total != null ? <StatTile label="Whole trip" value={`${total.toFixed(1)} km`} /> : null}
+        <StatTile label={t("tracking", "remaining")} value={state.distance} />
+        <StatTile label={t("tracking", "eta")} value={state.eta} />
+        {total != null ? <StatTile label={t("tracking", "wholeTrip")} value={`${total.toFixed(1)} km`} /> : null}
       </View>
-      {state.route.stale ? <Banner tone="warning" message="The driver's live location is delayed. Showing the last known spot." /> : null}
+      {state.route.stale ? <Banner tone="warning" message={t("tracking", "gpsDelayed")} /> : null}
       <ProviderRow {...props} />
       <TripStatus request={request} />
     </>

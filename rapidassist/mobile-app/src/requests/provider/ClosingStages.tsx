@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { Banner, Button, Card, EmptyState, InfoRow, PriceBreakdown, RadioCard, RatingStars, SuccessHero, Text } from "../../design/components";
 import { tokens } from "../../design/tokens";
+import { t } from "../../i18n/translate";
 import { providerRoutes } from "../../navigation/routes";
 import { usePayment } from "../../payments/usePayment";
 import { formatCurrency, formatDateTime } from "../../utils/format";
@@ -17,8 +18,8 @@ export function InProgressStage(props: JobProps) {
       <JobMap {...props} height={tokens.sizes.mapLarge} />
       <Card><InfoRow icon="flag-outline" label="Destination" value={request.destinationLocation?.addressText ?? "Drop-off"} stacked /></Card>
       <JobProgress request={request} />
-      <Button title="Navigate to drop-off" icon="navigate-outline" variant="outline" onPress={() => void job.navigate("destination")}
-        accessibilityHint="Opens Google Maps driving directions" />
+      <Button title={t("providerNav", "toDropoff")} icon="navigate-outline" variant="outline" onPress={() => void job.navigate("destination")}
+        accessibilityHint={t("providerNav", "hint")} />
       <Button title="Reached Destination" icon="flag" loading={job.updating} onPress={job.advance} />
     </>
   );

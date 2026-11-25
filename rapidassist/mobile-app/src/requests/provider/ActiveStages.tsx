@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Banner, Button, Card, Checkbox, InfoRow, PhotoUpload, PriceBreakdown, StatTile, SuccessHero, Text } from "../../design/components";
 import { tokens } from "../../design/tokens";
+import { t } from "../../i18n/translate";
 import { providerRoutes } from "../../navigation/routes";
 import { CancelJob, CustomerRow, JobMap, JobProgress, JobSummary, type JobProps } from "./shared";
 
@@ -32,8 +33,8 @@ export function OnTheWayStage(props: JobProps) {
       <JobMap {...props} height={tokens.sizes.mapLarge} />
       <CustomerRow request={request} />
       <JobProgress request={request} />
-      <Button title="Navigate to pickup" icon="navigate-outline" variant="outline" onPress={() => void job.navigate("pickup")}
-        accessibilityHint="Opens Google Maps driving directions" />
+      <Button title={t("providerNav", "toPickup")} icon="navigate-outline" variant="outline" onPress={() => void job.navigate("pickup")}
+        accessibilityHint={t("providerNav", "hint")} />
       <Button title="I've Arrived" icon="flag" loading={job.updating} onPress={job.advance} />
       <CancelJob job={job} />
     </>

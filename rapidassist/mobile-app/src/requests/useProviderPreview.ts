@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getDrivingRouteMetrics } from "../services/routing";
+import { tp } from "../i18n/translate";
 import type { Coordinate } from "../utils/distance";
 import { MARKER_ID_PREFIX } from "./nearbyProviderMarkers";
 import type { NearbyProvider } from "./requests.types";
@@ -8,7 +9,7 @@ export type ProviderEta = { minutes: number | null; loading: boolean };
 
 /** "about 7 min", or null while unknown. The route starts at the approximate (grid-snapped) position, so it is an estimate. */
 export function etaLabel(minutes: number | null) {
-  return minutes == null ? null : `about ${Math.max(1, Math.round(minutes))} min`;
+  return minutes == null ? null : tp("nearby", "etaAbout", { minutes: Math.max(1, Math.round(minutes)) });
 }
 
 /**

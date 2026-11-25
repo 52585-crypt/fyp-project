@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { tokens, type ColorToken } from "../tokens";
+import { t, tp } from "../../i18n/translate";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
 import { IconButton } from "./IconButton";
@@ -33,6 +34,7 @@ export function ProviderPreviewCard({
   actionLabel, onAction, onClose, testID
 }: Props) {
   const rated = rating != null && rating > 0 && Boolean(ratingCount);
+  const ratingText = rated ? tp("nearby", "ratingValue", { rating: rating!.toFixed(1), count: ratingCount! }) : t("nearby", "newProvider");
   const eta = etaLoading ? "…" : etaLabel ?? "—";
   return (
     <View style={styles.root} testID={testID}>
@@ -44,21 +46,21 @@ export function ProviderPreviewCard({
           <Text variant="bodyStrong" numberOfLines={1}>{name}</Text>
           <Text variant="caption" color="muted" numberOfLines={1}>{serviceLabel}</Text>
         </View>
-        {onClose ? <IconButton icon="close" label="Close provider details" tone="soft" size={tokens.sizes.buttonSmall} onPress={onClose} /> : null}
+        {onClose ? <IconButton icon="close" label={t("nearby", "closeDetails")} tone="soft" size={tokens.sizes.buttonSmall} onPress={onClose} /> : null}
       </View>
       <View style={styles.stats}>
-        <Stat label="Rating" accessibilityValue={rated ? `${rating!.toFixed(1)} from ${ratingCount} reviews` : "New provider"}>
+        <Stat label={t("nearby", "rating")} accessibilityValue={ratingText}>
           {rated ? (
             <View style={styles.inline}>
               <Icon name="star" color="star" size={tokens.sizes.iconSmall - 2} />
               <Text variant="captionStrong">{rating!.toFixed(1)}</Text>
               <Text variant="caption" color="muted">({ratingCount})</Text>
             </View>
-          ) : <Text variant="captionStrong">New provider</Text>}
+          ) : <Text variant="captionStrong">{t("nearby", "newProvider")}</Text>}
         </Stat>
-        <Stat label="Jobs" accessibilityValue={`${completedJobs} completed`}><Text variant="captionStrong">{completedJobs}</Text></Stat>
-        <Stat label="Distance"><Text variant="captionStrong">{distanceLabel}</Text></Stat>
-        <Stat label="ETA" accessibilityValue={etaLoading ? "calculating" : etaLabel ?? "unavailable"}>
+        <Stat label={t("nearby", "jobs")} accessibilityValue={tp("nearby", "jobsCompleted", { count: completedJobs })}><Text variant="captionStrong">{completedJobs}</Text></Stat>
+        <Stat label={t("nearby", "distance")}><Text variant="captionStrong">{distanceLabel}</Text></Stat>
+        <Stat label={t("nearby", "eta")} accessibilityValue={etaLoading ? t("nearby", "etaCalculating") : etaLabel ?? t("nearby", "etaUnavailable")}>
           <Text variant="captionStrong">{eta}</Text>
         </Stat>
       </View>

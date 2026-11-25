@@ -1,6 +1,7 @@
 import { Linking, Platform } from "react-native";
 import type { RequestLocation } from "../requests/requests.types";
 import { hasOperationalCoordinates } from "../services/locationMapPolicy";
+import { t } from "../i18n/translate";
 
 export function canNavigateTo(location?: RequestLocation | null) {
   return hasOperationalCoordinates(location);
@@ -42,6 +43,6 @@ export async function openExternalNavigation(location: RequestLocation, opener: 
     await opener.openURL(links.web);
     return links.web;
   } catch {
-    throw new Error("No maps app or browser could open the directions.");
+    throw new Error(t("providerNav", "noMapsApp"));
   }
 }

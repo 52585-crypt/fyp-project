@@ -1,5 +1,6 @@
 import type { MapCanvasMarker } from "../../components/maps/MapCanvas.types";
 import { hasOperationalCoordinates } from "../../services/locationMapPolicy";
+import { t } from "../../i18n/translate";
 import type { Coordinate } from "../../utils/distance";
 import type { ServiceRequest } from "../requests.types";
 import { providerNoun, type CustomerStage } from "../stages";
@@ -35,7 +36,7 @@ export function liveMapContent(stage: CustomerStage, request: ServiceRequest, st
   }
   const start = stage === "vehicle_picked_up" ? point(request.pickupLocation) : null;
   const markers: MapCanvasMarker[] = [
-    ...(start ? [{ id: "start", kind: "pickup" as const, coordinate: start, label: "Picked up" }] : []),
+    ...(start ? [{ id: "start", kind: "pickup" as const, coordinate: start, label: t("tracking", "pickedUp") }] : []),
     { id: "provider", kind: "provider", coordinate: r.provider, label: r.stale ? "Last known" : providerNoun(request.category) },
     ...(r.target ? [{ id: "target", kind: r.toDestination ? "destination" as const : "pickup" as const, coordinate: r.target, label: r.toDestination ? "Drop-off" : "You" }] : [])
   ];

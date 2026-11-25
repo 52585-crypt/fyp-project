@@ -8,6 +8,7 @@ import {
 } from "../../../src/design/components";
 import { tapFeedback } from "../../../src/design/haptics";
 import { tokens } from "../../../src/design/tokens";
+import { t, tp } from "../../../src/i18n/translate";
 import { customerRoutes } from "../../../src/navigation/routes";
 import { useNotifications } from "../../../src/notifications/NotificationProvider";
 import { NearbyProviderCard } from "../../../src/requests/customer/NearbyProviderCard";
@@ -49,7 +50,7 @@ export default function CustomerHome() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <MapCanvas accessibilityLabel={map.approximate ? "Map of your approximate location" : "Map of your location"} inset={{ top: topInset, bottom: peek }}
+      <MapCanvas accessibilityLabel={t("location", map.approximate ? "mapLabelApprox" : "mapLabel")} inset={{ top: topInset, bottom: peek }}
         focus={map.focus} onMarkerPress={preview.select} markers={map.position
           ? [...nearbyProviderMarkers(near.providers ?? []), {
             id: "me", kind: "user", coordinate: map.position, accuracyMeters: map.approximate ? map.accuracyMeters ?? undefined : undefined
@@ -69,7 +70,7 @@ export default function CustomerHome() {
         <BottomSheet key={preview.selected.id} aboveTabBar peek={peek} accessibilityLabel="Provider details">
           <NearbyProviderCard provider={preview.selected} fallbackCategory="mechanic" eta={preview.eta} onClose={preview.close}
             onRequest={(category) => { preview.close(); router.push(customerRoutes.newRequest(category)); }} />
-          <Text variant="caption" color="muted">Location shown is approximate. We send your request to the best available provider nearby.</Text>
+          <Text variant="caption" color="muted">{t("nearby", "approxNotice")}</Text>
         </BottomSheet>
       ) : (
         <BottomSheet aboveTabBar peek={peek} accessibilityLabel="Services">
@@ -82,7 +83,7 @@ export default function CustomerHome() {
 
           <View style={styles.gapSm}>
             <Text variant="title">Where do you need help?</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}${map.approximate ? " (approximate)" : ""}. Recentre map`}
+            <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}${map.approximate ? t("location", "approximateSuffix") : ""}. Recentre map`}
               onPress={() => { tapFeedback(); void map.locate(); }} style={styles.place}>
               <View style={styles.placeIcon}><Icon name="navigate" color="primary" size={tokens.sizes.iconSmall} /></View>
               <View style={styles.flex}>
@@ -91,7 +92,7 @@ export default function CustomerHome() {
                   {map.locating && !map.position ? "Finding you…" : map.address ?? (map.position ? "Current location" : "Location off")}
                 </Text>
                 {map.approximate && map.accuracyMeters ? (
-                  <Text variant="caption" color="muted">Approximate, within about {Math.round(map.accuracyMeters)} m</Text>
+                  <Text variant="caption" color="muted">{tp("location", "approximateWithin", { meters: Math.round(map.accuracyMeters) })}</Text>
                 ) : null}
               </View>
               <Text variant="captionStrong" color="primary">Refresh</Text>

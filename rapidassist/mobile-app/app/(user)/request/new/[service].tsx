@@ -10,6 +10,7 @@ import {
 import { SERVICE_AREA_MESSAGE, isInServiceArea } from "../../../../src/config/serviceArea";
 import { TWIN_CITY_LANDMARKS } from "../../../../src/config/twinCityLandmarks";
 import { tokens } from "../../../../src/design/tokens";
+import { t } from "../../../../src/i18n/translate";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
 import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
@@ -27,7 +28,6 @@ import { applyNormalizedLocationTarget, normalizeLocation, type NormalizedLocati
 type Step = "pickup" | "destination";
 type ProvidersView = "map" | "list";
 
-const VIEWS = [{ value: "map", label: "Map", icon: "map-outline" }, { value: "list", label: "List", icon: "list" }] as const;
 // The toggle sits just below the top bar; the list starts below the toggle.
 const TOGGLE_GAP = tokens.space.sm;
 const LIST_GAP = TOGGLE_GAP + tokens.sizes.buttonSmall + tokens.space.xxs * 2 + tokens.space.lg;
@@ -104,7 +104,9 @@ export default function PickupPin() {
         ) : null}
         {step === "pickup" ? (
           <View pointerEvents="box-none" style={[styles.toggle, { top: topInset + TOGGLE_GAP }]}>
-            <SegmentedControl accessibilityLabel="Show nearby providers as" options={VIEWS} value={view}
+            <SegmentedControl accessibilityLabel={t("nearby", "viewToggle")} value={view} options={[
+              { value: "map", label: t("nearby", "viewMap"), icon: "map-outline" }, { value: "list", label: t("nearby", "viewList"), icon: "list" }
+            ]}
               onChange={(v) => { preview.close(); setView(v); }} />
           </View>
         ) : null}
@@ -120,7 +122,7 @@ export default function PickupPin() {
         <BottomSheet fixed>
           <NearbyProviderCard provider={card} fallbackCategory={category} eta={preview.eta} onClose={preview.close}
             onRequest={() => { preview.close(); confirm(); }} />
-          <Text variant="caption" color="muted">Location shown is approximate. We send your request to the best available provider nearby.</Text>
+          <Text variant="caption" color="muted">{t("nearby", "approxNotice")}</Text>
         </BottomSheet>
       ) : (
         <BottomSheet fixed footer={

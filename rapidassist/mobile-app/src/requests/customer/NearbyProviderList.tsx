@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet } from "react-native";
 import { Card, EmptyState, SkeletonCard, Text } from "../../design/components";
 import { tokens } from "../../design/tokens";
+import { t, tp } from "../../i18n/translate";
 import type { Coordinate } from "../../utils/distance";
 import { sortNearbyProviders } from "../nearbyProviderMarkers";
 import type { NearbyProvider, RequestCategory } from "../requests.types";
@@ -26,19 +27,17 @@ export function NearbyProviderList({ providers, offline, category, pickup, onReq
   const eta = useProviderEtas(sorted, pickup, true);
   return (
     <ScrollView style={styles.fill} contentContainerStyle={[styles.body, { paddingTop: topInset }]}
-      accessibilityLabel={`Nearby ${getServiceTitle(category)} providers`}>
+      accessibilityLabel={tp("nearby", "listLabel", { service: getServiceTitle(category) })}>
       {sorted === null ? (
         <><SkeletonCard /><SkeletonCard /></>
       ) : sorted.length === 0 && offline ? (
-        <EmptyState icon="cloud-offline-outline" title="Can't load nearby providers"
-          message="You seem to be offline. We'll retry automatically when you're back online." />
+        <EmptyState icon="cloud-offline-outline" title={t("nearby", "offlineTitle")} message={t("nearby", "offlineMessage")} />
       ) : sorted.length === 0 ? (
-        <EmptyState icon="map-outline" title="No providers nearby right now"
-          message="You can still send a request and we will look for an available provider for you." />
+        <EmptyState icon="map-outline" title={t("nearby", "emptyTitle")} message={t("nearby", "emptyMessage")} />
       ) : (
         <>
           <Text variant="caption" color="muted">
-            {sorted.length} online near your pickup · locations are approximate. We send your request to the best available provider.
+            {tp("nearby", "listSummary", { count: sorted.length })}
           </Text>
           {sorted.map((p) => (
             <Card key={p.id}>

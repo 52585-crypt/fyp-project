@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { successFeedback } from "../../design/haptics";
 import { hasOperationalCoordinates } from "../../services/locationMapPolicy";
 import { getDrivingRouteMetrics } from "../../services/routing";
+import { t } from "../../i18n/translate";
 import type { Coordinate } from "../../utils/distance";
 import { openExternalNavigation } from "../../utils/navigation";
 import { useDispatchUpdates } from "../DispatchProvider";
@@ -83,7 +84,7 @@ export function useProviderJob(requestId: string | null) {
     /** Google Maps driving directions (native navigation on Android, web fallback) to the pickup or, for towing, the drop-off. */
     navigate: async (to: "pickup" | "destination" = toDestination ? "destination" : "pickup") => {
       const target = to === "destination" ? request?.destinationLocation : request?.pickupLocation;
-      if (!target) return setError(to === "destination" ? "This job has no drop-off location." : "The pickup location is unavailable.");
+      if (!target) return setError(t("providerNav", to === "destination" ? "noDropoff" : "noPickup"));
       try { setError(null); await openExternalNavigation(target); }
       catch (e) { setError(message(e, "Failed to open navigation")); }
     }

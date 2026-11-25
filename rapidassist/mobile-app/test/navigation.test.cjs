@@ -5,7 +5,18 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
 
+function transpile(relative) {
+  const filename = path.resolve(__dirname, "..", relative);
+  const { outputText } = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  });
+  const module = { exports: {} };
+  vm.runInNewContext(outputText, { module, exports: module.exports, require }, { filename });
+  return module.exports;
+}
+
 function loadNavigation() {
+  const translate = transpile("src/i18n/translate.ts");
   const filename = path.resolve(__dirname, "../src/utils/navigation.ts");
   const { outputText } = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
@@ -14,6 +25,7 @@ function loadNavigation() {
   vm.runInNewContext(outputText, {
     module, exports: module.exports, Error,
     require: (name) => name === "react-native" ? { Linking: { openURL: async () => {} }, Platform: { OS: "android" } }
+      : name === "../i18n/translate" ? translate
       : name === "../services/locationMapPolicy" ? { hasOperationalCoordinates: (l) => Number.isFinite(l?.lat) && Number.isFinite(l?.lng) }
       : require(name)
   }, { filename });
