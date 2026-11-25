@@ -1,4 +1,5 @@
 const express = require("express");
+const { readCoordinates } = require("../services/locationInput");
 const { createHash, randomBytes } = require("node:crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { User, MECHANIC_SERVICE_CATEGORIES } = require("../models/User");
@@ -148,11 +149,6 @@ async function issueProviderEnrollment(res, user, identity) {
   return sendProviderEnrollment(res, updated, identity, enrollmentTicket);
 }
 
-function parseNum(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return n;
-}
 
 function normalizeImageData(v, message, options = {}) {
   const value = normalizeStr(v);
@@ -188,10 +184,12 @@ function validateMechanicProfile(input) {
     optional: serviceCategory === "mechanic"
   });
 
-  const lat = parseNum(input?.liveLocation?.lat);
-  const lng = parseNum(input?.liveLocation?.lng);
+  const raw = input?.liveLocation;
+  const point = raw?.lat == null && raw?.lng == null ? null : readCoordinates(raw.lat, raw.lng);
+  if ((raw?.lat != null || raw?.lng != null) && !point) throw Object.assign(new Error("Live location must be valid coordinates"), { statusCode: 400 });
+  const { lat, lng } = point || {};
   const liveLocation =
-    lat != null && lng != null
+    point
       ? {
           lat,
           lng,

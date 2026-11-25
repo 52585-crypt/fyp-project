@@ -1,13 +1,10 @@
 const express = require("express");
+const { readCoordinates } = require("../services/locationInput");
 const { requireAuth } = require("../middleware/auth.middleware");
 const { createLocationRateLimit } = require("../middleware/locationRateLimit.middleware");
 const { autocompleteGooglePlaces: defaultAutocomplete } = require("../services/googlePlacesAutocomplete");
 const { resolveGooglePlaceSelection: defaultResolveSelection, validatePlaceId, validateSessionToken } = require("../services/googlePlaceResolution");
 
-function coordinate(value, max) {
-  const number = Number(value);
-  return Number.isFinite(number) && Math.abs(number) <= max ? number : null;
-}
 
 function createLocationsRouter(options = {}) {
   const router = express.Router();
@@ -24,8 +21,9 @@ function createLocationsRouter(options = {}) {
       const input = typeof req.body?.input === "string" ? req.body.input.trim() : "";
       const sessionToken = typeof req.body?.sessionToken === "string" ? req.body.sessionToken.trim() : "";
       validateSessionToken(sessionToken);
-      const latitude = req.body?.near == null ? null : coordinate(req.body.near.latitude, 90);
-      const longitude = req.body?.near == null ? null : coordinate(req.body.near.longitude, 180);
+      const near = req.body?.near == null ? null : readCoordinates(req.body.near.latitude, req.body.near.longitude);
+      const latitude = near?.lat ?? null;
+      const longitude = near?.lng ?? null;
       if (input.length < 3 || input.length > 120) throw Object.assign(new Error("Location query must be between 3 and 120 characters."), { statusCode: 400 });
       if (req.body?.near != null && (latitude == null || longitude == null)) throw Object.assign(new Error("Invalid location bias."), { statusCode: 400 });
       const suggestions = await autocomplete(input, sessionToken, {

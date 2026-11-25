@@ -31,6 +31,7 @@ const { recordActivity, recordRejectedAction } = require("../services/adminActiv
 const { ensureOperationalLocation } = require("../services/operationalLocation");
 const { getDrivingRouteMetrics } = require("../services/roadRouting");
 const { SERVICE_AREA_MESSAGE, isInServiceArea } = require("../config/serviceArea");
+const { requireCoordinates } = require("../services/locationInput");
 const { approxLocation, distanceBand } = require("../services/approxLocation");
 
 function badRequest(message) {
@@ -143,9 +144,7 @@ async function refreshProviderRating(providerId) {
 }
 
 function normalizeLocation(input, label) {
-  const lat = parseNum(input?.lat);
-  const lng = parseNum(input?.lng);
-  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest(`${label} valid lat/lng required`);
+  const { lat, lng } = requireCoordinates(input?.lat, input?.lng, { message: `${label} valid lat/lng required` });
   const source = input?.source == null ? null : normalizeStr(input.source);
   if (source && !["gps", "manual_map", "google_places", "photon"].includes(source)) throw badRequest(`${label} invalid source`);
   const placeId = input?.placeId == null ? null : normalizeStr(input.placeId);
@@ -164,9 +163,7 @@ function normalizeLocation(input, label) {
 
 function optionalLocation(input) {
   if (!input) return null;
-  const lat = parseNum(input.lat);
-  const lng = parseNum(input.lng);
-  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw badRequest("Valid location lat/lng required");
+  const { lat, lng } = requireCoordinates(input.lat, input.lng, { message: "Valid location lat/lng required" });
   const now = new Date();
   const deviceCapturedAt = input.capturedAt ? new Date(input.capturedAt) : now;
   if (Number.isNaN(deviceCapturedAt.getTime())) throw badRequest("Invalid location capture time");
@@ -528,13 +525,8 @@ async function listNearbyProviders(req, res, next) {
       throw badRequest(`category must be one of: ${REQUEST_CATEGORIES.join(", ")}`);
     }
 
-    const origin = {
-      lat: parseNum(req.query?.lat),
-      lng: parseNum(req.query?.lng)
-    };
-    if (origin.lat == null || origin.lng == null || Math.abs(origin.lat) > 90 || Math.abs(origin.lng) > 180) {
-      throw badRequest("Valid lat and lng are required");
-    }
+    // No service-area check here: the home map may hold an approximate position just outside the twin cities.
+    const origin = requireCoordinates(req.query?.lat, req.query?.lng, { message: "Valid lat and lng are required" });
 
     const dispatchRadiusKm = radiusFor();
     const steps = [dispatchRadiusKm, ...PREVIEW_EXPANSION_KM.filter((km) => km > dispatchRadiusKm)];
