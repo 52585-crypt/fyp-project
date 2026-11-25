@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { hasOperationalCoordinates } from "../services/locationMapPolicy";
 import { getDrivingRouteMetrics } from "../services/routing";
-import { distanceKm, type Coordinate } from "../utils/distance";
+import type { Coordinate } from "../utils/distance";
+import { liveEta, nextEtaDelay, type LiveEta } from "./liveEta";
 import type { RequestLocation, ServiceRequest } from "./requests.types";
 
 const GPS_FRESHNESS_MS = 45_000;
@@ -13,15 +14,17 @@ function useRequestCoordinate(location?: RequestLocation | null): Coordinate | n
   return useMemo(() => latitude === null || longitude === null ? null : { latitude, longitude }, [latitude, longitude]);
 }
 
-type RouteResult = {
-  key: string;
+type RouteResult = LiveEta & {
+  /** Request + target the ETA belongs to; kept while the provider moves within the same leg. */
+  leg: string;
   attempt: number;
-  distance: number;
-  minutes: number;
-  route: Coordinate[];
-  approximate: boolean;
 };
 
+/**
+ * Live route + ETA from the provider's latest position to the current target (pickup, or the drop-off once a
+ * towed vehicle is loaded). OSRM is called at most every 30 s per leg (trailing, so the newest position is
+ * used); between calls the last ETA stays on screen. When OSRM fails the straight-line estimate is shown.
+ */
 export function useCustomerRoute(request: ServiceRequest | null) {
   const provider = useRequestCoordinate(request?.providerLocation);
   const toDestination = request?.category === "car_towing"
@@ -34,67 +37,45 @@ export function useCustomerRoute(request: ServiceRequest | null) {
   const fromLng = provider?.longitude;
   const toLat = target?.latitude;
   const toLng = target?.longitude;
-  const key = provider && target && !closed && !stale
-    ? JSON.stringify([request?.id, fromLat, fromLng, toLat, toLng])
-    : null;
+  const live = Boolean(provider && target && !closed && !stale);
+  const leg = live ? JSON.stringify([request?.id, toLat, toLng]) : null;
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<RouteResult | null>(null);
+  const lastCall = useRef<{ leg: string; at: number } | null>(null);
 
   useEffect(() => {
-    if (!key || fromLat === undefined || fromLng === undefined || toLat === undefined || toLng === undefined) return;
+    if (!leg || fromLat === undefined || fromLng === undefined || toLat === undefined || toLng === undefined) return;
     let active = true;
     const from = { latitude: fromLat, longitude: fromLng };
     const to = { latitude: toLat, longitude: toLng };
+    const run = () => {
+      lastCall.current = { leg, at: Date.now() };
+      void liveEta(from, to, getDrivingRouteMetrics).then((eta) => { if (active) setResult({ ...eta, leg, attempt }); });
+    };
+    // A newer position cancels a pending timer, so the call that finally runs uses the latest position.
+    const delay = nextEtaDelay(lastCall.current, leg, Date.now());
+    const timer = delay > 0 ? setTimeout(run, delay) : null;
+    if (!timer) run();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [attempt, fromLat, fromLng, leg, toLat, toLng]);
 
-    async function load() {
-      if (!key) return;
-      try {
-        const metrics = await getDrivingRouteMetrics(from, to);
-        if (active) setResult({
-          key,
-          attempt,
-          distance: metrics.distanceKm,
-          minutes: metrics.durationMinutes || approximateMinutes(distanceKm(from, to)),
-          route: metrics.coordinates,
-          approximate: false
-        });
-      } catch {
-        const directDistance = distanceKm(from, to);
-        if (active) setResult({
-          key,
-          attempt,
-          distance: directDistance,
-          minutes: approximateMinutes(directDistance),
-          route: EMPTY_ROUTE,
-          approximate: true
-        });
-      }
-    }
-
-    void load();
-    return () => { active = false; };
-  }, [attempt, fromLat, fromLng, key, toLat, toLng]);
-
-  const current = key && result?.key === key ? result : null;
+  const current = leg && result?.leg === leg ? result : null;
   return {
     provider,
     target,
     toDestination,
     stale,
-    loading: Boolean(key && !current),
+    loading: Boolean(leg && !current),
     distance: current?.distance ?? null,
     minutes: current?.minutes ?? null,
     route: current?.route ?? EMPTY_ROUTE,
     approximate: current?.approximate ?? false,
     retry() {
       if (!current?.approximate || current.attempt !== attempt) return;
+      lastCall.current = null; // an explicit retry skips the 30 s wait
       setAttempt((value) => value === attempt ? value + 1 : value);
     }
   };
-}
-
-function approximateMinutes(km: number) {
-  return Math.max(1, Math.round((km / 30) * 60));
 }
 
 export function customerEta(status: ServiceRequest["status"], route: ReturnType<typeof useCustomerRoute>) {

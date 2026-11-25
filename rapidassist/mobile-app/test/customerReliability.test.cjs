@@ -56,6 +56,11 @@ test("tracking retries an approximate ETA with unchanged coordinates and restore
   let effects = [];
   const react = {
     useMemo: (factory) => factory(),
+    useRef(initial) {
+      const i = index++;
+      if (!(i in cells)) cells[i] = { current: initial };
+      return cells[i];
+    },
     useState(initial) {
       const i = index++;
       if (!(i in cells)) cells[i] = initial;
@@ -73,6 +78,7 @@ test("tracking retries an approximate ETA with unchanged coordinates and restore
     react,
     "../services/locationMapPolicy": { hasOperationalCoordinates: (value) => Boolean(value) },
     "../utils/distance": { distanceKm: () => 4 },
+    "./liveEta": load("src/requests/liveEta.ts", { "../utils/distance": { distanceKm: () => 4 } }, { Math, Date }),
     "../services/routing": { getDrivingRouteMetrics: async (from, to) => {
       if (++calls === 1) throw new Error("unavailable");
       return { distanceKm: 5, durationMinutes: 10, coordinates: [from, to] };
