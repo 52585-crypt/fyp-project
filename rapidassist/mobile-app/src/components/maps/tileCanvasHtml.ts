@@ -1,6 +1,6 @@
 import { tokens } from "../../design/tokens";
 import { LEGACY_MAP_TILES } from "./legacyMapTiles";
-import { MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasProps } from "./MapCanvas.types";
+import { MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, MAP_CANVAS_GLIDE_MS, MAP_CANVAS_MAX_GLIDE_KM, type MapCanvasProps } from "./MapCanvas.types";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { safeNumber, safePoint, safePoints, safeText, scriptJson } from "./mapHtmlSafety";
 import { accuracyRadius, MAP_CANVAS_SERVICES, type MapCanvasMarker } from "./MapCanvas.types";
@@ -70,6 +70,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-f
 <button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">−</button></div>
 <div class="credit" id="credit"></div><script>
 const boot=${boot};let st=boot.state;const map=document.getElementById('map');
+// Tiles and overlays live in separate layers, so a marker glide redraws only the overlay layer.
+const tl=document.createElement('div'),ov=document.createElement('div');tl.style.cssText='position:absolute;left:0;top:0;right:0;bottom:0';ov.style.cssText=tl.style.cssText+';z-index:1';map.append(tl,ov);
+let view={z:0,L:0,T:0},shown={},glides={},raf=0,fitted='';
 let cam={lat:st.initialCenter.latitude,lng:st.initialCenter.longitude,z:13},moved=false,lastFocus=null,drag=null,pinch=null;
 const W=()=>innerWidth,H=()=>innerHeight;
 function px(lat,lng,z){const s=Math.sin(Math.max(-85,Math.min(85,lat))*Math.PI/180),n=256*Math.pow(2,z);return{x:(lng+180)/360*n,y:(0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n};}
@@ -83,21 +86,39 @@ function fit(){const p=pts();const top=st.inset.top+${MAP_CANVAS_EDGE},bot=st.in
  else{let z=17;for(;z>3;z--){const q=p.map(c=>px(c.latitude,c.longitude,z));const w=Math.max(...q.map(a=>a.x))-Math.min(...q.map(a=>a.x)),h=Math.max(...q.map(a=>a.y))-Math.min(...q.map(a=>a.y));if(w<W()-2*${MAP_CANVAS_EDGE}&&h<H()-top-bot)break;}
   const q=p.map(c=>px(c.latitude,c.longitude,z));const cx=(Math.max(...q.map(a=>a.x))+Math.min(...q.map(a=>a.x)))/2,cy=(Math.max(...q.map(a=>a.y))+Math.min(...q.map(a=>a.y)))/2+(bot-top)/2;const c=ll(cx,cy,z);cam={lat:c.lat,lng:c.lng,z};}
 }
-function draw(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=o.y-H()/2;map.replaceChildren();
- for(let x=Math.floor(L/256);x<=Math.floor((L+W())/256);x++)for(let y=Math.floor(T/256);y<=Math.floor((T+H())/256);y++){const n=Math.pow(2,z);if(y<0||y>=n)continue;const i=document.createElement('img');i.className='tile';i.alt='';i.draggable=false;i.src=boot.tiles.baseUrl+'/'+z+'/'+(((x%n)+n)%n)+'/'+y+'.png'+boot.tiles.query;i.style.left=(x*256-L)+'px';i.style.top=(y*256-T)+'px';map.append(i);}
+function draw(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=o.y-H()/2;view={z,L,T};tl.replaceChildren();
+ for(let x=Math.floor(L/256);x<=Math.floor((L+W())/256);x++)for(let y=Math.floor(T/256);y<=Math.floor((T+H())/256);y++){const n=Math.pow(2,z);if(y<0||y>=n)continue;const i=document.createElement('img');i.className='tile';i.alt='';i.draggable=false;i.src=boot.tiles.baseUrl+'/'+z+'/'+(((x%n)+n)%n)+'/'+y+'.png'+boot.tiles.query;i.style.left=(x*256-L)+'px';i.style.top=(y*256-T)+'px';tl.append(i);}
+ overlay();document.getElementById('ctl').style.top=(st.inset.top+16)+'px';document.getElementById('credit').style.bottom=(st.inset.bottom+4)+'px';}
+// Live markers glide to a new position (ease-out over ${MAP_CANVAS_GLIDE_MS} ms) instead of jumping; moves over ${MAP_CANVAS_MAX_GLIDE_KM} km snap.
+function same(a,b){return a.latitude===b.latitude&&a.longitude===b.longitude;}
+function near(a,b){const y=(b.latitude-a.latitude)*111.32,x=(b.longitude-a.longitude)*111.32*Math.cos(a.latitude*Math.PI/180);return Math.hypot(x,y)<=${MAP_CANVAS_MAX_GLIDE_KM};}
+function retarget(markers){const now=performance.now(),ids={};markers.forEach(m=>{ids[m.id]=1;const g=glides[m.id],last=shown[m.id];
+  if((!g||!same(g.to,m.coordinate))&&last&&!same(last,m.coordinate)){if(near(last,m.coordinate))glides[m.id]={from:last,to:m.coordinate,start:now};else delete glides[m.id];}});
+ Object.keys(shown).forEach(id=>{if(!ids[id]){delete shown[id];delete glides[id];}});}
+function pos(m){const g=glides[m.id];let c=m.coordinate;if(g){const t=(performance.now()-g.start)/${MAP_CANVAS_GLIDE_MS};
+  if(t>=1)delete glides[m.id];else{const k=1-Math.pow(1-Math.max(0,t),3);c={latitude:g.from.latitude+(g.to.latitude-g.from.latitude)*k,longitude:g.from.longitude+(g.to.longitude-g.from.longitude)*k};}}
+ shown[m.id]=c;return c;}
+function overlay(){const{z,L,T}=view;ov.replaceChildren();
  if(st.route.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:2';const pts=st.route.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' ');
-  [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});map.append(g);}
+  [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});ov.append(g);}
+ const at=st.markers.map(m=>pos(m));
  // Accuracy circles: metres to pixels at this latitude and zoom (Web Mercator).
- st.markers.forEach(m=>{if(!(m.accuracyMeters>0))return;const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const r=m.accuracyMeters/(156543.03392*Math.cos(m.coordinate.latitude*Math.PI/180)/Math.pow(2,z));
-  const a=document.createElement('div');a.className='acc';a.style.width=a.style.height=(2*r)+'px';a.style.left=(p.x-L)+'px';a.style.top=(p.y-T)+'px';map.append(a);});
- st.markers.forEach(m=>{const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const icon=m.service&&boot.icons[m.service];const d=document.createElement(icon?'img':'div');
-  d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.dataset.mid=m.id;d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
+ st.markers.forEach((m,i)=>{if(!(m.accuracyMeters>0))return;const c=at[i],p=px(c.latitude,c.longitude,z);const r=m.accuracyMeters/(156543.03392*Math.cos(c.latitude*Math.PI/180)/Math.pow(2,z));
+  const a=document.createElement('div');a.className='acc';a.style.width=a.style.height=(2*r)+'px';a.style.left=(p.x-L)+'px';a.style.top=(p.y-T)+'px';ov.append(a);});
+ st.markers.forEach((m,i)=>{const p=px(at[i].latitude,at[i].longitude,z);const icon=m.service&&boot.icons[m.service];const d=document.createElement(icon?'img':'div');
+  d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.dataset.mid=m.id;d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';ov.append(d);
   // Ambient markers (nearby providers) carry their name for screen readers only, so many of them do not clutter the map.
   if(m.label&&m.ambient){d.setAttribute('role','img');d.setAttribute('aria-label',m.label);}
-  else if(m.label){const b=document.createElement('div');b.className='lbl';b.textContent=m.label;b.style.left=d.style.left;b.style.top=d.style.top;map.append(b);}});
- document.getElementById('ctl').style.top=(st.inset.top+16)+'px';document.getElementById('credit').style.bottom=(st.inset.bottom+4)+'px';}
-function update(next){st=next;const f=st.focus;if(f&&(!lastFocus||f.requestId!==lastFocus)){lastFocus=f.requestId;moved=false;centerOn(f.coordinate.latitude,f.coordinate.longitude,${MAP_CANVAS_FOCUS_ZOOM});}
- else if(!moved&&!st.pinMode)fit();draw();}
+  else if(m.label){const b=document.createElement('div');b.className='lbl';b.textContent=m.label;b.style.left=d.style.left;b.style.top=d.style.top;ov.append(b);}});
+ if(Object.keys(glides).length&&!raf)raf=requestAnimationFrame(()=>{raf=0;overlay();});}
+// Whether every point to keep in view is inside the padded viewport at the current camera.
+function inView(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=o.y-H()/2,e=${MAP_CANVAS_EDGE};
+ return pts().every(c=>{const p=px(c.latitude,c.longitude,z),x=p.x-L,y=p.y-T;return x>=e&&x<=W()-e&&y>=st.inset.top+e&&y<=H()-st.inset.bottom-e;});}
+// Refit when what is shown changes (markers added/removed, a route appears) or a point would leave the view; a live
+// position update inside the view keeps the camera still, so the marker visibly glides instead of the map jumping.
+function update(next){retarget(next.markers);st=next;const f=st.focus;const shape=JSON.stringify([st.markers.filter(m=>!m.ambient).map(m=>m.id),st.route.length>1,st.inset]);
+ if(f&&(!lastFocus||f.requestId!==lastFocus)){lastFocus=f.requestId;moved=false;centerOn(f.coordinate.latitude,f.coordinate.longitude,${MAP_CANVAS_FOCUS_ZOOM});}
+ else if(!moved&&!st.pinMode&&(shape!==fitted||!inView()))fit();fitted=shape;draw();}
 window.rapidassistUpdate=update;
 addEventListener('message',e=>{const d=e.data;if(d&&d.rapidassistMapState)update(JSON.parse(d.rapidassistMapState));});
 function report(){if(st.pinMode)send({type:'center',latitude:cam.lat,longitude:cam.lng});}

@@ -10,6 +10,7 @@ import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { accuracyRadius, canvasPoints, MAP_CANVAS_EDGE, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
 import { SERVICE_MARKERS } from "./serviceGlyphs";
 import { TileCanvas } from "./TileCanvas";
+import { useGlidingMarkers } from "./useGlidingMarkers";
 
 const DELTA = 0.012;
 
@@ -24,6 +25,8 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
   const map = useRef<MapViewType>(null);
   const start = initialCenter ?? markers[0]?.coordinate ?? BOOKING_MAP_CENTER;
   const contentKey = JSON.stringify(canvasPoints(markers, route));
+  // Drawn positions glide between live updates; the camera still fits the real targets.
+  const drawn = useGlidingMarkers(markers);
 
   const place = () => {
     if (focus) return map.current?.animateToRegion({ ...focus.coordinate, latitudeDelta: DELTA, longitudeDelta: DELTA }, tokens.motion.normal * 2);
@@ -56,14 +59,14 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
             <Polyline coordinates={route} strokeColor={tokens.color.primary} strokeWidth={6} lineCap="round" lineJoin="round" />
           </>
         ) : null}
-        {markers.map((m) => {
+        {drawn.map((m) => {
           const radius = accuracyRadius(m);
           return radius ? (
             <Circle key={`accuracy:${m.id}`} center={m.coordinate} radius={radius} zIndex={0}
               fillColor={tokens.color.myLocationAccuracy} strokeColor={tokens.color.myLocationAccuracyEdge} strokeWidth={1} />
           ) : null;
         })}
-        {markers.map((m) => (
+        {drawn.map((m) => (
           <Marker key={m.id} coordinate={m.coordinate} title={onMarkerPress ? undefined : m.label} anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={m.kind === "provider"} onPress={onMarkerPress ? () => onMarkerPress(m.id) : undefined}>
             <MarkerDot marker={m} />

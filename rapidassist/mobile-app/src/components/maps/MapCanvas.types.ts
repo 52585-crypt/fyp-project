@@ -49,6 +49,31 @@ export const MAP_CANVAS_EDGE = 48;
 /** Largest accuracy circle drawn; matches the coarsest fix the app accepts. */
 export const MAP_CANVAS_MAX_ACCURACY_METERS = 2_000;
 
+/** A moved marker glides to its new position over this long instead of jumping (live provider updates). */
+export const MAP_CANVAS_GLIDE_MS = 900;
+/** Moves longer than this snap: a glide across town would show a car driving through buildings. */
+export const MAP_CANVAS_MAX_GLIDE_KM = 3;
+
+/** Ease-out cubic progress for a glide that is `t` (0..1) of the way through. */
+export function glideProgress(t: number) {
+  const c = Math.min(1, Math.max(0, t));
+  return 1 - (1 - c) ** 3;
+}
+
+/** The position `t` (0..1) of the way through a glide from `from` to `to`. */
+export function glidePoint(from: Coordinate, to: Coordinate, t: number): Coordinate {
+  const k = glideProgress(t);
+  return { latitude: from.latitude + (to.latitude - from.latitude) * k, longitude: from.longitude + (to.longitude - from.longitude) * k };
+}
+
+/** Whether a move from `from` to `to` should glide (it moved, and not further than the snap distance). */
+export function shouldGlide(from: Coordinate, to: Coordinate) {
+  if (from.latitude === to.latitude && from.longitude === to.longitude) return false;
+  const kmLat = (to.latitude - from.latitude) * 111.32;
+  const kmLng = (to.longitude - from.longitude) * 111.32 * Math.cos((from.latitude * Math.PI) / 180);
+  return Math.hypot(kmLat, kmLng) <= MAP_CANVAS_MAX_GLIDE_KM;
+}
+
 /** The accuracy circle radius for a marker, or null when none should be drawn. */
 export function accuracyRadius(marker: Pick<MapCanvasMarker, "kind" | "accuracyMeters">): number | null {
   const r = Number(marker.accuracyMeters);

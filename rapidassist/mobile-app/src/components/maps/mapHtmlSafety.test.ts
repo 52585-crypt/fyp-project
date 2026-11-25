@@ -2,6 +2,7 @@ import { JSDOM } from "jsdom";
 import { buildPreviewHtml } from "../LocationMapPreview.shared";
 import { safePoint, scriptJson } from "./mapHtmlSafety";
 import { buildTileCanvasHtml, tileCanvasState } from "./tileCanvasHtml";
+import { MAP_CANVAS_GLIDE_MS } from "./MapCanvas.types";
 
 const XSS = "<img src=x onerror=alert(1)>";
 const BREAKOUT = "</script><script>window.pwned = 1</script>";
@@ -170,6 +171,54 @@ describe("map documents treat names, labels and addresses as text", () => {
     // Zoom 15 at 33.7° N: 156543.03392 × cos(33.7°) / 2^15 ≈ 3.975 m per pixel, so 800 m ≈ 201 px radius.
     expect(width / 2).toBeCloseTo(800 / (156543.03392 * Math.cos(33.7 * Math.PI / 180) / 2 ** 15), 1);
     expect(circles(undefined)).toEqual([]);
+  });
+
+  it("glides a moved marker to its new position, snaps long jumps, and redraws no tiles while gliding", async () => {
+    // Each update carries a new focus request on the same point, so the camera stays put and screen x is comparable.
+    let focusId = 0;
+    const props = (latitude: number, longitude: number) => ({
+      focus: { coordinate: { latitude: 33.72, longitude: 73.06 }, requestId: ++focusId },
+      markers: [{ id: "provider", kind: "provider" as const, label: XSS, coordinate: { latitude, longitude } }]
+    });
+    const dom = new JSDOM(buildTileCanvasHtml("canvas-glide", props(33.72, 73.06)), { runScripts: "dangerously", pretendToBeVisual: true });
+    const w = dom.window as unknown as Window & { rapidassistUpdate: (s: unknown) => void; pwned?: number };
+    const left = () => parseFloat((w.document.querySelector(".m.provider") as HTMLElement).style.left);
+    const start = left();
+    w.rapidassistUpdate(tileCanvasState(props(33.72, 73.062))); // ≈ 190 m east
+    const firstTile = w.document.querySelector(".tile");
+    const right = (() => { const d = new JSDOM(buildTileCanvasHtml("x", props(33.72, 73.062)), { runScripts: "dangerously", pretendToBeVisual: true });
+      const v = parseFloat((d.window.document.querySelector(".m.provider") as HTMLElement).style.left); d.window.close(); return v; })();
+    expect(right).toBeGreaterThan(start + 10);
+    expect(left()).toBeLessThan(start + (right - start) / 2); // just started: still near the old spot
+    await new Promise((r) => setTimeout(r, MAP_CANVAS_GLIDE_MS / 2));
+    const mid = left();
+    expect(mid).toBeGreaterThan(start);
+    expect(mid).toBeLessThan(right);
+    expect(w.document.querySelector(".tile")).toBe(firstTile); // only the overlay layer redraws during a glide
+    await new Promise((r) => setTimeout(r, MAP_CANVAS_GLIDE_MS));
+    expect(left()).toBeCloseTo(right, 3);
+    w.rapidassistUpdate(tileCanvasState(props(33.60, 73.05))); // ≈ 13 km: snaps at once
+    const snapped = w.document.querySelector(".m.provider") as HTMLElement;
+    expect(snapped.style.left).not.toBe(String(right) + "px");
+    expect(w.document.querySelector(".lbl")!.textContent).toBe(XSS);
+    expect(w.pwned).toBeUndefined();
+    dom.window.close();
+  });
+
+  it("keeps the camera still for a live update inside the view and refits when a point leaves it", () => {
+    const props = (latitude: number, longitude: number) => ({ markers: [
+      { id: "provider", kind: "provider" as const, coordinate: { latitude, longitude } },
+      { id: "pickup", kind: "pickup" as const, coordinate: { latitude: 33.7104, longitude: 73.0563 } }
+    ] });
+    const dom = new JSDOM(buildTileCanvasHtml("canvas-camera", props(33.7180, 73.0640)), { runScripts: "dangerously", pretendToBeVisual: true });
+    const w = dom.window as unknown as Window & { rapidassistUpdate: (s: unknown) => void };
+    const pickup = () => (w.document.querySelector(".m.pickup") as HTMLElement).style.cssText;
+    const before = pickup();
+    w.rapidassistUpdate(tileCanvasState(props(33.7170, 73.0630))); // moved closer: still in view
+    expect(pickup()).toBe(before);
+    w.rapidassistUpdate(tileCanvasState(props(33.7700, 73.1200))); // ~8 km away: out of view, so the camera refits
+    expect(pickup()).not.toBe(before);
+    dom.window.close();
   });
 
   it("escapes script-breaking characters in embedded JSON", () => {
