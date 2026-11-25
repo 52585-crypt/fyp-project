@@ -964,7 +964,8 @@ async function approveExtraWork(req, res, next) {
       throw badRequest("This extra-work request was already decided or is unavailable");
     }
 
-    const approved = Boolean(req.body?.approved ?? true);
+    const approved = req.body?.approved;
+    if (typeof approved !== "boolean") throw badRequest("approved must be true or false");
     const extraWork = request.mechanicDetails.extraWork;
     const amount = Number(extraWork.partPrice || 0) + Number(extraWork.laborCharge || 0);
     const nextStatus = approved ? "work_started" : "inspection_started";

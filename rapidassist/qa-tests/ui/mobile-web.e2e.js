@@ -322,8 +322,28 @@ async function customerJourney(page, context, customer, { fuelP, towP, mechP }) 
     await tap(page, "Find providers");
     mechId = await waitRequestUrl(page);
     const r = (await customer.get(`/api/requests/${mechId}`)).body.request;
-    await customer.patch(`/api/requests/${mechId}/status`, { status: "cancelled" });
     return { pass: r.category === "mechanic" && r.mechanicDetails?.issueCategory === "battery", actual: `issue=${r.mechanicDetails?.issueCategory}, total=${r.estimate.total}` };
+  });
+  await step("Customer", "Reject extra work from the app", "mechanic accepts + starts inspection + requests extra work (API) -> customer taps Reject", "server: extraWork rejected, back to inspection_started, total unchanged", async () => {
+    const offer = mechId && await waitOffer(mechP, mechId);
+    if (!offer) return { pass: false, actual: "no dispatch offer reached the mechanic" };
+    await mechP.patch(`/api/requests/${mechId}/accept`, { offerId: offer.dispatch.offerId });
+    for (const st of ["provider_on_way", "provider_arrived", "inspection_started"]) await mechP.patch(`/api/requests/${mechId}/status`, { status: st });
+    await mechP.patch(`/api/requests/${mechId}/extra-work`, { partName: "Battery terminal", partPrice: 800, laborCharge: 200, description: "Corroded terminal" });
+    await page.goto(`${APP}/request/${mechId}`, { waitUntil: "networkidle" });
+    await tap(page, "Reject", { timeout: 20000 });
+    await page.waitForTimeout(2000);
+    const g = (await customer.get(`/api/requests/${mechId}`)).body.request;
+    return { pass: g.status === "inspection_started" && g.mechanicDetails.extraWork.status === "rejected" && g.estimate.total === 1250, actual: `status=${g.status}, extraWork=${g.mechanicDetails.extraWork.status}, total=${g.estimate.total}` };
+  });
+  await step("Customer", "Approve extra work from the app", "mechanic requests extra work again (API) -> customer taps Approve & Continue", "server: extraWork approved, work_started, total 1250 + 5000", async () => {
+    await mechP.patch(`/api/requests/${mechId}/extra-work`, { partName: "Battery 12V", partPrice: 4500, laborCharge: 500, description: "Replace battery" });
+    await page.reload({ waitUntil: "networkidle" });
+    await tap(page, "Approve & Continue", { timeout: 20000 });
+    await page.waitForTimeout(2000);
+    const g = (await customer.get(`/api/requests/${mechId}`)).body.request;
+    await customer.patch(`/api/requests/${mechId}/status`, { status: "cancelled" });
+    return { pass: g.status === "work_started" && g.mechanicDetails.extraWork.status === "approved" && g.estimate.total === 6250, actual: `status=${g.status}, extraWork=${g.mechanicDetails.extraWork.status}, total=${g.estimate.total}` };
   });
 
   await step("Customer", "History / Requests tab", "open Requests tab -> History", "lists the fuel (completed), towing and mechanic (cancelled) requests", async () => {

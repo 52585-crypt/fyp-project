@@ -803,10 +803,16 @@ async function main() {
     await R.check("ExtraWork", "Customer rejects extra work; price unchanged", "PATCH extra-work/approve {approved:false}", "200 status=inspection_started, total stays 1250", async () =>
       ({ pass: rj.status === 200 && rj.body?.request?.status === "inspection_started" && rj.body.request.estimate.total === 1250 && rj.body.request.mechanicDetails.extraWork.status === "rejected", actual: `HTTP ${rj.status}, status=${rj.body?.request?.status}, total=${rj.body?.request?.estimate?.total}` }));
     await mech.patch(`/api/requests/${req.id}/extra-work`, { description: "Engine mount", partPrice: 2000, laborCharge: 0 });
-    const strFalse = await user.patch(`/api/requests/${req.id}/extra-work/approve`, { approved: "false" });
-    await R.check("ExtraWork", "approved:\"false\" (string) is treated as a rejection", "PATCH extra-work/approve {approved:\"false\"}", "400 (invalid) or rejection – never an approval",
-      async () => ({ pass: strFalse.status === 400 || strFalse.body?.request?.mechanicDetails?.extraWork?.status === "rejected", actual: `HTTP ${strFalse.status}, extraWork.status=${strFalse.body?.request?.mechanicDetails?.extraWork?.status}, total=${strFalse.body?.request?.estimate?.total}` }));
-    if (mechJobB && (await user.get(`/api/requests/${req.id}`)).body.request.status === "inspection_started") await advance(mech, req.id, "work_started");
+    for (const [label, body] of [["approved:\"false\" (string)", { approved: "false" }], ["approved:\"true\" (string)", { approved: "true" }], ["approved missing", {}], ["approved:1", { approved: 1 }], ["approved:null", { approved: null }]]) {
+      const r = await user.patch(`/api/requests/${req.id}/extra-work/approve`, body);
+      await R.check("ExtraWork", `Extra-work decision rejected: ${label}`, `PATCH extra-work/approve ${JSON.stringify(body)}`, "400; extra work still pending, price unchanged", async () => {
+        const g = (await user.get(`/api/requests/${req.id}`)).body.request;
+        return { pass: r.status === 400 && g.status === "extra_work_requested" && g.mechanicDetails.extraWork.status === "pending" && g.estimate.total === 1250, actual: `HTTP ${r.status}, status=${g.status}, extraWork=${g.mechanicDetails.extraWork.status}, total=${g.estimate.total}` };
+      });
+    }
+    const realTrue = await user.patch(`/api/requests/${req.id}/extra-work/approve`, { approved: true });
+    await R.check("ExtraWork", "Boolean true approves the second extra-work request", "PATCH extra-work/approve {approved:true}", "200 work_started, total 1250 + 2000 = 3250", async () =>
+      ({ pass: realTrue.status === 200 && realTrue.body?.request?.status === "work_started" && realTrue.body.request.estimate.total === 3250, actual: `HTTP ${realTrue.status}, status=${realTrue.body?.request?.status}, total=${realTrue.body?.request?.estimate?.total}` }));
     await R.check("Lifecycle", "mechanic: work_started -> service_finished", "PATCH status=service_finished", "200", async () =>
       expectStatus(await advance(mech, req.id, "service_finished"), 200));
     await completeAndPay("mechanic B", mech, req);
