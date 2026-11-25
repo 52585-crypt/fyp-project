@@ -14,7 +14,9 @@ import { NearbyProviderCard } from "../../../src/requests/customer/NearbyProvide
 import { RequestCard } from "../../../src/requests/customer/RequestCard";
 import { useHomeMap } from "../../../src/requests/customer/useHomeMap";
 import { nearbyProviderMarkers } from "../../../src/requests/nearbyProviderMarkers";
+import { nearbyOfflineMessage } from "../../../src/requests/nearbyPolling";
 import { useNearbyProviders } from "../../../src/requests/useNearbyProviders";
+import { formatTime } from "../../../src/utils/format";
 import { useMyRequests } from "../../../src/requests/useMyRequests";
 import { useProviderPreview } from "../../../src/requests/useProviderPreview";
 
@@ -98,6 +100,7 @@ export default function CustomerHome() {
 
           {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
           {near.notice ? <Banner tone="warning" message={near.notice} /> : null}
+          {near.offline ? <Banner tone="warning" message={nearbyOfflineMessage(near.updatedAt, formatTime)} /> : null}
           {map.error && !map.position ? <Banner tone="warning" message="Turn on location so providers can find you. You can still set a pickup pin manually." /> : null}
 
           <View style={styles.grid}>

@@ -16,7 +16,9 @@ import { normalizeBookingCategory } from "../../../../src/requests/booking/categ
 import { NearbyProviderCard } from "../../../../src/requests/customer/NearbyProviderCard";
 import { NearbyProviderList } from "../../../../src/requests/customer/NearbyProviderList";
 import { nearbyProviderMarkers } from "../../../../src/requests/nearbyProviderMarkers";
+import { nearbyOfflineMessage } from "../../../../src/requests/nearbyPolling";
 import { useNearbyProviders } from "../../../../src/requests/useNearbyProviders";
+import { formatTime } from "../../../../src/utils/format";
 import { useProviderPreview } from "../../../../src/requests/useProviderPreview";
 import { mechanicServices } from "../../../../src/requests/booking/options";
 import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
@@ -97,7 +99,7 @@ export default function PickupPin() {
         <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
         {listing ? (
           <View style={StyleSheet.absoluteFill}>
-            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={topInset + LIST_GAP} />
+            <NearbyProviderList providers={near.providers} offline={near.offline} category={category} pickup={b.pickup} onRequest={confirm} topInset={topInset + LIST_GAP} />
           </View>
         ) : null}
         {step === "pickup" ? (
@@ -165,6 +167,7 @@ export default function PickupPin() {
           ) : null}
 
           {step === "pickup" && near.notice ? <Banner tone="warning" message={near.notice} /> : null}
+        {step === "pickup" && near.offline ? <Banner tone="warning" message={nearbyOfflineMessage(near.updatedAt, formatTime)} /> : null}
         {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
           {b.error && !(outsideArea && b.error === SERVICE_AREA_MESSAGE) ? <Banner tone="danger" message={b.error} /> : null}
         </BottomSheet>

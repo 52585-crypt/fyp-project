@@ -11,6 +11,8 @@ import { NearbyProviderCard } from "./NearbyProviderCard";
 type Props = {
   /** null while the first load is in flight. */
   providers: readonly NearbyProvider[] | null;
+  /** The last refresh failed: an empty list then means "unknown", not "nobody nearby". */
+  offline?: boolean;
   category: RequestCategory;
   pickup: Coordinate | null;
   onRequest: () => void;
@@ -19,7 +21,7 @@ type Props = {
 };
 
 /** List view of nearby providers: nearest band first, then best rated. Same card as a marker tap. */
-export function NearbyProviderList({ providers, category, pickup, onRequest, topInset }: Props) {
+export function NearbyProviderList({ providers, offline, category, pickup, onRequest, topInset }: Props) {
   const sorted = providers ? sortNearbyProviders(providers) : null;
   const eta = useProviderEtas(sorted, pickup, true);
   return (
@@ -27,6 +29,9 @@ export function NearbyProviderList({ providers, category, pickup, onRequest, top
       accessibilityLabel={`Nearby ${getServiceTitle(category)} providers`}>
       {sorted === null ? (
         <><SkeletonCard /><SkeletonCard /></>
+      ) : sorted.length === 0 && offline ? (
+        <EmptyState icon="cloud-offline-outline" title="Can't load nearby providers"
+          message="You seem to be offline. We'll retry automatically when you're back online." />
       ) : sorted.length === 0 ? (
         <EmptyState icon="map-outline" title="No providers nearby right now"
           message="You can still send a request and we will look for an available provider for you." />

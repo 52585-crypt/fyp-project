@@ -1,11 +1,12 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { onReconnected } from "../services/networkManager";
 import { rateLimitWait } from "../services/rateLimit";
+import { NEARBY_REFRESH_MS, nearbyRetryMs } from "./nearbyPolling";
 import { listNearbyProviders } from "./requests.api";
 import type { NearbyProvider, RequestCategory } from "./requests.types";
 
-const REFRESH_MS = 20_000;
 /** Wait for the point to settle (pin drags) before querying. */
 const SETTLE_MS = 400;
 
@@ -17,9 +18,11 @@ type NearbyState = {
   updatedAt: number | null;
   /** Shown to the user while the server asks us to slow down (429); null otherwise. */
   notice: string | null;
+  /** The last refresh failed (offline or server unreachable); `providers` is then the last list that loaded. */
+  offline: boolean;
 };
 
-const EMPTY: NearbyState = { providers: null, radiusKm: null, dispatchRadiusKm: null, expanded: false, updatedAt: null, notice: null };
+const EMPTY: NearbyState = { providers: null, radiusKm: null, dispatchRadiusKm: null, expanded: false, updatedAt: null, notice: null, offline: false };
 
 /** The server's 429 limit is per user, so the pause is shared by every screen polling nearby providers. */
 let pausedUntil = 0;
@@ -47,7 +50,8 @@ export function useNearbyProviders(categories: RequestCategory | readonly Reques
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const list = key.split(",") as RequestCategory[];
-    const schedule = (ms: number) => { if (active) timer = setTimeout(() => void run(), ms); };
+    let failures = 0;
+    const schedule = (ms: number) => { if (active) { if (timer) clearTimeout(timer); timer = setTimeout(() => void run(), ms); } };
     const run = async () => {
       const wait = pausedUntil - Date.now();
       if (wait > 0) return schedule(wait);
@@ -60,20 +64,25 @@ export function useNearbyProviders(categories: RequestCategory | readonly Reques
           dispatchRadiusKm: results[0].dispatchRadiusKm ?? results[0].radiusKm,
           expanded: results.some((r) => Boolean(r.expanded)),
           updatedAt: Date.now(),
-          notice: null
+          notice: null,
+          offline: false
         });
-        schedule(REFRESH_MS);
+        failures = 0;
+        schedule(NEARBY_REFRESH_MS);
       } catch (e) {
         if (!active) return;
-        // 429: stay quiet for Retry-After and say why; the last list stays on the map.
+        // The last list stays on the map. 429: stay quiet for Retry-After and say why. Anything else (offline, server
+        // unreachable, timeout): mark offline and retry with backoff, or at once when the connection comes back.
         const limited = rateLimitWait(e);
         if (limited) pausedUntil = Date.now() + limited.waitMs;
-        setState((v) => ({ ...v, providers: v.providers ?? [], notice: limited?.message ?? v.notice }));
-        schedule(limited ? limited.waitMs : REFRESH_MS);
+        else failures += 1;
+        setState((v) => ({ ...v, providers: v.providers ?? [], notice: limited?.message ?? v.notice, offline: !limited }));
+        schedule(limited ? limited.waitMs : nearbyRetryMs(failures));
       }
     };
     schedule(SETTLE_MS);
-    return () => { active = false; if (timer) clearTimeout(timer); };
+    const unsubscribe = onReconnected(() => { if (failures > 0) schedule(0); });
+    return () => { active = false; unsubscribe(); if (timer) clearTimeout(timer); };
   }, [key, enabled, focused, lat, lng, token]);
 
   return { ...state, loading: enabled && state.providers === null };
