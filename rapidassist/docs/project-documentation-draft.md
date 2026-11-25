@@ -240,11 +240,47 @@ The system searches for providers who are:
 
 Providers are scored using distance, rating, and completed jobs. This helps prioritize nearby and more reliable providers.
 
-Default search radius:
+Dispatch radius: **8 km for every service**. The customer's map can show providers further away (search widened to
+10, 20 and then 30 km when nobody is within 8 km), but jobs are only offered within 8 km. See "Maps & Location" below
+and `docs/map-and-dispatch.md`.
 
-- Mechanic: 5 km
-- Fuel delivery: 8 km
-- Car towing: 15 km
+## Maps & Location
+
+The map and location work was built in five phases on the `feature/twin-cities-live-map` branch.
+
+**Phase 1 – Service area.** RapidAssist launches in Islamabad and Rawalpindi only. Requests with a pickup outside
+latitude 33.40–33.80 / longitude 72.80–73.30 are rejected with a clear message, and the app blocks them before
+sending. The booking screen offers chips for well-known twin-city landmarks (Blue Area, F-7 Markaz, Saddar, Bahria
+Town and others), and place search is limited to the area.
+
+**Phase 2 – Live nearby providers.** Provider positions are stored as GeoJSON with a MongoDB 2dsphere index, so the
+server finds nearby providers with `$geoNear`. Only verified, online, free providers with a location fresher than
+3 minutes count. The app refreshes the list every 20 seconds. A demo script seeds 18 map-only providers across both
+cities for demonstrations; they are never offered real jobs.
+
+**Phase 3 – Providers on the map, without exact positions.** Customers see nearby providers as markers with a colour
+and icon per service, on the home map and around the pickup pin, plus a Map | List view. Exact positions are never
+sent: each provider is snapped to a fixed ~500 m grid (fixed, because random noise can be averaged away), and the
+distance is shown as a band ("under 2 km", "2–5 km", "5–10 km", "10+ km") computed from the snapped point, so
+repeated queries cannot pinpoint anyone. Tapping a marker shows rating, jobs done and an estimated arrival time; the
+customer still cannot choose a provider, because dispatch stays automatic. The customer's own position is a blue
+dot, with an accuracy circle when it is approximate. Admins get a request heatmap built from ~1 km cell counts,
+never from raw customer coordinates.
+
+**Phase 4 – Live tracking after acceptance.** The provider's marker glides smoothly between GPS updates. The
+arrival time comes from the OSRM road-routing service, refreshed at most every 30 seconds, with a straight-line
+estimate if OSRM is unavailable. The customer gets one "Your provider is nearby" notification within 500 m of the
+pickup, guaranteed once by the database. Providers open Google Maps turn-by-turn navigation to the pickup (and the
+drop-off for towing), and towing customers see the planned trip and the remaining distance after loading.
+
+**Phase 5 – Reliability and security.** Per-user rate limits protect nearby search (60 a minute) and location
+updates (30 a minute). Every coordinate from a client goes through one validation helper. Map screens keep the last
+results offline and retry with backoff. The required database indexes are declared in the models and checked by a
+dry-run script. An Atlas rollout checklist documents the production migration. The new screens have English and
+Urdu text, with a language switch on the Profile screen.
+
+Details, diagrams and the numbers behind each rule: `docs/map-and-dispatch.md`. Demo steps: `docs/demo-script.md`.
+Test results: `docs/test-report.md`.
 
 ## Pricing Estimate
 
