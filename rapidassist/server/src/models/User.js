@@ -245,6 +245,12 @@ userSchema.index(
 );
 // Support stable registration-date paging in the admin customer directory.
 userSchema.index({ createdAt: -1, _id: -1 });
+// Online providers by last-fix time: dispatch eligibility and the admin heatmap filter on exactly this. Partial, so it
+// only holds providers that are online right now and stays tiny. ($geoNear uses the 2dsphere index above.)
+userSchema.index(
+  { "providerState.isOnline": 1, "providerState.currentLocation.updatedAt": -1 },
+  { name: "online_providers_by_fix_time", partialFilterExpression: { "providerState.isOnline": true } }
+);
 
 userSchema.methods.toSafeJSON = function toSafeJSON(activeRole = this.role) {
   const identityMatch = this.mechanicProfile?.identityMatch;
