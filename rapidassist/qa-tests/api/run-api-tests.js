@@ -660,9 +660,13 @@ async function main() {
       return { pass: u.ratingAvg === 5 && u.ratingCount === 1 && u.completedJobs === 1, actual: `ratingAvg=${u.ratingAvg}, ratingCount=${u.ratingCount}, completedJobs=${u.completedJobs}` };
     });
     const rv2 = await user.patch(`/api/requests/${req.id}/review`, { rating: 1, comment: "Changed my mind" });
-    await R.check("Review", "Review can only be submitted once", "PATCH review a second time {rating:1}", "409/400 – second review rejected", async () => {
-      const me = await fuel.get("/api/auth/me");
-      return { pass: [400, 409].includes(rv2.status), actual: `HTTP ${rv2.status}, review overwritten to rating=${rv2.body?.request?.review?.rating}; provider ratingAvg now ${me.body?.user?.ratingAvg}` };
+    await R.check("Review", "Review can only be submitted once", "PATCH review a second time {rating:1}", "409; first review unchanged; provider ratingAvg/ratingCount unchanged", async () => {
+      const me = (await fuel.get("/api/auth/me")).body?.user;
+      const stored = (await user.get(`/api/requests/${req.id}`)).body?.request?.review;
+      return {
+        pass: rv2.status === 409 && stored?.rating === 5 && stored.comment === "Fast delivery" && me.ratingAvg === 5 && me.ratingCount === 1,
+        actual: `HTTP ${rv2.status}, stored review=${stored?.rating}/"${stored?.comment}", provider ratingAvg=${me.ratingAvg}, ratingCount=${me.ratingCount}`
+      };
     });
     void fuelDone;
   }
@@ -704,7 +708,15 @@ async function main() {
       return { pass: need.every((s) => seen.has(s)), actual: `seen=${[...seen].join(",")}` };
     });
     await completeAndPay("towing", tow, req);
-    await user.patch(`/api/requests/${req.id}/review`, { rating: 4 });
+    const [ra, rb] = await Promise.all([
+      user.patch(`/api/requests/${req.id}/review`, { rating: 4, comment: "first" }),
+      user.patch(`/api/requests/${req.id}/review`, { rating: 2, comment: "second" })
+    ]);
+    await R.check("Review", "Two simultaneous reviews: only one is stored", "Promise.all two PATCH /review on the towing job", "one 200 and one 409; provider ratingCount=1", async () => {
+      const me = (await tow.get("/api/auth/me")).body?.user;
+      const codes = [ra.status, rb.status].sort().join(",");
+      return { pass: codes === "200,409" && me.ratingCount === 1, actual: `statuses=${codes}, ratingCount=${me.ratingCount}, ratingAvg=${me.ratingAvg}` };
+    });
   }
 
   // ───────────────────────────── MECHANIC (all issue types) ─────────────────────────────

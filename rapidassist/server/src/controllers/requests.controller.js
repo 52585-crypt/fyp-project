@@ -701,6 +701,7 @@ async function submitRequestReview(req, res, next) {
     if (request.userId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
     if (request.status !== "completed") throw badRequest("Only completed requests can be reviewed");
     if (!request.providerId) throw badRequest("Cannot review a request without an assigned provider");
+    if (request.review?.rating != null) throw conflict("This request has already been reviewed");
 
     const rating = Number(req.body?.rating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -710,16 +711,16 @@ async function submitRequestReview(req, res, next) {
     const comment = normalizeStr(req.body?.comment);
     if (comment.length > 400) throw badRequest("comment must be 400 characters or less");
 
-    request.review = {
-      rating,
-      comment: comment || null,
-      byUserId: req.user._id,
-      reviewedAt: new Date()
-    };
-    await request.save();
+    // Conditional write: only the first review is stored, even when two submissions race.
+    const reviewed = await ServiceRequest.findOneAndUpdate(
+      { _id: request._id, userId: req.user._id, status: "completed", "review.rating": null },
+      { $set: { review: { rating, comment: comment || null, byUserId: req.user._id, reviewedAt: new Date() } } },
+      { new: true }
+    );
+    if (!reviewed) throw conflict("This request has already been reviewed");
     await refreshProviderRating(request.providerId);
 
-    res.json({ ok: true, request: request.toJSONSafe() });
+    res.json({ ok: true, request: reviewed.toJSONSafe() });
   } catch (err) {
     next(err);
   }
