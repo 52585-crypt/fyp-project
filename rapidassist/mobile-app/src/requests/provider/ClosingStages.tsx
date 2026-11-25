@@ -17,7 +17,8 @@ export function InProgressStage(props: JobProps) {
       <JobMap {...props} height={tokens.sizes.mapLarge} />
       <Card><InfoRow icon="flag-outline" label="Destination" value={request.destinationLocation?.addressText ?? "Drop-off"} stacked /></Card>
       <JobProgress request={request} />
-      <Button title="View on Map" icon="navigate-outline" variant="outline" onPress={job.navigate} />
+      <Button title="Navigate to drop-off" icon="navigate-outline" variant="outline" onPress={() => void job.navigate("destination")}
+        accessibilityHint="Opens Google Maps driving directions" />
       <Button title="Reached Destination" icon="flag" loading={job.updating} onPress={job.advance} />
     </>
   );

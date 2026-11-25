@@ -80,10 +80,11 @@ export function useProviderJob(requestId: string | null) {
     advance: () => (next ? mutate((t, r) => updateRequestStatus(t, r.id, next), "Failed to update status") : Promise.resolve(false)),
     cancel: (reason: string) => mutate((t, r) => updateRequestStatus(t, r.id, "cancelled", reason.trim() || "Provider cancelled the job"), "Failed to cancel job"),
     requestExtraWork: (input: ExtraWorkInput) => mutate((t, r) => requestExtraWork(t, r.id, input), "Failed to request extra work"),
-    navigate: async () => {
-      const target = toDestination ? request?.destinationLocation : request?.pickupLocation;
-      if (!target) return;
-      try { setError(null); await openExternalNavigation(target, toDestination ? "Drop-off destination" : "Customer pickup"); }
+    /** Google Maps driving directions (native navigation on Android, web fallback) to the pickup or, for towing, the drop-off. */
+    navigate: async (to: "pickup" | "destination" = toDestination ? "destination" : "pickup") => {
+      const target = to === "destination" ? request?.destinationLocation : request?.pickupLocation;
+      if (!target) return setError(to === "destination" ? "This job has no drop-off location." : "The pickup location is unavailable.");
+      try { setError(null); await openExternalNavigation(target); }
       catch (e) { setError(message(e, "Failed to open navigation")); }
     }
   };

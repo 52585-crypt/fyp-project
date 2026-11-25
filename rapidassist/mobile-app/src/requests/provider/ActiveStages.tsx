@@ -15,7 +15,7 @@ export function JobDetailsStage(props: JobProps) {
       <JobMap {...props} />
       <Card><PriceBreakdown title="Fee Breakdown" lines={request.estimate.lines} total={request.estimate.total} totalLabel="Estimated Total" /></Card>
       <Button title="Start Navigation" icon="navigate" loading={job.updating}
-        onPress={async () => { if (await job.advance()) void job.navigate(); }} />
+        onPress={async () => { if (await job.advance()) void job.navigate("pickup"); }} />
       <CancelJob job={job} />
     </>
   );
@@ -32,7 +32,8 @@ export function OnTheWayStage(props: JobProps) {
       <JobMap {...props} height={tokens.sizes.mapLarge} />
       <CustomerRow request={request} />
       <JobProgress request={request} />
-      <Button title="Open in Maps" icon="navigate-outline" variant="outline" onPress={job.navigate} />
+      <Button title="Navigate to pickup" icon="navigate-outline" variant="outline" onPress={() => void job.navigate("pickup")}
+        accessibilityHint="Opens Google Maps driving directions" />
       <Button title="I've Arrived" icon="flag" loading={job.updating} onPress={job.advance} />
       <CancelJob job={job} />
     </>
