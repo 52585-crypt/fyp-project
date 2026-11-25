@@ -38,6 +38,7 @@ export function AdminLayout() {
           <NavLink to="/dashboard"><span aria-hidden="true">▦</span> Overview</NavLink>
           <NavLink to="/providers"><span aria-hidden="true">◎</span> Provider verification</NavLink>
           <NavLink to="/live-jobs"><span aria-hidden="true">⌖</span> Live jobs map</NavLink>
+          <NavLink to="/heatmap"><span aria-hidden="true">▤</span> Request heatmap</NavLink>
         </nav>
         <div className="sidebar-note"><span className="note-icon" aria-hidden="true">↗</span><strong>Keep people moving.</strong><p>Manage the people and services behind every roadside rescue.</p></div>
         <div className="sidebar-footer"><span className="admin-avatar">RA</span><div><strong>{admin?.name || "Admin workspace"}</strong><small>{admin?.email || "RapidAssist operations"}</small></div></div>

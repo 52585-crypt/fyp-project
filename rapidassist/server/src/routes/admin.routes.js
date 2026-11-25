@@ -13,6 +13,7 @@ const adminProviders = require("./adminProviders.routes");
 const adminFinance = require("./adminFinance.routes");
 const adminActivity = require("./adminActivity.routes");
 const { objectId } = require("../services/adminHistory");
+const { heatmapOptions, requestHeatmap } = require("../services/requestHeatmap");
 
 const router = express.Router();
 const PROVIDER_VERIFICATION_STATUSES = ["unverified", "pending", "verified", "rejected"];
@@ -120,6 +121,16 @@ router.get("/payments", async (req, res, next) => {
       }))
     });
   } catch (error) { next(error); }
+});
+
+// Twin-cities heatmap: request counts and online-provider counts per ~1 km cell (never raw customer coordinates).
+// ?days=1..365 (default 30) limits requests by creation time; ?category= one of the request categories.
+router.get("/heatmap", async (req, res, next) => {
+  try {
+    res.json({ ok: true, ...(await requestHeatmap(heatmapOptions(req.query))) });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/dashboard", async (req, res, next) => {

@@ -5,6 +5,7 @@ import { ProviderVerification } from "./pages/ProviderVerification";
 import { AdminLayout } from "./components/AdminLayout";
 import { useAdminAuth } from "./auth/AdminAuth";
 import { LiveJobs } from "./pages/LiveJobs";
+import { Heatmap } from "./pages/Heatmap";
 
 function ProtectedAdmin() {
   const { admin, ready, sessionError } = useAdminAuth();
@@ -33,6 +34,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/providers" element={<ProviderVerification />} />
         <Route path="/live-jobs" element={<LiveJobs />} />
+        <Route path="/heatmap" element={<Heatmap />} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
