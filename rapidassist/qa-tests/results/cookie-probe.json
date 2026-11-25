@@ -1,0 +1,22 @@
+{
+  "same-site (localhost:8081 -> localhost:4000)": {
+    "login": 200,
+    "me": 200,
+    "socketHandshake": "40{\"sid\":\"qkK6w8Nqf-CaJJPkAAAA\"}",
+    "cookie": [
+      {
+        "name": "rapidassist_access_token",
+        "domain": "localhost",
+        "httpOnly": true,
+        "secure": false,
+        "sameSite": "Lax"
+      }
+    ]
+  },
+  "cross-site (localhost:8081 -> 127.0.0.1:4000)": {
+    "login": 200,
+    "me": 401,
+    "socketHandshake": "44{\"message\":\"Unauthorized\"}",
+    "cookie": []
+  }
+}
