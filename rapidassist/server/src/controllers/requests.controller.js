@@ -399,6 +399,19 @@ async function createRequest(req, res, next) {
       ? normalizeLocation(body.destinationLocation, "Destination location")
       : null;
 
+    // One open request per customer (checked after input validation, before the road-route lookup).
+    const active = await ServiceRequest.findOne({ userId: req.user._id, status: { $nin: ["completed", "cancelled"] } })
+      .sort({ createdAt: -1 }).select("_id status");
+    if (active) {
+      return res.status(409).json({
+        ok: false,
+        code: "ACTIVE_REQUEST_EXISTS",
+        message: "You already have an active request. Open it to track it, or cancel it before booking another.",
+        requestId: active.id,
+        status: active.status
+      });
+    }
+
     const vehicleData = await buildVehicleData(req, body.vehicleId, body.vehicleInfo);
     const roadRoute = category === "car_towing"
       ? await getDrivingRouteMetrics(pickupLocation, destinationLocation)
@@ -701,6 +714,7 @@ async function submitRequestReview(req, res, next) {
     if (request.userId.toString() !== req.user._id.toString()) throw forbidden("Forbidden");
     if (request.status !== "completed") throw badRequest("Only completed requests can be reviewed");
     if (!request.providerId) throw badRequest("Cannot review a request without an assigned provider");
+    if (request.review?.rating != null) throw conflict("This request has already been reviewed");
 
     const rating = Number(req.body?.rating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -710,16 +724,16 @@ async function submitRequestReview(req, res, next) {
     const comment = normalizeStr(req.body?.comment);
     if (comment.length > 400) throw badRequest("comment must be 400 characters or less");
 
-    request.review = {
-      rating,
-      comment: comment || null,
-      byUserId: req.user._id,
-      reviewedAt: new Date()
-    };
-    await request.save();
+    // Conditional write: only the first review is stored, even when two submissions race.
+    const reviewed = await ServiceRequest.findOneAndUpdate(
+      { _id: request._id, userId: req.user._id, status: "completed", "review.rating": null },
+      { $set: { review: { rating, comment: comment || null, byUserId: req.user._id, reviewedAt: new Date() } } },
+      { new: true }
+    );
+    if (!reviewed) throw conflict("This request has already been reviewed");
     await refreshProviderRating(request.providerId);
 
-    res.json({ ok: true, request: request.toJSONSafe() });
+    res.json({ ok: true, request: reviewed.toJSONSafe() });
   } catch (err) {
     next(err);
   }
@@ -963,7 +977,8 @@ async function approveExtraWork(req, res, next) {
       throw badRequest("This extra-work request was already decided or is unavailable");
     }
 
-    const approved = Boolean(req.body?.approved ?? true);
+    const approved = req.body?.approved;
+    if (typeof approved !== "boolean") throw badRequest("approved must be true or false");
     const extraWork = request.mechanicDetails.extraWork;
     const amount = Number(extraWork.partPrice || 0) + Number(extraWork.laborCharge || 0);
     const nextStatus = approved ? "work_started" : "inspection_started";

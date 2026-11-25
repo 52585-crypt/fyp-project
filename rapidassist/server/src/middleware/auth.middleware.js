@@ -1,4 +1,4 @@
-const { verifyAccessToken } = require("../utils/jwt");
+const { verifyAccessToken, tokenVersionMatches } = require("../utils/jwt");
 const { User } = require("../models/User");
 const { getAccessTokenFromCookies } = require("../utils/authCookie");
 const { isObjectIdOrHexString } = require("mongoose");
@@ -19,8 +19,9 @@ async function readSession(req, { adminOnly = false } = {}) {
   if (!decoded || typeof decoded !== "object" || !isObjectIdOrHexString(decoded.sub)) return null;
   if (adminOnly && decoded.role && decoded.role !== "admin") return null;
   const query = User.findById(decoded.sub);
-  if (adminOnly) query.select("role roles");
+  if (adminOnly) query.select("role roles tokenVersion");
   const user = await query;
+  if (user && !tokenVersionMatches(decoded, user)) return null;
   const role = user && sessionRole(user, decoded.role);
   return role && (!adminOnly || role === "admin") ? { user, role } : null;
 }

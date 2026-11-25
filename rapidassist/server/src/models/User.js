@@ -101,6 +101,8 @@ const userSchema = new mongoose.Schema(
     authProvider: { type: String, enum: AUTH_PROVIDERS, default: "local", required: true },
     googleLinkedAt: { type: Date, default: null },
     profilePictureUrl: { type: String, default: null },
+    // Bumped on logout. Session JWTs carry it as `tv`; a token with an older version is rejected.
+    tokenVersion: { type: Number, default: 0 },
     passwordHash: {
       type: String,
       default: null,

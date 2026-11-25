@@ -360,6 +360,8 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const legacy = await api(customer, "/api/requests", "POST", { ...body, pickupLocation: pickup });
     assert.equal(legacy.status, 201);
     assert.equal(legacy.data.request.pickupLocation.source, null);
+    // One open request per customer: close the first before creating the next.
+    await ServiceRequest.updateOne({ _id: legacy.data.request.id }, { $set: { status: "cancelled" } });
     const sourced = await api(customer, "/api/requests", "POST", { ...body, pickupLocation: { ...pickup, source: "gps" } });
     assert.equal(sourced.status, 201);
     assert.equal(sourced.data.request.pickupLocation.source, "gps");
@@ -373,7 +375,9 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const p = await provider();
     const body = { category: "mechanic", pickupLocation: pickup, mechanicDetails: { issueCategory: "tyre" } };
     const normal = await api(customer, "/api/requests", "POST", { ...body, priority: "normal" });
-    const urgent = await api(customer, "/api/requests", "POST", { ...body, priority: "urgent", pickupLocation: { ...pickup, lat: 33.735 } });
+    // A second customer: one customer may only have one open request.
+    const otherCustomer = await User.create({ name: "Second customer", phone: "customer-2", passwordHash: "test-only", role: "user" });
+    const urgent = await api(otherCustomer, "/api/requests", "POST", { ...body, priority: "urgent", pickupLocation: { ...pickup, lat: 33.735 } });
     assert.equal(normal.status, 201);
     assert.equal(urgent.status, 201);
     assert.equal(normal.data.request.dispatch.state, "searching");
@@ -707,6 +711,8 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       })).status, 200);
       const tracked = await api(customer, `/api/requests/${saved.id}`);
       assert.equal(tracked.data.request.status, "provider_assigned");
+      // One open request per customer: cancel this job before booking the next category.
+      assert.equal((await api(customer, `/api/requests/${saved.id}/status`, "PATCH", { status: "cancelled" })).status, 200);
     }
   });
   it("ranks candidates and advances to the next one after a decline", async () => {

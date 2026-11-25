@@ -63,6 +63,8 @@ describe("request creation enforces the service area (isolated real MongoDB)", (
 
   it("accepts a pickup in Islamabad or Rawalpindi", async () => {
     assert.equal((await create({ lat: 33.72047, lng: 73.05631, addressText: "F-7 Markaz, Islamabad" })).status, 201);
+    // One open request per customer: close the first before creating the second.
+    await mongoose.connection.collection("servicerequests").updateMany({}, { $set: { status: "cancelled" } });
     assert.equal((await create({ lat: 33.61386, lng: 73.06517, addressText: "Committee Chowk, Rawalpindi" })).status, 201);
   });
 });

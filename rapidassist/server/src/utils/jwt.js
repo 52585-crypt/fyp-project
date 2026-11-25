@@ -21,5 +21,13 @@ function verifyAccessToken(token) {
   return jwt.verify(token, secret);
 }
 
-module.exports = { signAccessToken, verifyAccessToken };
+/**
+ * True when the token's version (`tv`) matches the user's current tokenVersion.
+ * Tokens issued before versioning have no `tv` and stay valid until they expire.
+ */
+function tokenVersionMatches(decoded, user) {
+  return decoded?.tv === undefined || decoded.tv === (user?.tokenVersion ?? 0);
+}
+
+module.exports = { signAccessToken, verifyAccessToken, tokenVersionMatches };
 

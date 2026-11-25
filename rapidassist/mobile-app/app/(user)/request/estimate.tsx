@@ -14,6 +14,7 @@ import { useBooking } from "../../../src/requests/booking/BookingProvider";
 import { FareCard } from "../../../src/requests/booking/FareCard";
 import { FuelFields, MechanicFields, NotesField, TowingFields, VehicleSection } from "../../../src/requests/booking/FormSections";
 import type { RequestPriority } from "../../../src/requests/requests.types";
+import { customerRoutes } from "../../../src/navigation/routes";
 import { getServiceTitle } from "../../../src/requests/serviceCatalog";
 import { formatCurrency } from "../../../src/utils/format";
 
@@ -120,7 +121,10 @@ export default function ProblemAndFare() {
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + tokens.space.lg }]}>
           {/* Errors sit next to the button that caused them, never off-screen in the scroll area. */}
-          {b.error ? <Banner tone="danger" message={b.error} /> : null}
+          {b.error ? <Banner tone="danger" message={b.error} action={b.activeRequestId ? (
+            <Button title="Open active request" size="small" variant="secondary" fullWidth={false}
+              onPress={() => router.replace(customerRoutes.request(b.activeRequestId!))} />
+          ) : undefined} /> : null}
           <View style={styles.summary}>
             <View style={styles.flex}>
               <Text variant="caption" color="muted">Fixed fare</Text>
