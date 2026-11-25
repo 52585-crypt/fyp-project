@@ -102,6 +102,21 @@ test("reports disabled services, invalid coordinates and poor GPS accuracy", asy
   );
 });
 
+test("accepts a coarse fix only when the caller allows an approximate location", async () => {
+  const location = loadCurrentLocation();
+  const coarse = { getCurrentPositionAsync: async () => ({ coords: { latitude: 33.68, longitude: 73.05, accuracy: 8200 } }) };
+  await assert.rejects(location.getCurrentForegroundLocation(api(coarse)), /too imprecise \(about 8 km\)/i);
+  const result = await location.getCurrentForegroundLocation(api(coarse), 15000, { allowApproximate: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    coordinate: { latitude: 33.68, longitude: 73.05 },
+    accuracyMeters: 8200,
+    approximate: true
+  });
+  const precise = await location.getCurrentForegroundLocation(api(), 15000, { allowApproximate: true });
+  assert.equal(precise.approximate, undefined);
+  assert.equal(location.formatAccuracy(850), "850 m");
+});
+
 test("times out a stalled location request and maps browser-unavailable errors", async () => {
   const location = loadCurrentLocation();
   await assert.rejects(

@@ -66,7 +66,7 @@ export default function CustomerHome() {
             onPress={() => { tapFeedback(); void map.locate(); }} style={styles.place}>
             <View style={styles.placeIcon}><Icon name="navigate" color="primary" size={tokens.sizes.iconSmall} /></View>
             <View style={styles.flex}>
-              <Text variant="captionStrong" color="muted">YOUR LOCATION</Text>
+              <Text variant="captionStrong" color="muted">{map.approximate ? `APPROXIMATE LOCATION (±${map.approximate})` : "YOUR LOCATION"}</Text>
               <Text variant="bodyStrong" numberOfLines={1}>
                 {map.locating && !map.position ? "Finding you…" : map.address ?? (map.position ? "Current location" : "Location off")}
               </Text>
@@ -76,7 +76,8 @@ export default function CustomerHome() {
         </View>
 
         {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
-        {map.error && !map.position ? <Banner tone="warning" message="Turn on location so providers can find you. You can still set a pickup pin manually." /> : null}
+        {map.error && !map.position ? <Banner tone="warning" title="Location unavailable" message={`${map.error} You can still set a pickup pin manually.`} /> : null}
+        {map.approximate ? <Banner message={`Your device gave an approximate location (about ${map.approximate}). You'll set the exact pickup pin when you book.`} /> : null}
 
         <View style={styles.grid}>
           {services.map((s) => <ServiceTile key={s.title} title={s.title} subtitle={s.subtitle} icon={s.icon} onPress={s.go} />)}

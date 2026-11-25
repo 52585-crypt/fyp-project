@@ -32,6 +32,16 @@ export type ForegroundLocationApi = {
 export type CurrentLocationResult = {
   coordinate: Coordinate;
   accuracyMeters: number | null;
+  /** True when the fix is coarser than MAX_CURRENT_LOCATION_ACCURACY_METERS (only with allowApproximate). */
+  approximate?: boolean;
+};
+
+export type CurrentLocationOptions = {
+  /**
+   * Accept a coarse fix (laptop Wi-Fi/IP location) instead of rejecting it. Use it only to centre a map,
+   * never for a pickup point sent to providers.
+   */
+  allowApproximate?: boolean;
 };
 
 function locationError(error: unknown) {
@@ -71,7 +81,8 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 
 export async function getCurrentForegroundLocation(
   api: ForegroundLocationApi = Location,
-  timeoutMs = CURRENT_LOCATION_TIMEOUT_MS
+  timeoutMs = CURRENT_LOCATION_TIMEOUT_MS,
+  options: CurrentLocationOptions = {}
 ): Promise<CurrentLocationResult> {
   let permission: PermissionResult;
   try {
@@ -131,12 +142,18 @@ export async function getCurrentForegroundLocation(
     throw new Error("The location service returned invalid GPS accuracy. Check GPS and try again.");
   }
   if (accuracy != null && accuracy > MAX_CURRENT_LOCATION_ACCURACY_METERS) {
+    if (options.allowApproximate) return { coordinate, accuracyMeters: accuracy, approximate: true };
     throw new Error(
-      `Your location is too imprecise (about ${Math.round(accuracy)} m). Enable precise location, move to an open area, and try again.`
+      `Your location is too imprecise (about ${formatAccuracy(accuracy)}). Enable precise location, or set the pickup pin on the map.`
     );
   }
 
   return { coordinate, accuracyMeters: accuracy };
+}
+
+/** "850 m" or "8 km", for location accuracy messages. */
+export function formatAccuracy(meters: number) {
+  return meters < 1000 ? `${Math.round(meters)} m` : `${Math.round(meters / 1000)} km`;
 }
 
 /**
