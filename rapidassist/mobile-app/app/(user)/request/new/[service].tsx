@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LocationAutocompleteField } from "../../../../src/components/LocationAutocompleteField";
 import { MapCanvas, type MapCanvasMarker } from "../../../../src/components/maps/MapCanvas";
 import {
@@ -26,6 +27,7 @@ type Step = "pickup" | "destination";
 type ProvidersView = "map" | "list";
 
 const VIEWS = [{ value: "map", label: "Map", icon: "map-outline" }, { value: "list", label: "List", icon: "list" }] as const;
+// Below the top bar, which itself sits under the status bar (safe-area inset on Android).
 const TOGGLE_TOP = MAP_TOP_BAR_HEIGHT + tokens.space.sm;
 const LIST_TOP = TOGGLE_TOP + tokens.sizes.buttonSmall + tokens.space.xxs * 2 + tokens.space.lg;
 
@@ -38,6 +40,7 @@ export default function PickupPin() {
   const [step, setStep] = useState<Step>(towing && stepParam === "destination" ? "destination" : "pickup");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ProvidersView>("map");
+  const safeTop = useSafeAreaInsets().top;
 
   useEffect(() => { b.setCategory(category); b.setError(null); }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -95,11 +98,11 @@ export default function PickupPin() {
         <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
         {listing ? (
           <View style={StyleSheet.absoluteFill}>
-            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={LIST_TOP} />
+            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={LIST_TOP + safeTop} />
           </View>
         ) : null}
         {step === "pickup" ? (
-          <View pointerEvents="box-none" style={styles.toggle}>
+          <View pointerEvents="box-none" style={[styles.toggle, { top: TOGGLE_TOP + safeTop }]}>
             <SegmentedControl accessibilityLabel="Show nearby providers as" options={VIEWS} value={view}
               onChange={(v) => { preview.close(); setView(v); }} />
           </View>
@@ -173,7 +176,7 @@ export default function PickupPin() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.surface },
   map: { flex: 1 },
-  toggle: { position: "absolute", top: TOGGLE_TOP, left: 0, right: 0, alignItems: "center" },
+  toggle: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   flex: { flex: 1 },
   address: {
     flexDirection: "row", alignItems: "center", gap: tokens.space.md, padding: tokens.space.md,
