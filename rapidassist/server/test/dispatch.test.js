@@ -27,11 +27,11 @@ process.env.JWT_SECRET = "isolated-dispatch-test-secret";
 process.env.NODE_ENV = "test";
 delete process.env.DISPATCH_TEST_BYPASS_RADIUS;
 let db, server, realtime, base, customer, sequence = 0;
-const pickup = { lat: 31.52, lng: 74.35, addressText: "Test pickup" };
+const pickup = { lat: 33.72, lng: 73.05, addressText: "Test pickup" };
 async function provider(overrides = {}) {
   return User.create({ name: "Test provider", phone: `provider-${++sequence}`, passwordHash: "test-only", role: "mechanic", verificationStatus: "verified", ratingAvg: 4.8, ratingCount: 10, completedJobs: 40,
     mechanicProfile: { serviceCategory: "mechanic" },
-    providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.521, updatedAt: new Date() }, lastSeenAt: new Date() }, ...overrides });
+    providerState: { isOnline: true, currentLocation: { ...pickup, lat: 33.721, updatedAt: new Date() }, lastSeenAt: new Date() }, ...overrides });
 }
 async function request() {
   return ServiceRequest.create({ userId: customer._id, category: "mechanic", pickupLocation: pickup, dispatch: newDispatch("mechanic"), estimate: { currency: "PKR", total: 1250 }, status: "searching_provider" });
@@ -66,14 +66,21 @@ function mockRadiusTestRouting(t) {
   });
 }
 
+// Radius fixtures inside the twin-cities service area: a point `distance` km due north of RADIUS_ORIGIN
+// (distance along a meridian is exact in the haversine formula, so 7.99 / 8 / 8.01 km boundaries stay exact).
+const RADIUS_ORIGIN = { lat: 33.5, lng: 73.1 };
 function equatorialLocation(distance) {
-  return { lat: 0, lng: distance / (6371 * (Math.PI / 180)), updatedAt: new Date() };
+  let lat = RADIUS_ORIGIN.lat + distance / (6371 * (Math.PI / 180));
+  // Floating point can put "exactly 8 km" a few femtometres outside; step back to the boundary itself.
+  // Step by one unit in the last place (a fixed 1e-15 is below the precision of a latitude near 33.5).
+  while (distanceKm(RADIUS_ORIGIN, { lat, lng: RADIUS_ORIGIN.lng }) > distance) lat -= Math.abs(lat) * Number.EPSILON;
+  return { lat, lng: RADIUS_ORIGIN.lng, updatedAt: new Date() };
 }
 
 function radiusTestRequest(category) {
   return {
-    category, pickupLocation: { lat: 0, lng: 0 },
-    destinationLocation: { lat: 0, lng: 0.02 }, mechanicDetails: { issueCategory: "tyre" },
+    category, pickupLocation: { ...RADIUS_ORIGIN },
+    destinationLocation: { lat: RADIUS_ORIGIN.lat, lng: RADIUS_ORIGIN.lng + 0.02 }, mechanicDetails: { issueCategory: "tyre" },
     fuelDetails: { fuelType: "petrol", liters: 5 }, vehicleInfo: { type: "car", model: "Test car" }
   };
 }
@@ -169,11 +176,11 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const originalFetch = global.fetch;
     const previousKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
     process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
-    t.mock.method(global, "fetch", async (url, options) => String(url).startsWith(base) ? originalFetch(url, options) : ({ ok: true, json: async () => ({ id: "lifecycle-id", location: { latitude: 31.52, longitude: 74.35 } }) }));
+    t.mock.method(global, "fetch", async (url, options) => String(url).startsWith(base) ? originalFetch(url, options) : ({ ok: true, json: async () => ({ id: "lifecycle-id", location: { latitude: 33.72, longitude: 73.05 } }) }));
     try {
       const refreshed = await api(customer, `/api/requests/${job.id}/location/pickup/refresh`, "POST", {});
       assert.equal(refreshed.status, 200);
-      assert.equal(refreshed.data.request.pickupLocation.lat, 31.52);
+      assert.equal(refreshed.data.request.pickupLocation.lat, 33.72);
       assert.ok(new Date(refreshed.data.request.pickupLocation.googleContentCachedAt).getTime() > Date.now() - 60000);
       const persisted = await ServiceRequest.findById(job.id);
       assert.equal(fallbackBlock([p], [persisted]).size, 1);
@@ -195,11 +202,11 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const removed = await ServiceRequest.findById(job.id);
     assert.equal(removed.pickupLocation.lat, undefined);
     assert.equal(removed.pickupLocation.placeId, "place-123");
-    const refreshed = await ensureOperationalLocation(job.id, "pickupLocation", { resolve: async (id) => ({ source: "google_places", placeId: id, lat: 31.53, lng: 74.36 }) });
-    assert.equal(refreshed.pickupLocation.lat, 31.53);
+    const refreshed = await ensureOperationalLocation(job.id, "pickupLocation", { resolve: async (id) => ({ source: "google_places", placeId: id, lat: 33.73, lng: 73.06 }) });
+    assert.equal(refreshed.pickupLocation.lat, 33.73);
     assert.equal(fallbackBlock([p], [refreshed]).size, 1);
     const again = await ensureOperationalLocation(job.id, "pickupLocation", { resolve: async () => { throw new Error("unnecessary lookup"); } });
-    assert.equal(again.pickupLocation.lat, 31.53);
+    assert.equal(again.pickupLocation.lat, 33.73);
   });
 
   it("requires request authorization before refreshing a stored location", async () => {
@@ -331,7 +338,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-only";
     let succeeds = false;
     t.mock.method(global, "fetch", async () => succeeds
-      ? { ok: true, json: async () => ({ id: "place-123", location: { latitude: 31.52, longitude: 74.35 } }) }
+      ? { ok: true, json: async () => ({ id: "place-123", location: { latitude: 33.72, longitude: 73.05 } }) }
       : { ok: false });
     try {
       const failed = await runDispatchBatch();
@@ -340,7 +347,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       succeeds = true;
       await runDispatchBatch();
       const refreshed = await ServiceRequest.findById(job.id);
-      assert.equal(refreshed.pickupLocation.lat, 31.52);
+      assert.equal(refreshed.pickupLocation.lat, 33.72);
       assert.equal(String(refreshed.dispatch.offeredProviderId), p.id);
     } finally {
       if (previousKey === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
@@ -366,7 +373,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const p = await provider();
     const body = { category: "mechanic", pickupLocation: pickup, mechanicDetails: { issueCategory: "tyre" } };
     const normal = await api(customer, "/api/requests", "POST", { ...body, priority: "normal" });
-    const urgent = await api(customer, "/api/requests", "POST", { ...body, priority: "urgent", pickupLocation: { ...pickup, lat: 31.535 } });
+    const urgent = await api(customer, "/api/requests", "POST", { ...body, priority: "urgent", pickupLocation: { ...pickup, lat: 33.735 } });
     assert.equal(normal.status, 201);
     assert.equal(urgent.status, 201);
     assert.equal(normal.data.request.dispatch.state, "searching");
@@ -392,7 +399,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const normal = await request();
     await runDispatchBatch(now);
     const urgent = await request();
-    await ServiceRequest.updateOne({ _id: urgent.id }, { $set: { priority: "urgent", "pickupLocation.lat": 31.535 } });
+    await ServiceRequest.updateOne({ _id: urgent.id }, { $set: { priority: "urgent", "pickupLocation.lat": 33.735 } });
     await runDispatchBatch(new Date(+now + 1000));
     // Reproduce persisted retry dates from staggered searches (including older servers).
     await ServiceRequest.updateOne({ _id: normal.id }, { $set: { "dispatch.nextAttemptAt": new Date(+now + 5000) } });
@@ -490,10 +497,10 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     for (const [distance, eligible] of boundaries) {
       it(`uses the same fixed radius for ${category} preview and dispatch at ${distance} km`, async (t) => {
         mockRadiusTestRouting(t);
-        const origin = { lat: 0, lng: 0 };
+        const origin = { ...RADIUS_ORIGIN };
         const location = equatorialLocation(distance);
         assert.ok(Math.abs(distanceKm(origin, location) - distance) < 1e-10);
-        if (distance === 8) assert.equal(distanceKm(origin, location), 8);
+        if (distance === 8) assert.ok(distanceKm(origin, location) <= 8 && distanceKm(origin, location) > 8 - 1e-9);
         const candidate = await provider({
           mechanicProfile: { serviceCategory: category === "car_towing" ? "towing" : category },
           providerState: { isOnline: true, currentLocation: location, lastSeenAt: new Date() }
@@ -502,7 +509,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
         assert.equal(created.status, 201);
         // Query before the offer reservation so it doesn't change preview eligibility.
         for (const suffix of ["", "&radiusKm=50"]) {
-          const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=0&lng=0${suffix}`);
+          const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=${RADIUS_ORIGIN.lat}&lng=${RADIUS_ORIGIN.lng}${suffix}`);
           assert.equal(preview.status, 200);
           assert.deepEqual(preview.data.providers.map(item => item.id), eligible ? [candidate.id] : []);
           assert.equal(preview.data.radiusKm, 8);
@@ -525,7 +532,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
         assert.equal(created.status, 201);
         const id = created.data.request.id;
         assert.equal(created.data.request.dispatch.radiusKm, 8);
-        const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=0&lng=0`);
+        const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=${RADIUS_ORIGIN.lat}&lng=${RADIUS_ORIGIN.lng}`);
         assert.equal(preview.status, 200);
         assert.equal(preview.data.radiusKm, 8);
         assert.deepEqual(preview.data.providers.map(({ id }) => id), [candidate.id]);
@@ -565,7 +572,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       process.env.NODE_ENV = mode;
       if (mode === "test") delete process.env.DISPATCH_TEST_BYPASS_RADIUS;
       assert.equal(withinDispatchRadius(15, 8), false);
-      const preview = await api(customer, "/api/requests/nearby-providers?category=mechanic&lat=0&lng=0");
+      const preview = await api(customer, `/api/requests/nearby-providers?category=mechanic&lat=${RADIUS_ORIGIN.lat}&lng=${RADIUS_ORIGIN.lng}`);
       assert.equal(preview.status, 200);
       assert.deepEqual(preview.data.providers, []);
       const job = await advanceDispatch(created.data.request.id);
@@ -604,7 +611,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
 
   it("limits coordinate-free preview to customer mode and preserves authorized assigned GPS", async () => {
     const candidate = await provider();
-    await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.53, updatedAt: new Date() } } });
+    await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 33.73, updatedAt: new Date() } } });
     const admin = await User.create({ name: "Admin", role: "admin", phone: "gps-admin", passwordHash: "test-only" });
     const dual = await User.create({ name: "Dual", role: "user", roles: ["user", "mechanic"], phone: "gps-dual", passwordHash: "test-only" });
     const preview = `/api/requests/nearby-providers?category=mechanic&lat=${pickup.lat}&lng=${pickup.lng}`;
@@ -625,7 +632,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const job = await request();
     const offered = await advanceDispatch(job.id);
     await acceptOffer(job.id, candidate.id, offered.dispatch.offerId);
-    const fix = { lat: 31.523, lng: 74.351, addressText: "Authorized tracking", capturedAt: new Date() };
+    const fix = { lat: 33.723, lng: 73.051, addressText: "Authorized tracking", capturedAt: new Date() };
     assert.equal((await api(candidate, "/api/requests/provider/location", "PATCH", { location: { ...fix, lat: 91 } })).status, 400);
     assert.equal((await api(customer, "/api/requests/provider/location", "PATCH", { location: fix })).status, 403);
     assert.equal((await api(candidate, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
@@ -641,12 +648,12 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
   it("keeps a newer GPS fix when an older availability update arrives", async () => {
     const p = await provider();
     const current = new Date();
-    const fix = { ...pickup, lat: 31.53, accuracy: 8, capturedAt: current.toISOString() };
+    const fix = { ...pickup, lat: 33.73, accuracy: 8, capturedAt: current.toISOString() };
     assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
     assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: false })).status, 200);
     const stale = { ...fix, capturedAt: new Date(+current - 240000).toISOString() };
     assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: true, location: stale })).status, 400);
-    const older = { ...fix, lat: 31.54, accuracy: 20, capturedAt: new Date(+current - 10000).toISOString() };
+    const older = { ...fix, lat: 33.74, accuracy: 20, capturedAt: new Date(+current - 10000).toISOString() };
     assert.equal((await api(p, "/api/requests/provider/availability", "PATCH", { isOnline: true, location: older })).status, 200);
     const { isOnline, currentLocation: saved } = (await User.findById(p.id)).providerState;
     assert.equal(isOnline, true);
@@ -670,7 +677,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const shared = { pickupLocation: pickup, vehicleInfo: { type: "car", model: "Test car" } };
     const cases = [
       { category: "fuel_delivery", fuelDetails: { fuelType: "petrol", liters: 5 }, provider: fuel },
-      { category: "car_towing", destinationLocation: { lat: 31.54, lng: 74.36 }, provider: towing }
+      { category: "car_towing", destinationLocation: { lat: 33.74, lng: 73.06 }, provider: towing }
     ];
     for (const { provider: expected, ...details } of cases) {
       const created = await api(customer, "/api/requests", "POST", { ...shared, ...details });
@@ -693,7 +700,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
   });
   it("ranks candidates and advances to the next one after a decline", async () => {
     const first = await provider();
-    const second = await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.54, updatedAt: new Date() } } });
+    const second = await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 33.74, updatedAt: new Date() } } });
     const job = await request(); const offer = await advanceDispatch(job.id);
     assert.equal(String(offer.dispatch.offeredProviderId), first.id);
     await declineOffer(job.id, first.id, offer.dispatch.offerId);
@@ -730,7 +737,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
   });
   it("a different provider cannot see, accept, or cancel another provider's offer", async () => {
     const chosen = await provider();
-    const outsider = await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 31.55, updatedAt: new Date() } } });
+    const outsider = await provider({ providerState: { isOnline: true, currentLocation: { ...pickup, lat: 33.75, updatedAt: new Date() } } });
     const job = await request(); const offer = await advanceDispatch(job.id);
     assert.equal(String(offer.dispatch.offeredProviderId), chosen.id);
     assert.equal((await api(outsider, `/api/requests/${job.id}`)).status, 403);
@@ -798,10 +805,10 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       assert.equal(created.data.request.dispatch.state, "searching");
       const job = await advanceDispatch(created.data.request.id);
       assert.equal((await api(p, `/api/requests/${job.id}/accept`, "PATCH", { offerId: job.dispatch.offerId })).status, 200);
-      await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 31.522 } });
+      await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 33.722 } });
       const tracked = await api(customer, `/api/requests/${job.id}`);
       assert.equal(tracked.data.request.provider.name, p.name);
-      assert.equal(tracked.data.request.providerLocation.lat, 31.522);
+      assert.equal(tracked.data.request.providerLocation.lat, 33.722);
       assert.equal((await api(p, `/api/requests/${job.id}/status`, "PATCH", { status: "provider_on_way" })).status, 200);
       assert.equal((await api(p, `/api/requests/${job.id}/status`, "PATCH", { status: "provider_arrived" })).status, 200);
       await new Promise((r) => setTimeout(r, 100));
@@ -861,7 +868,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     assert.equal(tracked.status, 200);
     assert.equal(tracked.data.request.status, event.status);
     assert.equal(tracked.data.request.provider.id, next.id);
-    assert.equal(tracked.data.request.providerLocation.lng, equatorialLocation(15).lng);
+    assert.equal(tracked.data.request.providerLocation.lat, equatorialLocation(15).lat);
     assert.equal(tracked.data.request.dispatch.radiusKm, 8);
   });
 
@@ -906,15 +913,15 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
   it("rejects out-of-order provider GPS updates", async () => {
     const p = await provider();
     const newer = new Date();
-    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 31.53, capturedAt: newer.toISOString(), accuracy: 8 } })).status, 200);
-    const stale = await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 31.54, capturedAt: new Date(newer.getTime() - 10000).toISOString() } });
+    assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 33.73, capturedAt: newer.toISOString(), accuracy: 8 } })).status, 200);
+    const stale = await api(p, "/api/requests/provider/location", "PATCH", { location: { ...pickup, lat: 33.74, capturedAt: new Date(newer.getTime() - 10000).toISOString() } });
     assert.equal(stale.status, 409);
-    assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 31.53);
+    assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 33.73);
   });
 
   it("treats a re-sent GPS fix as a heartbeat, not an error", async () => {
     const p = await provider();
-    const fix = { ...pickup, lat: 31.53, capturedAt: new Date().toISOString() };
+    const fix = { ...pickup, lat: 33.73, capturedAt: new Date().toISOString() };
     assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
     const before = (await User.findById(p.id)).providerState.lastSeenAt;
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -923,22 +930,22 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     assert.equal(again.data.ignored, true);
     const saved = await User.findById(p.id);
     assert.ok(saved.providerState.lastSeenAt > before, "heartbeat must move even when the fix is not newer");
-    assert.equal(saved.providerState.currentLocation.lat, 31.53);
+    assert.equal(saved.providerState.currentLocation.lat, 33.73);
   });
 
   it("measures fix age on the device clock when sentAt is provided (no clock-skew staleness)", async () => {
     const p = await provider();
     const skew = 10 * 60 * 1000; // device clock 10 minutes behind the server
     const deviceNow = Date.now() - skew;
-    const fix = { ...pickup, lat: 31.531, capturedAt: new Date(deviceNow - 2000).toISOString(), sentAt: new Date(deviceNow).toISOString() };
+    const fix = { ...pickup, lat: 33.731, capturedAt: new Date(deviceNow - 2000).toISOString(), sentAt: new Date(deviceNow).toISOString() };
     assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: fix })).status, 200);
     const stored = (await User.findById(p.id)).providerState.currentLocation;
     assert.ok(Date.now() - stored.capturedAt.getTime() < 10000, "a 2s-old fix from a skewed device must be stored as ~2s old");
     assert.equal(isFreshProviderLocation(stored), true);
     // The next real fix from the same skewed device is newer and accepted.
-    const next = { ...pickup, lat: 31.532, capturedAt: new Date(deviceNow + 3000).toISOString(), sentAt: new Date(deviceNow + 3500).toISOString() };
+    const next = { ...pickup, lat: 33.732, capturedAt: new Date(deviceNow + 3000).toISOString(), sentAt: new Date(deviceNow + 3500).toISOString() };
     assert.equal((await api(p, "/api/requests/provider/location", "PATCH", { location: next })).status, 200);
-    assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 31.532);
+    assert.equal((await User.findById(p.id)).providerState.currentLocation.lat, 33.732);
   });
 
   it("explains each reason a provider is excluded from a request", async () => {

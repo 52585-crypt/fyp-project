@@ -22,7 +22,11 @@ function loadPicker(platform, configured) {
   const mapConfig = ts.transpileModule(fs.readFileSync(mapFilename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS }
   }).outputText;
-  vm.runInNewContext(mapConfig, { module: mapModule, exports: mapModule.exports }, { filename: mapFilename });
+  const serviceArea = require("./helpers/serviceArea.cjs");
+  vm.runInNewContext(mapConfig, {
+    module: mapModule, exports: mapModule.exports,
+    require: (name) => name === "../config/serviceArea" ? serviceArea : require(name)
+  }, { filename: mapFilename });
   const mocks = {
     react: { ...React, useState: () => [false, () => {}] },
     "react-native": { Platform: { OS: platform }, Modal: "Modal", Pressable: "Pressable", SafeAreaView: "SafeAreaView", Text: "Text", View: "View" },

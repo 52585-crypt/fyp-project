@@ -29,6 +29,7 @@ const { ensureFinalizedInvoice } = require("../services/payments");
 const { recordActivity, recordRejectedAction } = require("../services/adminActivity");
 const { ensureOperationalLocation } = require("../services/operationalLocation");
 const { getDrivingRouteMetrics } = require("../services/roadRouting");
+const { SERVICE_AREA_MESSAGE, isInServiceArea } = require("../config/serviceArea");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -393,6 +394,7 @@ async function createRequest(req, res, next) {
     }
 
     const pickupLocation = normalizeLocation(body.pickupLocation || body.location, "Pickup location");
+    if (!isInServiceArea(pickupLocation.lat, pickupLocation.lng)) throw badRequest(SERVICE_AREA_MESSAGE);
     validateServiceDetails(category, body);
     const destinationLocation = category === "car_towing"
       ? normalizeLocation(body.destinationLocation, "Destination location")

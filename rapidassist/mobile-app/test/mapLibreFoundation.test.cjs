@@ -11,7 +11,7 @@ const source = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;
 const moduleValue = { exports: {} };
-vm.runInNewContext(source, { module: moduleValue, exports: moduleValue.exports, require }, { filename });
+vm.runInNewContext(source, { module: moduleValue, exports: moduleValue.exports, require: (name) => /config\/serviceArea$/.test(name) ? require("./helpers/serviceArea.cjs") : require(name) }, { filename });
 const maps = moduleValue.exports;
 
 function loadStatusOverlay() {
@@ -162,10 +162,10 @@ test("Expo Web uses the required MapLibre GL JS version", () => {
 });
 
 test("MapLibre shared contracts always convert coordinates to longitude-latitude order", () => {
-  assert.deepEqual(Array.from(maps.toLngLat({ latitude: 31.5204, longitude: 74.3587 })), [74.3587, 31.5204]);
+  assert.deepEqual(Array.from(maps.toLngLat({ latitude: 33.66, longitude: 73.08 })), [73.08, 33.66]);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(maps.fromLngLat([74.3587, 31.5204]))),
-    { longitude: 74.3587, latitude: 31.5204 }
+    JSON.parse(JSON.stringify(maps.fromLngLat([73.08, 33.66]))),
+    { longitude: 73.08, latitude: 33.66 }
   );
 });
 
@@ -190,7 +190,7 @@ test("MapLibre shared contracts reject invalid markers and build valid route Geo
   ] });
   assert.deepEqual(JSON.parse(JSON.stringify(emptyRoute)), { type: "FeatureCollection", features: [] });
   const defaults = maps.resolveMapCamera({}, [{ id: "", coordinate: { latitude: 200, longitude: 200 } }], null);
-  assert.deepEqual(Array.from(defaults.center), [74.3587, 31.5204]);
+  assert.deepEqual(Array.from(defaults.center), [73.08, 33.66]);
   assert.equal(defaults.bounds, null);
 });
 

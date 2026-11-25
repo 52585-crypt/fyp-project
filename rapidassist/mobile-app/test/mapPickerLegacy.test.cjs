@@ -41,7 +41,7 @@ function loadPicker() {
   const mapConfig = ts.transpileModule(fs.readFileSync(mapFilename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS }
   }).outputText;
-  vm.runInNewContext(mapConfig, { module: mapModule, exports: mapModule.exports }, { filename: mapFilename });
+  vm.runInNewContext(mapConfig, { module: mapModule, exports: mapModule.exports, require: (name) => /config\/serviceArea$/.test(name) ? require("./helpers/serviceArea.cjs") : require(name) }, { filename: mapFilename });
   const mocks = {
     react: React,
     "react/jsx-runtime": jsxRuntime,
@@ -253,7 +253,7 @@ test("Android booking map uses the default only as camera center and omits unsel
   const { exports } = loadPicker();
   const html = exports.buildMapHtml(payload({ pickup: null, destination: null }));
   assert.match(html, /"pickup":null,"destination":null/);
-  assert.match(html, /"initialCenter":\{"latitude":31\.5204/);
+  assert.match(html, /"initialCenter":\{"latitude":33\.66,"longitude":73\.08\}/);
   assert.match(html, /if \(data\.pickup\) addMarker/);
   assert.match(html, /if \(!data\.singlePoint && data\.destination\) addMarker/);
 });

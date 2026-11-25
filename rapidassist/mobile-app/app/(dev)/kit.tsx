@@ -89,7 +89,7 @@ export default function KitGallery() {
       <SectionHeader title="Summaries" />
       <Card>
         <InfoRow icon="car-outline" label="Vehicle" value="Honda City 2018" />
-        <InfoRow icon="location-outline" label="Location" value="Gulberg 3, Lahore" />
+        <InfoRow icon="location-outline" label="Location" value="F-7 Markaz, Islamabad" />
         <PriceBreakdown title="Bill Summary" totalLabel="Total Estimate" total={1649}
           lines={[{ label: "Visit Fee", amount: 149 }, { label: "Towing Base Fee", amount: 1200 }, { label: "Distance Charge", amount: 300 }]}
           note="Final fare may change if extra service is required." />
@@ -112,8 +112,8 @@ export default function KitGallery() {
       <SectionHeader title="Map + sheet" />
       <View style={styles.mapDemo}>
         <MapCanvas inset={{ top: 0, bottom: tokens.sizes.sheetPeek / 2 }} markers={[
-          { id: "a", kind: "pickup", coordinate: { latitude: 31.5204, longitude: 74.3587 }, label: "Pickup" },
-          { id: "b", kind: "provider", coordinate: { latitude: 31.5304, longitude: 74.3487 } }
+          { id: "a", kind: "pickup", coordinate: { latitude: 33.7204, longitude: 73.0587 }, label: "Pickup" },
+          { id: "b", kind: "provider", coordinate: { latitude: 33.7304, longitude: 73.0487 } }
         ]} />
         <CenterPin label="Help here" />
         <BottomSheet fixed>

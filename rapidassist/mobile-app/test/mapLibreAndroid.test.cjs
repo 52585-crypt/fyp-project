@@ -23,7 +23,7 @@ function loadTypes() {
   vm.runInNewContext(transpile(filename), {
     module: moduleValue,
     exports: moduleValue.exports,
-    require
+    require: (name) => /config\/serviceArea$/.test(name) ? require("./helpers/serviceArea.cjs") : require(name)
   }, { filename });
   return moduleValue.exports;
 }

@@ -1,4 +1,5 @@
 import type { Feature, FeatureCollection, LineString } from "geojson";
+import { DEFAULT_CENTER } from "../../config/serviceArea";
 import type { StyleProp, ViewStyle } from "react-native";
 
 export const OPENFREEMAP_LIBERTY_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -12,7 +13,8 @@ export interface RapidAssistMapCoordinate {
   longitude: number;
 }
 
-export const DEFAULT_MAP_CENTER: RapidAssistMapCoordinate = { latitude: 31.5204, longitude: 74.3587 };
+// Twin-cities fallback when the user's real location is unknown.
+export const DEFAULT_MAP_CENTER: RapidAssistMapCoordinate = { latitude: DEFAULT_CENTER.latitude, longitude: DEFAULT_CENTER.longitude };
 export const DEFAULT_MAP_ZOOM = 12;
 export const MIN_MAP_ZOOM = 1;
 export const MAX_MAP_ZOOM = 20;

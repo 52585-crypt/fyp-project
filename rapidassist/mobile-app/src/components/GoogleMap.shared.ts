@@ -1,4 +1,5 @@
 import type { Coordinate } from "../utils/distance";
+import { DEFAULT_CENTER } from "../config/serviceArea";
 import type { LocationTarget } from "./LocationMapPicker.shared";
 
 export type MapProvider = { id: string; name: string; distanceKm?: number | null; location: Coordinate };
@@ -23,7 +24,8 @@ export type GoogleMapProps = {
   cameraFocus?: { coordinate: Coordinate; requestId: number } | null;
 };
 
-export const BOOKING_MAP_CENTER: Coordinate = { latitude: 31.5204, longitude: 74.3587 };
+// Twin-cities fallback when the user's real location is unknown.
+export const BOOKING_MAP_CENTER: Coordinate = { latitude: DEFAULT_CENTER.latitude, longitude: DEFAULT_CENTER.longitude };
 
 export function selectedCoordinateText(coordinate: Coordinate | null) {
   return coordinate ? `${coordinate.latitude.toFixed(5)}, ${coordinate.longitude.toFixed(5)}` : "Not selected";

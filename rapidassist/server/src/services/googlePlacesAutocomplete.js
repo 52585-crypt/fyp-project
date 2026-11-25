@@ -1,4 +1,5 @@
 const { validateSessionToken } = require("./googlePlaceResolution");
+const { DEFAULT_CENTER } = require("../config/serviceArea");
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const AUTOCOMPLETE_FIELDS = [
@@ -24,6 +25,9 @@ async function autocompleteGooglePlaces(input, sessionToken, options = {}) {
   const near = options.near;
   if (near && validCoordinate(near.latitude, 90) && validCoordinate(near.longitude, 180)) {
     body.locationBias = { circle: { center: near, radius: 50000 } };
+  } else {
+    // Unknown user location: bias to the twin-cities service area instead of nowhere.
+    body.locationBias = { circle: { center: { latitude: DEFAULT_CENTER.lat, longitude: DEFAULT_CENTER.lng }, radius: 30000 } };
   }
 
   const controller = new AbortController();

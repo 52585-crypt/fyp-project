@@ -313,7 +313,7 @@ test("corrupt cached JSON and invalid job shapes are ignored", async () => {
 
 test("location search handles invalid upstream data and network failure", async () => {
   const distance = load("src/utils/distance.ts");
-  const mocks = { "../utils/distance": distance };
+  const mocks = { "../utils/distance": distance, "../config/serviceArea": require("./helpers/serviceArea.cjs") };
   const invalid = load("src/services/geocoding.ts", mocks, { fetch: async () => ({ ok: true, json: async () => ({ features: {} }) }) });
   await assert.rejects(invalid.searchPlaces("Lahore"), /invalid response/);
   const offline = load("src/services/geocoding.ts", mocks, { fetch: async () => { throw new Error("offline"); } });

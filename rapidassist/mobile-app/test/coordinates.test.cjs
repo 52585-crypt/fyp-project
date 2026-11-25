@@ -71,7 +71,11 @@ function loadWebPicker() {
   const mapConfig = ts.transpileModule(fs.readFileSync(mapFilename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS }
   }).outputText;
-  vm.runInNewContext(mapConfig, { module: mapModule, exports: mapModule.exports }, { filename: mapFilename });
+  const serviceArea = require("./helpers/serviceArea.cjs");
+  vm.runInNewContext(mapConfig, {
+    module: mapModule, exports: mapModule.exports,
+    require: (name) => name === "../config/serviceArea" ? serviceArea : require(name)
+  }, { filename: mapFilename });
   const mocks = {
     react: reactMock,
     "react/jsx-runtime": jsxRuntime,

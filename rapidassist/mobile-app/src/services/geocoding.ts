@@ -1,3 +1,4 @@
+import { DEFAULT_CENTER, SERVICE_AREA_BBOX_PARAM, isInServiceArea } from "../config/serviceArea";
 import { coordinatesFromLngLat, type Coordinate } from "../utils/distance";
 
 const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
@@ -27,16 +28,16 @@ export async function searchPlaces(query: string, near?: Coordinate): Promise<Ge
     throw new Error("Enter at least 3 characters to search a location.");
   }
 
+  // Twin cities only: Photon returns results inside the bbox, biased to the user (or the area centre if unknown).
   const params = new URLSearchParams({
     q: trimmed,
-    limit: "5",
-    lang: "en"
+    limit: "8",
+    lang: "en",
+    bbox: SERVICE_AREA_BBOX_PARAM
   });
-
-  if (near) {
-    params.set("lat", String(near.latitude));
-    params.set("lon", String(near.longitude));
-  }
+  const bias = near ?? DEFAULT_CENTER;
+  params.set("lat", String(bias.latitude));
+  params.set("lon", String(bias.longitude));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
@@ -58,7 +59,7 @@ export async function searchPlaces(query: string, near?: Coordinate): Promise<Ge
         if (!Array.isArray(coordinates) || coordinates.length !== 2) return null;
 
         const coordinate = coordinatesFromLngLat(coordinates);
-        if (!coordinate) return null;
+        if (!coordinate || !isInServiceArea(coordinate.latitude, coordinate.longitude)) return null;
 
         return {
           ...coordinate,
@@ -66,7 +67,8 @@ export async function searchPlaces(query: string, near?: Coordinate): Promise<Ge
           source: "photon" as const
         };
       })
-      .filter((result): result is GeocodingResult => Boolean(result));
+      .filter((result): result is GeocodingResult => Boolean(result))
+      .slice(0, 5);
   } catch (error) {
     if (controller.signal.aborted) throw new Error("Location search timed out. Please try again.");
     if (error instanceof TypeError) throw new Error("Unable to search locations. Check your connection and try again.");

@@ -5,6 +5,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { LocationAutocompleteField } from "../../../../src/components/LocationAutocompleteField";
 import { MapCanvas, type MapCanvasMarker } from "../../../../src/components/maps/MapCanvas";
 import { Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, Text } from "../../../../src/design/components";
+import { SERVICE_AREA_MESSAGE, isInServiceArea } from "../../../../src/config/serviceArea";
+import { TWIN_CITY_LANDMARKS } from "../../../../src/config/twinCityLandmarks";
 import { tokens } from "../../../../src/design/tokens";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
@@ -32,6 +34,8 @@ export default function PickupPin() {
   useEffect(() => { if (!b.pickup) void b.useCurrentLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = step === "pickup" ? b.pickup : b.destination;
+  // Same rule as the server: a pickup outside Islamabad/Rawalpindi cannot be booked.
+  const outsideArea = step === "pickup" && Boolean(value) && !isInServiceArea(value!.latitude, value!.longitude);
   const pinned = value?.source === "manual_map" && /^Pinned /.test(value.address ?? "");
   const markers: MapCanvasMarker[] = step === "destination" && b.pickup
     ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }] : [];
@@ -53,6 +57,7 @@ export default function PickupPin() {
 
   function confirm() {
     if (!value) return b.setError(step === "pickup" ? "Move the map to your location, or search for it." : "Move the map to where the vehicle should be towed.");
+    if (outsideArea) return b.setError(SERVICE_AREA_MESSAGE);
     if (step === "pickup" && towing) return goTo("destination");
     b.setError(null);
     router.push(customerRoutes.estimate);
@@ -77,7 +82,7 @@ export default function PickupPin() {
 
       <BottomSheet fixed footer={
         <Button title={step === "pickup" ? (towing ? "Confirm pickup" : "Confirm location") : "Confirm drop-off"}
-          icon="arrow-forward" disabled={b.locating || !value} onPress={confirm} />
+          icon="arrow-forward" disabled={b.locating || !value || outsideArea} onPress={confirm} />
       }>
         <Text variant="title">{title}</Text>
         <View style={styles.address}>
@@ -108,7 +113,18 @@ export default function PickupPin() {
           </ScrollView>
         ) : null}
 
-        {b.error ? <Banner tone="danger" message={b.error} /> : null}
+        {step === "pickup" ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}
+            accessibilityLabel="Popular pickup points in Islamabad and Rawalpindi">
+            {TWIN_CITY_LANDMARKS.map((l) => (
+              <Button key={l.id} title={l.label} icon="navigate-outline" size="small" variant="secondary" fullWidth={false}
+                onPress={() => choose(normalizeLocation({ latitude: l.latitude, longitude: l.longitude, address: `${l.label}, ${l.city}`, source: "unknown" }))} />
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
+        {b.error && !(outsideArea && b.error === SERVICE_AREA_MESSAGE) ? <Banner tone="danger" message={b.error} /> : null}
       </BottomSheet>
     </View>
   );

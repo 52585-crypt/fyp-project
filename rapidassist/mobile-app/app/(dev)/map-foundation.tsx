@@ -15,14 +15,14 @@ type DemoStatus = "loading" | "ready" | "error" | "legacy";
 const INTENTIONAL_STYLE_ERROR = "data:application/json,%7B%22version%22%3A7%2C%22sources%22%3A%7B%7D%2C%22layers%22%3A%5B%5D%7D";
 
 const markers: RapidAssistMapMarker[] = [
-  { id: "customer", coordinate: { latitude: 31.5204, longitude: 74.3587 }, title: "Customer", label: "C", color: tokens.color.danger },
-  { id: "provider", coordinate: { latitude: 31.5308, longitude: 74.3461 }, title: "Provider", label: "P", color: tokens.color.primary }
+  { id: "customer", coordinate: { latitude: 33.7204, longitude: 73.0587 }, title: "Customer", label: "C", color: tokens.color.danger },
+  { id: "provider", coordinate: { latitude: 33.7308, longitude: 73.0461 }, title: "Provider", label: "P", color: tokens.color.primary }
 ];
 
 const sampleRoute: RapidAssistMapRoute = {
   coordinates: [
     markers[0].coordinate,
-    { latitude: 31.5259, longitude: 74.3532 },
+    { latitude: 33.7259, longitude: 73.0532 },
     markers[1].coordinate
   ],
   color: tokens.color.primary,
