@@ -42,6 +42,8 @@ export function useBookingState() {
   const [nearby, setNearby] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set when the server refuses a booking because this customer already has an open request (409).
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const submission = useRef<{ fingerprint: string; id: string } | null>(null);
   const favorites = useFavoriteLocations(setError);
 
@@ -143,6 +145,7 @@ export function useBookingState() {
     if (towing && (!route.route || route.loading)) return setError("A valid road route is required before requesting a tow.");
     setSubmitting(true);
     setError(null);
+    setActiveRequestId(null);
     try {
       const input = {
         category, priority, ...locations, description,
@@ -160,7 +163,15 @@ export function useBookingState() {
       const request = await createRequest(token, { ...input, clientRequestId: submission.current.id });
       successFeedback();
       router.replace(customerRoutes.request(request.id));
-    } catch (e) { setError(message(e, "Failed to create request")); } finally { setSubmitting(false); }
+    } catch (e: any) {
+      const data = e?.response?.data;
+      if (e?.response?.status === 409 && data?.code === "ACTIVE_REQUEST_EXISTS" && typeof data.requestId === "string") {
+        setActiveRequestId(data.requestId);
+        setError("You already have an active request. Open it to track it, or cancel it before booking another service.");
+      } else {
+        setError(message(e, "Failed to create request"));
+      }
+    } finally { setSubmitting(false); }
   }
 
   return {
@@ -168,7 +179,7 @@ export function useBookingState() {
     vehicles, vehicleId, chooseVehicle, selectedVehicle, vehicleType, setVehicleType, vehicleModel, setVehicleModel, plate, setPlate,
     problem, setProblem, fuelType, setFuelType, liters, setLiters, litersNumber, mechanicIssue, setMechanicIssue,
     priority, setPriority, description, setDescription, locating, currentLocation, cameraFocus, nearby,
-    error, setError, submitting, favorites, route, estimate, waitingForRoute,
+    error, setError, submitting, activeRequestId, favorites, route, estimate, waitingForRoute,
     setFromMap, pinLocation, focusOn, recenter, useCurrentLocation, validate, submit
   };
 }

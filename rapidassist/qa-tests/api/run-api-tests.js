@@ -729,13 +729,25 @@ async function main() {
       return { pass: r.status === 201 && r.body.request.estimate.total === 1250 && c?.status === 200 && c.body?.request?.status === "cancelled", actual: `HTTP ${r.status}, total=${r.body?.request?.estimate?.total}, cancel-before-assignment HTTP ${c?.status} -> ${c?.body?.request?.status}` };
     });
   }
-  await R.check("Requests", "Customer can have many open requests at once", "Create 3 mechanic requests back-to-back as one customer", "Spam/duplicate protection (e.g. 409 when an active request exists)",
-    async () => {
-      const ids = [];
-      for (let i = 0; i < 3; i++) { const r = await createRequest(user2, mechanicReq("battery")); if (r.status === 201) ids.push(r.body.request.id); }
-      for (const id of ids) await user2.patch(`/api/requests/${id}/status`, { status: "cancelled" });
-      return { pass: ids.length <= 1, actual: `${ids.length} simultaneous active requests accepted` };
+  {
+    const first = await createRequest(user2, mechanicReq("battery"));
+    const second = await createRequest(user2, fuelReq("petrol", 5));
+    await R.check("Requests", "Second open request is refused with 409 + existing id", "user2 creates a mechanic request, then a fuel request while the first is open", "201 then 409 {code:ACTIVE_REQUEST_EXISTS, requestId:<first id>}; only one open request stored", async () => {
+      const mine = (await user2.get("/api/requests")).body.requests.filter((r) => !["completed", "cancelled"].includes(r.status));
+      return {
+        pass: first.status === 201 && second.status === 409 && second.body?.code === "ACTIVE_REQUEST_EXISTS" && second.body.requestId === first.body.request.id && mine.length === 1,
+        actual: `first HTTP ${first.status}, second HTTP ${second.status} code=${second.body?.code}, requestId matches=${second.body?.requestId === first.body?.request?.id}, open requests=${mine.length}`
+      };
     });
+    await R.check("Requests", "Invalid booking still returns 400 while a request is open", "user2 (with an open request) posts an invalid fuel request", "400 (validation runs before the open-request check)", async () =>
+      expectStatus(await createRequest(user2, fuelReq("kerosene", 5)), 400));
+    const retry = await user2.post("/api/requests", { ...mechanicReq("battery"), clientRequestId: "qa-client-request-0001" });
+    await user2.patch(`/api/requests/${first.body.request.id}/status`, { status: "cancelled" });
+    const afterCancel = await createRequest(user2, fuelReq("petrol", 5));
+    await R.check("Requests", "Booking allowed again after the open request is cancelled", "cancel the open request, create a new one", "201", async () =>
+      ({ pass: retry.status === 409 && afterCancel.status === 201, actual: `new clientRequestId while open HTTP ${retry.status}; after cancel HTTP ${afterCancel.status}` }));
+    if (afterCancel.body?.request?.id) await user2.patch(`/api/requests/${afterCancel.body.request.id}/status`, { status: "cancelled" });
+  }
   const cancelled = await createRequest(user, mechanicReq("battery"));
   await user.patch(`/api/requests/${cancelled.body.request.id}/status`, { status: "cancelled" });
   await R.check("Lifecycle", "Cancel an already-cancelled request", "PATCH status=cancelled twice", "No error and no change (idempotent no-op) or 400", async () => {

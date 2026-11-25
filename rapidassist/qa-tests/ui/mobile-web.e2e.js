@@ -230,6 +230,19 @@ async function customerJourney(page, context, customer, { fuelP, towP, mechP }) 
     await waitText(page, /QA Web Fuel Rider/, 20000);
     return { actual: `accept HTTP ${acc.status}; provider shown` };
   });
+  await step("Customer", "Second booking while one is active shows a message", "with the fuel job active: open Mechanic booking -> Blue Area -> Confirm -> Find providers", "banner 'You already have an active request' + Open active request button that opens the fuel job; no new request stored", async () => {
+    await page.goto(`${APP}/request/new/mechanic`, { waitUntil: "networkidle" });
+    await chooseBlueAreaAndConfirm(page);
+    await page.waitForURL(/estimate/, { timeout: 15000 });
+    await tap(page, /Battery Jump/);
+    await tap(page, "Find providers");
+    await waitText(page, /already have an active request/, 15000);
+    await shot(page, "mobile-active-request-409-banner");
+    await tap(page, "Open active request");
+    await page.waitForURL(new RegExp(`/request/${fuelId}`), { timeout: 15000 });
+    const open = (await customer.get("/api/requests")).body.requests.filter((r) => !["completed", "cancelled"].includes(r.status));
+    return { pass: open.length === 1 && open[0].id === fuelId, actual: `banner shown, button opened the fuel job; open requests=${open.length}` };
+  });
   await step("Customer", "Chat with provider", "Tracking -> Chat -> type message -> Send; provider replies via API", "message stored on server; reply appears in UI", async () => {
     await page.goto(`${APP}/request/${fuelId}/chat`, { waitUntil: "networkidle" });
     const box = page.locator("textarea, input").filter({ visible: true }).last();

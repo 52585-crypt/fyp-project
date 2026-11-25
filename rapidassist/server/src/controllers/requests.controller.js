@@ -399,6 +399,19 @@ async function createRequest(req, res, next) {
       ? normalizeLocation(body.destinationLocation, "Destination location")
       : null;
 
+    // One open request per customer (checked after input validation, before the road-route lookup).
+    const active = await ServiceRequest.findOne({ userId: req.user._id, status: { $nin: ["completed", "cancelled"] } })
+      .sort({ createdAt: -1 }).select("_id status");
+    if (active) {
+      return res.status(409).json({
+        ok: false,
+        code: "ACTIVE_REQUEST_EXISTS",
+        message: "You already have an active request. Open it to track it, or cancel it before booking another.",
+        requestId: active.id,
+        status: active.status
+      });
+    }
+
     const vehicleData = await buildVehicleData(req, body.vehicleId, body.vehicleInfo);
     const roadRoute = category === "car_towing"
       ? await getDrivingRouteMetrics(pickupLocation, destinationLocation)
