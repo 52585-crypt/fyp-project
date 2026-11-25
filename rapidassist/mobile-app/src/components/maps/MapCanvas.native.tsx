@@ -18,7 +18,7 @@ export function MapCanvas(props: MapCanvasProps) {
   return isGoogleMapConfigured() ? <GoogleCanvas {...props} /> : <TileCanvas {...props} />;
 }
 
-function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, initialCenter, accessibilityLabel, style, testID }: MapCanvasProps) {
+function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID }: MapCanvasProps) {
   // Loaded lazily so builds that only use the tile canvas never touch the native map module.
   const { default: MapView, Marker, Polyline, PROVIDER_GOOGLE } = require("react-native-maps") as typeof import("react-native-maps");
   const map = useRef<MapViewType>(null);
@@ -57,8 +57,8 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
           </>
         ) : null}
         {markers.map((m) => (
-          <Marker key={m.id} coordinate={m.coordinate} title={m.label} anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={m.kind === "provider"}>
+          <Marker key={m.id} coordinate={m.coordinate} title={onMarkerPress ? undefined : m.label} anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={m.kind === "provider"} onPress={onMarkerPress ? () => onMarkerPress(m.id) : undefined}>
             <MarkerDot marker={m} />
           </Marker>
         ))}

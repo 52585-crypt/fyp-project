@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import {
   Badge, Banner, BottomSheet, Button, Card, CenterPin, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
-  PersonCard, PriceBreakdown, ProgressStepper, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader,
+  PersonCard, PriceBreakdown, ProgressStepper, ProviderPreviewCard, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader,
   Select, ServiceTile, SkeletonCard, StatTile, StatusTimeline, SuccessHero, Text, TextArea
 } from "../../src/design/components";
 import { MapCanvas } from "../../src/components/maps/MapCanvas";
@@ -103,6 +103,15 @@ export default function KitGallery() {
       </Card>
       <Card><ProgressStepper steps={["Accepted", "On The Way", "Arrived", "Completed"]} current={1} /></Card>
       <Card><PersonCard name="Ahmad Raza" subtitle="Expert Mechanic" rating={4.8} ratingCount={36} onCall={() => {}} onChat={() => {}} /></Card>
+      <Card>
+        <ProviderPreviewCard name="Bilal Towing" serviceLabel="Car Towing" icon="car" accent="serviceTowing" onAccent="onServiceTowing"
+          rating={4.6} ratingCount={21} completedJobs={84} distanceLabel="2–5 km" etaLabel="about 9 min"
+          actionLabel="Request Car Towing" onAction={() => {}} onClose={() => {}} />
+      </Card>
+      <Card>
+        <ProviderPreviewCard name="Usman Fuel" serviceLabel="Fuel Delivery" icon="water" accent="serviceFuel" onAccent="onServiceFuel"
+          completedJobs={0} distanceLabel="under 2 km" etaLoading />
+      </Card>
 
       <SectionHeader title="Feedback" />
       <Banner title="Your driver is on the way" message="We will notify you when the driver arrives." />
@@ -113,7 +122,10 @@ export default function KitGallery() {
       <View style={styles.mapDemo}>
         <MapCanvas inset={{ top: 0, bottom: tokens.sizes.sheetPeek / 2 }} markers={[
           { id: "a", kind: "pickup", coordinate: { latitude: 33.7204, longitude: 73.0587 }, label: "Pickup" },
-          { id: "b", kind: "provider", coordinate: { latitude: 33.7304, longitude: 73.0487 } }
+          { id: "b", kind: "provider", coordinate: { latitude: 33.7304, longitude: 73.0487 } },
+          { id: "c", kind: "provider", service: "mechanic", ambient: true, coordinate: { latitude: 33.7154, longitude: 73.0687 } },
+          { id: "d", kind: "provider", service: "towing", ambient: true, coordinate: { latitude: 33.7254, longitude: 73.0687 } },
+          { id: "e", kind: "provider", service: "fuel_delivery", ambient: true, coordinate: { latitude: 33.7154, longitude: 73.0487 } }
         ]} />
         <CenterPin label="Help here" />
         <BottomSheet fixed>

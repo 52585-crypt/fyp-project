@@ -1,4 +1,4 @@
-import { canvasPoints, isCoordinate, parseCanvasMessage } from "./MapCanvas.types";
+import { canvasPoints, isCoordinate, parseCanvasMarkerTap, parseCanvasMessage } from "./MapCanvas.types";
 
 describe("MapCanvas helpers", () => {
   it("accepts only centre reports from its own canvas instance", () => {
@@ -19,6 +19,17 @@ describe("MapCanvas helpers", () => {
     );
     expect(pts).toEqual([{ latitude: 1, longitude: 2 }, { latitude: 3, longitude: 4 }]);
     expect(isCoordinate({ latitude: 0, longitude: 181 })).toBe(false);
+  });
+
+  it("parses marker taps only for this canvas and only as a string id", () => {
+    const tap = (m: object) => JSON.stringify({ type: "marker", id: "canvas-1", ...m });
+    expect(parseCanvasMarkerTap(tap({ marker: "provider:42" }), "canvas-1")).toBe("provider:42");
+    expect(parseCanvasMarkerTap(tap({ marker: "provider:42" }), "canvas-2")).toBeNull();
+    expect(parseCanvasMarkerTap(tap({ marker: { toString: 1 } }), "canvas-1")).toBeNull();
+    expect(parseCanvasMarkerTap(tap({ marker: "" }), "canvas-1")).toBeNull();
+    expect(parseCanvasMarkerTap(JSON.stringify({ type: "center", id: "canvas-1", latitude: 1, longitude: 2 }), "canvas-1")).toBeNull();
+    expect(parseCanvasMarkerTap("not json", "canvas-1")).toBeNull();
+    expect(parseCanvasMarkerTap({ type: "marker" }, "canvas-1")).toBeNull();
   });
 
   it("keeps ambient markers (nearby providers) out of camera fitting", () => {

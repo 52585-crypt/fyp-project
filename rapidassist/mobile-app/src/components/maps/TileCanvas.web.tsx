@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import { parseCanvasMessage, type MapCanvasProps } from "./MapCanvas.types";
+import { parseCanvasMarkerTap, parseCanvasMessage, type MapCanvasProps } from "./MapCanvas.types";
 import { buildTileCanvasHtml, tileCanvasState } from "./tileCanvasHtml";
 
 let nextInstance = 0;
@@ -13,6 +13,8 @@ export function TileCanvas(props: MapCanvasProps) {
   const state = JSON.stringify(tileCanvasState(props));
   const onCenter = useRef(props.onCenterChange);
   onCenter.current = props.onCenterChange;
+  const onMarker = useRef(props.onMarkerPress);
+  onMarker.current = props.onMarkerPress;
 
   useEffect(() => {
     frame.current?.contentWindow?.postMessage({ rapidassistMapState: state }, "*");
@@ -21,8 +23,11 @@ export function TileCanvas(props: MapCanvasProps) {
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow) return;
-      const center = parseCanvasMessage((event.data as { rapidassistMap?: unknown } | null)?.rapidassistMap, instance);
+      const raw = (event.data as { rapidassistMap?: unknown } | null)?.rapidassistMap;
+      const center = parseCanvasMessage(raw, instance);
       if (center) onCenter.current?.(center);
+      const tapped = parseCanvasMarkerTap(raw, instance);
+      if (tapped) onMarker.current?.(tapped);
     };
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);

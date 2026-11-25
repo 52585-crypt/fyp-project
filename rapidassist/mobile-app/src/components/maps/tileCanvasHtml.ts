@@ -59,7 +59,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-f
 .provider{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;background:${c.amber};border:3px solid ${c.surface};box-shadow:0 3px 10px ${c.shadowSoft};display:flex;align-items:center;justify-content:center}
 .provider:after{content:"";width:10px;height:10px;border-radius:50%;background:${c.ink}}
 .svc{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;border-radius:50%;filter:drop-shadow(0 2px 4px ${c.shadowSoft})}
-.ambient{z-index:2}
+.ambient{z-index:2;cursor:pointer}
 .lbl{position:absolute;transform:translate(-50%,16px);background:${c.ink};color:${c.surface};border-radius:8px;padding:3px 7px;font-size:11px;font-weight:600;white-space:nowrap;z-index:4}
 .credit{position:absolute;right:6px;background:${c.surfaceGlass};font-size:9px;padding:2px 4px;border-radius:4px;z-index:5}.credit a{color:${c.slate};text-decoration:none}
 .ctl{position:absolute;right:12px;display:grid;gap:8px;z-index:6}
@@ -86,7 +86,7 @@ function draw(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=
  if(st.route.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:2';const pts=st.route.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' ');
   [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});map.append(g);}
  st.markers.forEach(m=>{const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const icon=m.service&&boot.icons[m.service];const d=document.createElement(icon?'img':'div');
-  d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
+  d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.dataset.mid=m.id;d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
   // Ambient markers (nearby providers) carry their name for screen readers only, so many of them do not clutter the map.
   if(m.label&&m.ambient){d.setAttribute('role','img');d.setAttribute('aria-label',m.label);}
   else if(m.label){const b=document.createElement('div');b.className='lbl';b.textContent=m.label;b.style.left=d.style.left;b.style.top=d.style.top;map.append(b);}});
@@ -98,9 +98,10 @@ addEventListener('message',e=>{const d=e.data;if(d&&d.rapidassistMapState)update
 function report(){if(st.pinMode)send({type:'center',latitude:cam.lat,longitude:cam.lng});}
 function panBy(dx,dy){const o=px(cam.lat,cam.lng,cam.z);const c=ll(o.x-dx,o.y-dy,cam.z);cam.lat=c.lat;cam.lng=c.lng;}
 function zoom(d){cam.z=Math.max(3,Math.min(19,Math.round(cam.z)+d));moved=true;draw();report();}
-map.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;drag={x:e.clientX,y:e.clientY};map.setPointerCapture(e.pointerId);});
-map.addEventListener('pointermove',e=>{if(!drag)return;panBy(e.clientX-drag.x,e.clientY-drag.y);drag={x:e.clientX,y:e.clientY};moved=true;draw();});
-map.addEventListener('pointerup',()=>{if(drag){drag=null;report();}});map.addEventListener('pointercancel',()=>{drag=null;});
+// A press that starts on a marker and stays within a few pixels is a tap on it (posted as its id), otherwise a pan.
+map.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;const t=e.target&&e.target.closest?e.target.closest('[data-mid]'):null;drag={x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,mid:t?t.dataset.mid:null};map.setPointerCapture(e.pointerId);});
+map.addEventListener('pointermove',e=>{if(!drag)return;if(drag.mid&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<8)return;drag.mid=null;panBy(e.clientX-drag.x,e.clientY-drag.y);drag.x=e.clientX;drag.y=e.clientY;moved=true;draw();});
+map.addEventListener('pointerup',()=>{if(!drag)return;const mid=drag.mid;drag=null;if(mid)send({type:'marker',marker:mid});else report();});map.addEventListener('pointercancel',()=>{drag=null;});
 map.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1:-1);},{passive:false});
 document.getElementById('zin').onclick=()=>zoom(1);document.getElementById('zout').onclick=()=>zoom(-1);
 const cr=document.getElementById('credit');const a=document.createElement('a');a.href='https://www.openstreetmap.org/copyright';a.target='_blank';a.rel='noreferrer';a.textContent='© OpenStreetMap contributors'+(boot.tiles.usesCarto?' © CARTO':'');cr.append(a);

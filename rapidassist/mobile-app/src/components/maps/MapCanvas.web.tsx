@@ -22,7 +22,7 @@ const look: Record<MapCanvasMarker["kind"], { fill: string; scale: number; strok
   provider: { fill: c.amber, scale: 14, stroke: 3 }
 };
 
-function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, initialCenter, accessibilityLabel, style, testID, onFail }:
+function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID, onFail }:
   MapCanvasProps & { onFail: () => void }) {
   const element = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -30,6 +30,8 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
   const userPanned = useRef(false);
   const onCenter = useRef(onCenterChange);
   onCenter.current = onCenterChange;
+  const onMarker = useRef(onMarkerPress);
+  onMarker.current = onMarkerPress;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -63,12 +65,16 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
     const maps = (window as any).google.maps;
     const size = tokens.sizes.mapMarkerProvider;
     overlays.current.forEach((o) => o.setMap(null));
-    overlays.current = markers.map((m) => new maps.Marker({
-      map: map.current, position: at(m.coordinate), title: m.label, zIndex: m.ambient ? 1 : 2,
+    overlays.current = markers.map((m) => {
+      const marker = new maps.Marker({
+      map: map.current, position: at(m.coordinate), title: m.label, zIndex: m.ambient ? 1 : 2, clickable: Boolean(m.ambient),
       icon: m.kind === "provider" && m.service
         ? { url: serviceMarkerDataUrl(m.service), scaledSize: new maps.Size(size, size), anchor: new maps.Point(size / 2, size / 2) }
         : { path: maps.SymbolPath.CIRCLE, fillColor: look[m.kind].fill, fillOpacity: 1, strokeColor: c.surface, strokeWeight: look[m.kind].stroke, scale: look[m.kind].scale }
-    }));
+      });
+      marker.addListener("click", () => onMarker.current?.(m.id));
+      return marker;
+    });
     if (route.length > 1) {
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.surface, strokeWeight: 10, zIndex: 3 }));
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.primary, strokeWeight: 6, zIndex: 4 }));

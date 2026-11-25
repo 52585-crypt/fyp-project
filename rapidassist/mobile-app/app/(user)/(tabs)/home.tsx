@@ -10,11 +10,13 @@ import { tapFeedback } from "../../../src/design/haptics";
 import { tokens } from "../../../src/design/tokens";
 import { customerRoutes } from "../../../src/navigation/routes";
 import { useNotifications } from "../../../src/notifications/NotificationProvider";
+import { NearbyProviderCard } from "../../../src/requests/customer/NearbyProviderCard";
 import { RequestCard } from "../../../src/requests/customer/RequestCard";
 import { useHomeMap } from "../../../src/requests/customer/useHomeMap";
 import { nearbyProviderMarkers } from "../../../src/requests/nearbyProviderMarkers";
 import { useNearbyProviders } from "../../../src/requests/useNearbyProviders";
 import { useMyRequests } from "../../../src/requests/useMyRequests";
+import { useProviderPreview } from "../../../src/requests/useProviderPreview";
 
 const services = [
   { title: "Tow Truck", subtitle: "Vehicle towing", icon: "car-sport-outline", go: () => router.push(customerRoutes.newRequest("car_towing")) },
@@ -36,6 +38,7 @@ export default function CustomerHome() {
   const mine = useMyRequests();
   const map = useHomeMap();
   const near = useNearbyProviders(ALL_SERVICES, map.position ? { lat: map.position.latitude, lng: map.position.longitude } : null, Boolean(map.position));
+  const preview = useProviderPreview(near.providers, map.position);
   const firstName = user?.name?.trim().split(/\s+/)[0];
   const active = mine.active[0];
   const peek = tokens.sizes.sheetPeek + (active ? ACTIVE_CARD_HEIGHT : 0);
@@ -44,7 +47,7 @@ export default function CustomerHome() {
     <View style={styles.root}>
       <StatusBar style="dark" />
       <MapCanvas accessibilityLabel="Map of your location" inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: peek }}
-        focus={map.focus} markers={map.position
+        focus={map.focus} onMarkerPress={preview.select} markers={map.position
           ? [...nearbyProviderMarkers(near.providers ?? []), { id: "me", kind: "user", coordinate: map.position }] : []} />
 
       <MapTopBar
@@ -57,37 +60,45 @@ export default function CustomerHome() {
         <IconButton icon="locate" label="Centre map on my location" disabled={map.locating} onPress={() => void map.locate()} />
       </View>
 
-      <BottomSheet aboveTabBar peek={peek} accessibilityLabel="Services">
-        {active ? (
-          <View style={styles.gapSm}>
-            <View style={styles.row}><Text variant="headline">Your request</Text><Badge label="Live" tone="primary" /></View>
-            <RequestCard request={active} />
-          </View>
-        ) : mine.loading ? <SkeletonCard lines={1} /> : null}
-
-        <View style={styles.gapSm}>
-          <Text variant="title">Where do you need help?</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}. Recentre map`}
-            onPress={() => { tapFeedback(); void map.locate(); }} style={styles.place}>
-            <View style={styles.placeIcon}><Icon name="navigate" color="primary" size={tokens.sizes.iconSmall} /></View>
-            <View style={styles.flex}>
-              <Text variant="captionStrong" color="muted">YOUR LOCATION</Text>
-              <Text variant="bodyStrong" numberOfLines={1}>
-                {map.locating && !map.position ? "Finding you…" : map.address ?? (map.position ? "Current location" : "Location off")}
-              </Text>
+      {preview.selected ? (
+        <BottomSheet key={preview.selected.id} aboveTabBar peek={peek} accessibilityLabel="Provider details">
+          <NearbyProviderCard provider={preview.selected} fallbackCategory="mechanic" eta={preview.eta} onClose={preview.close}
+            onRequest={(category) => { preview.close(); router.push(customerRoutes.newRequest(category)); }} />
+          <Text variant="caption" color="muted">Location shown is approximate. We send your request to the best available provider nearby.</Text>
+        </BottomSheet>
+      ) : (
+        <BottomSheet aboveTabBar peek={peek} accessibilityLabel="Services">
+          {active ? (
+            <View style={styles.gapSm}>
+              <View style={styles.row}><Text variant="headline">Your request</Text><Badge label="Live" tone="primary" /></View>
+              <RequestCard request={active} />
             </View>
-            <Text variant="captionStrong" color="primary">Refresh</Text>
-          </Pressable>
-        </View>
+          ) : mine.loading ? <SkeletonCard lines={1} /> : null}
 
-        {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
-        {map.error && !map.position ? <Banner tone="warning" message="Turn on location so providers can find you. You can still set a pickup pin manually." /> : null}
+          <View style={styles.gapSm}>
+            <Text variant="title">Where do you need help?</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}. Recentre map`}
+              onPress={() => { tapFeedback(); void map.locate(); }} style={styles.place}>
+              <View style={styles.placeIcon}><Icon name="navigate" color="primary" size={tokens.sizes.iconSmall} /></View>
+              <View style={styles.flex}>
+                <Text variant="captionStrong" color="muted">YOUR LOCATION</Text>
+                <Text variant="bodyStrong" numberOfLines={1}>
+                  {map.locating && !map.position ? "Finding you…" : map.address ?? (map.position ? "Current location" : "Location off")}
+                </Text>
+              </View>
+              <Text variant="captionStrong" color="primary">Refresh</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.grid}>
-          {services.map((s) => <ServiceTile key={s.title} title={s.title} subtitle={s.subtitle} icon={s.icon} onPress={s.go} />)}
-          <ServiceTile title="More" icon="ellipsis-horizontal" comingSoon />
-        </View>
-      </BottomSheet>
+          {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
+          {map.error && !map.position ? <Banner tone="warning" message="Turn on location so providers can find you. You can still set a pickup pin manually." /> : null}
+
+          <View style={styles.grid}>
+            {services.map((s) => <ServiceTile key={s.title} title={s.title} subtitle={s.subtitle} icon={s.icon} onPress={s.go} />)}
+            <ServiceTile title="More" icon="ellipsis-horizontal" comingSoon />
+          </View>
+        </BottomSheet>
+      )}
     </View>
   );
 }

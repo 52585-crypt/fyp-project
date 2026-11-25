@@ -11,8 +11,10 @@ import { tokens } from "../../../../src/design/tokens";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
 import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
+import { NearbyProviderCard } from "../../../../src/requests/customer/NearbyProviderCard";
 import { nearbyProviderMarkers } from "../../../../src/requests/nearbyProviderMarkers";
 import { useNearbyProviders } from "../../../../src/requests/useNearbyProviders";
+import { useProviderPreview } from "../../../../src/requests/useProviderPreview";
 import { mechanicServices } from "../../../../src/requests/booking/options";
 import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
 import { applyNormalizedLocationTarget, normalizeLocation, type NormalizedLocation } from "../../../../src/services/normalizedLocation";
@@ -41,6 +43,8 @@ export default function PickupPin() {
   const pinned = value?.source === "manual_map" && /^Pinned /.test(value.address ?? "");
   // Nearby providers for this service around the pickup pin (approximate positions, refreshed every 20 s).
   const near = useNearbyProviders(category, b.pickup ? { lat: b.pickup.latitude, lng: b.pickup.longitude } : null, step === "pickup");
+  const preview = useProviderPreview(near.providers, b.pickup);
+  const card = step === "pickup" ? preview.selected : null;
   const markers: MapCanvasMarker[] = step === "destination" && b.pickup
     ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }]
     : nearbyProviderMarkers(near.providers ?? [], category);
@@ -54,6 +58,7 @@ export default function PickupPin() {
   }
 
   function goTo(next: Step) {
+    preview.close();
     setStep(next);
     setSearch("");
     const target = next === "destination" ? b.destination ?? b.pickup : b.pickup;
@@ -75,7 +80,8 @@ export default function PickupPin() {
       <StatusBar style="dark" />
       <View style={styles.map}>
         <MapCanvas accessibilityLabel={`Map. Drag to set the ${step === "pickup" ? "pickup" : "drop-off"} point`}
-          focus={b.cameraFocus} markers={markers} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)} />
+          focus={b.cameraFocus} markers={markers} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)}
+          onMarkerPress={step === "pickup" ? preview.select : undefined} />
         <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
       </View>
 
@@ -85,52 +91,60 @@ export default function PickupPin() {
         right={<IconButton icon="locate" label="Use my current location" disabled={b.locating}
           onPress={() => (step === "pickup" ? void b.useCurrentLocation() : void b.recenter())} />} />
 
-      <BottomSheet fixed footer={
-        <Button title={step === "pickup" ? (towing ? "Confirm pickup" : "Confirm location") : "Confirm drop-off"}
-          icon="arrow-forward" disabled={b.locating || !value || outsideArea} onPress={confirm} />
-      }>
-        <Text variant="title">{title}</Text>
-        <View style={styles.address}>
-          <View style={[styles.addressIcon, step === "destination" && styles.addressIconDrop]}>
-            <Icon name={step === "pickup" ? "location" : "flag"} color={step === "pickup" ? "primary" : "red"} size={tokens.sizes.icon} />
+      {card ? (
+        <BottomSheet fixed>
+          <NearbyProviderCard provider={card} fallbackCategory={category} eta={preview.eta} onClose={preview.close}
+            onRequest={() => { preview.close(); confirm(); }} />
+          <Text variant="caption" color="muted">Location shown is approximate. We send your request to the best available provider nearby.</Text>
+        </BottomSheet>
+      ) : (
+        <BottomSheet fixed footer={
+          <Button title={step === "pickup" ? (towing ? "Confirm pickup" : "Confirm location") : "Confirm drop-off"}
+            icon="arrow-forward" disabled={b.locating || !value || outsideArea} onPress={confirm} />
+        }>
+          <Text variant="title">{title}</Text>
+          <View style={styles.address}>
+            <View style={[styles.addressIcon, step === "destination" && styles.addressIconDrop]}>
+              <Icon name={step === "pickup" ? "location" : "flag"} color={step === "pickup" ? "primary" : "red"} size={tokens.sizes.icon} />
+            </View>
+            <View style={styles.flex}>
+              <Text variant="bodyStrong" numberOfLines={2} accessibilityLiveRegion="polite">
+                {b.locating && !value ? "Finding you…" : value ? value.address || "Pinned location" : "Drag the map to place the pin"}
+              </Text>
+              <Text variant="caption" color="muted" numberOfLines={1}>
+                {tow ?? (pinned && value ? `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : value ? "Drag the map to fine-tune" : "Or search below")}
+              </Text>
+            </View>
           </View>
-          <View style={styles.flex}>
-            <Text variant="bodyStrong" numberOfLines={2} accessibilityLiveRegion="polite">
-              {b.locating && !value ? "Finding you…" : value ? value.address || "Pinned location" : "Drag the map to place the pin"}
-            </Text>
-            <Text variant="caption" color="muted" numberOfLines={1}>
-              {tow ?? (pinned && value ? `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : value ? "Drag the map to fine-tune" : "Or search below")}
-            </Text>
-          </View>
-        </View>
 
-        <LocationAutocompleteField token={b.token} icon="search" variant="compact" value={search} onChangeText={setSearch}
-          placeholder={step === "pickup" ? "Search street, area or landmark" : "Search workshop or drop-off"} onSelect={choose}
-          near={b.pickup ?? undefined} />
+          <LocationAutocompleteField token={b.token} icon="search" variant="compact" value={search} onChangeText={setSearch}
+            placeholder={step === "pickup" ? "Search street, area or landmark" : "Search workshop or drop-off"} onSelect={choose}
+            near={b.pickup ?? undefined} />
 
-        {step === "pickup" && b.favorites.favoriteLocations.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-            {b.favorites.favoriteLocations.filter((f) => f.latitude != null && f.longitude != null).map((f) => (
-              <Button key={f.id} title={f.label} icon="bookmark-outline" size="small" variant="secondary" fullWidth={false}
-                onPress={() => choose(normalizeLocation({ latitude: f.latitude!, longitude: f.longitude!, address: f.addressText,
-                  source: f.source || "unknown", placeId: f.placeId }))} />
-            ))}
-          </ScrollView>
-        ) : null}
+          {step === "pickup" && b.favorites.favoriteLocations.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+              {b.favorites.favoriteLocations.filter((f) => f.latitude != null && f.longitude != null).map((f) => (
+                <Button key={f.id} title={f.label} icon="bookmark-outline" size="small" variant="secondary" fullWidth={false}
+                  onPress={() => choose(normalizeLocation({ latitude: f.latitude!, longitude: f.longitude!, address: f.addressText,
+                    source: f.source || "unknown", placeId: f.placeId }))} />
+              ))}
+            </ScrollView>
+          ) : null}
 
-        {step === "pickup" ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}
-            accessibilityLabel="Popular pickup points in Islamabad and Rawalpindi">
-            {TWIN_CITY_LANDMARKS.map((l) => (
-              <Button key={l.id} title={l.label} icon="navigate-outline" size="small" variant="secondary" fullWidth={false}
-                onPress={() => choose(normalizeLocation({ latitude: l.latitude, longitude: l.longitude, address: `${l.label}, ${l.city}`, source: "unknown" }))} />
-            ))}
-          </ScrollView>
-        ) : null}
+          {step === "pickup" ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}
+              accessibilityLabel="Popular pickup points in Islamabad and Rawalpindi">
+              {TWIN_CITY_LANDMARKS.map((l) => (
+                <Button key={l.id} title={l.label} icon="navigate-outline" size="small" variant="secondary" fullWidth={false}
+                  onPress={() => choose(normalizeLocation({ latitude: l.latitude, longitude: l.longitude, address: `${l.label}, ${l.city}`, source: "unknown" }))} />
+              ))}
+            </ScrollView>
+          ) : null}
 
-        {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
-        {b.error && !(outsideArea && b.error === SERVICE_AREA_MESSAGE) ? <Banner tone="danger" message={b.error} /> : null}
-      </BottomSheet>
+          {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
+          {b.error && !(outsideArea && b.error === SERVICE_AREA_MESSAGE) ? <Banner tone="danger" message={b.error} /> : null}
+        </BottomSheet>
+      )}
     </View>
   );
 }

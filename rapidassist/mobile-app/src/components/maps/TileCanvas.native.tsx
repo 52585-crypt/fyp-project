@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { parseCanvasMessage, type MapCanvasProps } from "./MapCanvas.types";
+import { parseCanvasMarkerTap, parseCanvasMessage, type MapCanvasProps } from "./MapCanvas.types";
 import { buildTileCanvasHtml, tileCanvasUpdateScript } from "./tileCanvasHtml";
 
 let nextInstance = 0;
@@ -16,6 +16,8 @@ export function TileCanvas(props: MapCanvasProps) {
   const update = tileCanvasUpdateScript(props);
   const onCenter = useRef(props.onCenterChange);
   onCenter.current = props.onCenterChange;
+  const onMarker = useRef(props.onMarkerPress);
+  onMarker.current = props.onMarkerPress;
 
   useEffect(() => {
     if (loaded.current) web.current?.injectJavaScript(update);
@@ -24,6 +26,8 @@ export function TileCanvas(props: MapCanvasProps) {
   function onMessage(event: WebViewMessageEvent) {
     const center = parseCanvasMessage(event.nativeEvent.data, instance);
     if (center) onCenter.current?.(center);
+    const tapped = parseCanvasMarkerTap(event.nativeEvent.data, instance);
+    if (tapped) onMarker.current?.(tapped);
   }
 
   return (

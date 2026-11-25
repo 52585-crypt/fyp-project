@@ -115,6 +115,41 @@ describe("map documents treat names, labels and addresses as text", () => {
     dom.window.close();
   });
 
+  it("posts a tap on a marker as its id (set as data, never markup) and a drag as a pan", async () => {
+    const hostileId = `provider:${BREAKOUT}`;
+    const html = buildTileCanvasHtml("canvas-tap", {
+      markers: [{ id: hostileId, kind: "provider", service: "towing", ambient: true, label: XSS, coordinate: { latitude: 33.7, longitude: 73.05 } }]
+    });
+    const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true });
+    const w = dom.window as unknown as Window & { pwned?: number };
+    const map = w.document.getElementById("map")!;
+    (map as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {};
+    const posted: string[] = [];
+    w.addEventListener("message", (e) => { const raw = (e.data as { rapidassistMap?: string })?.rapidassistMap; if (raw) posted.push(raw); });
+    const pointer = (target: Element, type: string, x: number, y: number) => {
+      const e = new dom.window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y });
+      Object.defineProperty(e, "isPrimary", { value: true });
+      Object.defineProperty(e, "pointerId", { value: 1 });
+      target.dispatchEvent(e);
+    };
+    const marker = () => w.document.querySelector("img.svc")!;
+    expect(marker().getAttribute("data-mid")).toBe(hostileId);
+
+    pointer(marker(), "pointerdown", 100, 100);
+    pointer(map, "pointermove", 103, 102); // within touch slop: still a tap
+    pointer(map, "pointerup", 103, 102);
+    pointer(marker(), "pointerdown", 100, 100);
+    pointer(map, "pointermove", 140, 100); // a real drag that started on the marker
+    pointer(map, "pointerup", 140, 100);
+    await new Promise((r) => setTimeout(r, 20));
+
+    const taps = posted.map((t) => JSON.parse(t)).filter((m) => m.type === "marker");
+    expect(taps).toEqual([{ type: "marker", marker: hostileId, id: "canvas-tap" }]);
+    expect(w.pwned).toBeUndefined();
+    expect(w.document.querySelectorAll("script")).toHaveLength(1);
+    dom.window.close();
+  });
+
   it("escapes script-breaking characters in embedded JSON", () => {
     const hostile = "</script><!-- & " + String.fromCharCode(0x2028, 0x2029) + " >";
     const out = scriptJson({ s: hostile });
