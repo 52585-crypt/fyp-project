@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { LocationAutocompleteField } from "../../../../src/components/LocationAutocompleteField";
 import { MapCanvas, type MapCanvasMarker } from "../../../../src/components/maps/MapCanvas";
-import { Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, Text } from "../../../../src/design/components";
+import {
+  Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, SegmentedControl, Text
+} from "../../../../src/design/components";
 import { SERVICE_AREA_MESSAGE, isInServiceArea } from "../../../../src/config/serviceArea";
 import { TWIN_CITY_LANDMARKS } from "../../../../src/config/twinCityLandmarks";
 import { tokens } from "../../../../src/design/tokens";
@@ -12,6 +14,7 @@ import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
 import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
 import { NearbyProviderCard } from "../../../../src/requests/customer/NearbyProviderCard";
+import { NearbyProviderList } from "../../../../src/requests/customer/NearbyProviderList";
 import { nearbyProviderMarkers } from "../../../../src/requests/nearbyProviderMarkers";
 import { useNearbyProviders } from "../../../../src/requests/useNearbyProviders";
 import { useProviderPreview } from "../../../../src/requests/useProviderPreview";
@@ -20,6 +23,11 @@ import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
 import { applyNormalizedLocationTarget, normalizeLocation, type NormalizedLocation } from "../../../../src/services/normalizedLocation";
 
 type Step = "pickup" | "destination";
+type ProvidersView = "map" | "list";
+
+const VIEWS = [{ value: "map", label: "Map", icon: "map-outline" }, { value: "list", label: "List", icon: "list" }] as const;
+const TOGGLE_TOP = MAP_TOP_BAR_HEIGHT + tokens.space.sm;
+const LIST_TOP = TOGGLE_TOP + tokens.sizes.buttonSmall + tokens.space.xxs * 2 + tokens.space.lg;
 
 /** Pickup pin: the map moves under a fixed centre pin. Towing adds a drop-off step. Next: request/estimate. */
 export default function PickupPin() {
@@ -29,6 +37,7 @@ export default function PickupPin() {
   const towing = category === "car_towing";
   const [step, setStep] = useState<Step>(towing && stepParam === "destination" ? "destination" : "pickup");
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<ProvidersView>("map");
 
   useEffect(() => { b.setCategory(category); b.setError(null); }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -44,7 +53,8 @@ export default function PickupPin() {
   // Nearby providers for this service around the pickup pin (approximate positions, refreshed every 20 s).
   const near = useNearbyProviders(category, b.pickup ? { lat: b.pickup.latitude, lng: b.pickup.longitude } : null, step === "pickup");
   const preview = useProviderPreview(near.providers, b.pickup);
-  const card = step === "pickup" ? preview.selected : null;
+  const listing = step === "pickup" && view === "list";
+  const card = step === "pickup" && !listing ? preview.selected : null;
   const markers: MapCanvasMarker[] = step === "destination" && b.pickup
     ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }]
     : nearbyProviderMarkers(near.providers ?? [], category);
@@ -83,6 +93,17 @@ export default function PickupPin() {
           focus={b.cameraFocus} markers={markers} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)}
           onMarkerPress={step === "pickup" ? preview.select : undefined} />
         <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
+        {listing ? (
+          <View style={StyleSheet.absoluteFill}>
+            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={LIST_TOP} />
+          </View>
+        ) : null}
+        {step === "pickup" ? (
+          <View pointerEvents="box-none" style={styles.toggle}>
+            <SegmentedControl accessibilityLabel="Show nearby providers as" options={VIEWS} value={view}
+              onChange={(v) => { preview.close(); setView(v); }} />
+          </View>
+        ) : null}
       </View>
 
       <MapTopBar
@@ -152,6 +173,7 @@ export default function PickupPin() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.color.surface },
   map: { flex: 1 },
+  toggle: { position: "absolute", top: TOGGLE_TOP, left: 0, right: 0, alignItems: "center" },
   flex: { flex: 1 },
   address: {
     flexDirection: "row", alignItems: "center", gap: tokens.space.md, padding: tokens.space.md,

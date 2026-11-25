@@ -1,5 +1,5 @@
 import type { MapCanvasMarker, MapCanvasService } from "../components/maps/MapCanvas.types";
-import type { NearbyProvider, ProviderService, RequestCategory } from "./requests.types";
+import type { DistanceBand, NearbyProvider, ProviderService, RequestCategory } from "./requests.types";
 
 /** Booking category → the provider service that serves it. */
 export const SERVICE_FOR_CATEGORY: Record<RequestCategory, ProviderService> = {
@@ -28,4 +28,13 @@ export function nearbyProviderMarkers(providers: readonly NearbyProvider[], fall
     if (!service || !at || !Number.isFinite(at.latitude) || !Number.isFinite(at.longitude)) return [];
     return [{ id: `${MARKER_ID_PREFIX}${p.id}`, kind: "provider", service, coordinate: at, label: p.name, ambient: true }];
   });
+}
+
+const BAND_ORDER: readonly DistanceBand[] = ["under 2 km", "2–5 km", "5–10 km", "10+ km"];
+
+/** List order: nearest distance band first, then best rated (unrated "new" providers after rated ones), then name. */
+export function sortNearbyProviders(providers: readonly NearbyProvider[]): NearbyProvider[] {
+  const band = (p: NearbyProvider) => { const i = BAND_ORDER.indexOf(p.distanceBand); return i < 0 ? BAND_ORDER.length : i; };
+  const rating = (p: NearbyProvider) => (p.ratingCount > 0 ? p.ratingAvg : -1);
+  return [...providers].sort((a, b) => band(a) - band(b) || rating(b) - rating(a) || a.name.localeCompare(b.name));
 }

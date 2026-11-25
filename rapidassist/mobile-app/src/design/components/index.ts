@@ -29,6 +29,7 @@ export { RadioCard } from "./RadioCard";
 export { RatingStars } from "./RatingStars";
 export { Screen } from "./Screen";
 export { SectionHeader } from "./SectionHeader";
+export { SegmentedControl } from "./SegmentedControl";
 export { Select, type SelectOption } from "./Select";
 export { ServiceTile } from "./ServiceTile";
 export { Skeleton, SkeletonCard } from "./Skeleton";

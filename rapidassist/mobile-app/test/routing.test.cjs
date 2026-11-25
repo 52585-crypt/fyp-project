@@ -132,3 +132,31 @@ test("both legacy production renderers draw only supplied route geometry with a 
   }
   assert.match(web, /<Svg width="100%" height="100%"/);
 });
+
+test("OSRM table gives one ETA per origin to one destination in a single request", async () => {
+  const urls = [];
+  const routing = loadRouting(async (url) => {
+    urls.push(url);
+    return response({ code: "Ok", durations: [[300], [null], [29]] });
+  });
+  const to = { latitude: 33.7, longitude: 73.05 };
+  const origins = [
+    { latitude: 33.72, longitude: 73.055 },
+    { latitude: NaN, longitude: 73 },
+    { latitude: 33.66, longitude: 73.085 },
+    { latitude: 33.655, longitude: 73.075 }
+  ];
+  const minutes = await routing.getDrivingMinutesTo(origins, to);
+  assert.equal(urls.length, 1);
+  assert.equal(urls[0], "https://router.project-osrm.org/table/v1/driving/"
+    + "73.055000,33.720000;73.085000,33.660000;73.075000,33.655000;73.050000,33.700000?sources=0;1;2&destinations=3&annotations=duration");
+  assert.deepEqual([...minutes], [5, null, null, 1]);
+});
+
+test("OSRM table rejects on a service error and skips the request when no origin is valid", async () => {
+  let calls = 0;
+  const failing = loadRouting(async () => { calls++; return response({ code: "InvalidQuery" }); });
+  await assert.rejects(failing.getDrivingMinutesTo([{ latitude: 33.7, longitude: 73 }], { latitude: 33.6, longitude: 73 }));
+  assert.deepEqual([...(await failing.getDrivingMinutesTo([{ latitude: NaN, longitude: 1 }], { latitude: 33.6, longitude: 73 }))], [null]);
+  assert.equal(calls, 1);
+});

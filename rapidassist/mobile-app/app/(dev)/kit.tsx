@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import {
   Badge, Banner, BottomSheet, Button, Card, CenterPin, Checkbox, ChipGroup, EmptyState, ErrorState, Header, HeroCard, InfoRow, Input, MapCard,
-  PersonCard, PriceBreakdown, ProgressStepper, ProviderPreviewCard, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader,
+  PersonCard, PriceBreakdown, ProgressStepper, ProviderPreviewCard, Pulse, QuantityStepper, RadioCard, RatingStars, Screen, SectionHeader, SegmentedControl,
   Select, ServiceTile, SkeletonCard, StatTile, StatusTimeline, SuccessHero, Text, TextArea
 } from "../../src/design/components";
 import { MapCanvas } from "../../src/components/maps/MapCanvas";
@@ -19,6 +19,7 @@ export default function KitGallery() {
   const [qty, setQty] = useState(5);
   const [checked, setChecked] = useState(true);
   const [note, setNote] = useState("");
+  const [view, setView] = useState<"map" | "list">("map");
 
   return (
     <Screen header={<Header title="Design kit" />}>
@@ -73,6 +74,9 @@ export default function KitGallery() {
       <QuantityStepper label="Fuel quantity" unit="Ltr" value={qty} onChange={setQty} />
       <RadioCard title="Cash" subtitle="Pay to driver" selected={pay === "cash"} onPress={() => setPay("cash")} />
       <RadioCard title="Online Payment" subtitle="Card / wallet" tag="Coming soon" selected={pay === "online"} disabled />
+
+      <SegmentedControl accessibilityLabel="Show providers as" value={view} onChange={setView}
+        options={[{ value: "map", label: "Map", icon: "map-outline" }, { value: "list", label: "List", icon: "list" }]} />
 
       <SectionHeader title="Tiles" />
       <View style={styles.grid}>

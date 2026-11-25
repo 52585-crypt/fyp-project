@@ -56,10 +56,10 @@ export function ProviderPreviewCard({
             </View>
           ) : <Text variant="captionStrong">New provider</Text>}
         </Stat>
-        <Stat label="Jobs done"><Text variant="captionStrong">{completedJobs}</Text></Stat>
+        <Stat label="Jobs" accessibilityValue={`${completedJobs} completed`}><Text variant="captionStrong">{completedJobs}</Text></Stat>
         <Stat label="Distance"><Text variant="captionStrong">{distanceLabel}</Text></Stat>
         <Stat label="ETA" accessibilityValue={etaLoading ? "calculating" : etaLabel ?? "unavailable"}>
-          <Text variant="captionStrong" numberOfLines={1}>{eta}</Text>
+          <Text variant="captionStrong">{eta}</Text>
         </Stat>
       </View>
       {actionLabel && onAction ? <Button title={actionLabel} icon="arrow-forward" onPress={onAction} /> : null}

@@ -1,4 +1,4 @@
-import { CATEGORY_FOR_SERVICE, nearbyProviderMarkers, SERVICE_FOR_CATEGORY } from "./nearbyProviderMarkers";
+import { CATEGORY_FOR_SERVICE, nearbyProviderMarkers, SERVICE_FOR_CATEGORY, sortNearbyProviders } from "./nearbyProviderMarkers";
 import type { NearbyProvider } from "./requests.types";
 
 const row = (over: Partial<NearbyProvider>): NearbyProvider => ({
@@ -23,5 +23,18 @@ describe("nearby provider markers", () => {
 
   it("maps categories and services both ways", () => {
     for (const [category, service] of Object.entries(SERVICE_FOR_CATEGORY)) expect(CATEGORY_FOR_SERVICE[service]).toBe(category);
+  });
+
+  it("sorts the list by distance band, then rating (new providers after rated), then name", () => {
+    const list = [
+      row({ id: "far", distanceBand: "5–10 km", ratingAvg: 5, ratingCount: 9 }),
+      row({ id: "new", distanceBand: "under 2 km", ratingAvg: 0, ratingCount: 0 }),
+      row({ id: "ok", distanceBand: "under 2 km", ratingAvg: 3.9, ratingCount: 4 }),
+      row({ id: "top", distanceBand: "under 2 km", ratingAvg: 4.8, ratingCount: 12 }),
+      row({ id: "mid", distanceBand: "2–5 km", ratingAvg: 4, ratingCount: 2 }),
+      row({ id: "edge", distanceBand: "10+ km", ratingAvg: 5, ratingCount: 1 })
+    ];
+    expect(sortNearbyProviders(list).map((p) => p.id)).toEqual(["top", "ok", "new", "mid", "far", "edge"]);
+    expect(list[0].id).toBe("far"); // input untouched
   });
 });
