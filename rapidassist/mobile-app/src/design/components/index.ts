@@ -17,7 +17,7 @@ export { IconButton } from "./IconButton";
 export { InfoRow } from "./InfoRow";
 export { Input, type InputProps } from "./Input";
 export { MapCard } from "./MapCard";
-export { MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT } from "./MapTopBar";
+export { MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, useMapTopInset } from "./MapTopBar";
 export { PersonCard } from "./PersonCard";
 export { PhotoUpload } from "./PhotoUpload";
 export { PriceBreakdown, type PriceLineItem } from "./PriceBreakdown";

@@ -7,7 +7,7 @@ import { PhotoIssueCard } from "../../../src/ai/PhotoIssueCard";
 import { ServiceSuggestionCard } from "../../../src/ai/ServiceSuggestionCard";
 import { selectionFromSuggestion } from "../../../src/ai/serviceSuggestion.integration";
 import { MapCanvas, type MapCanvasMarker } from "../../../src/components/maps/MapCanvas";
-import { Banner, Button, Card, ChipGroup, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, Text } from "../../../src/design/components";
+import { Banner, Button, Card, ChipGroup, Icon, IconButton, MapPill, MapTopBar, Text, useMapTopInset } from "../../../src/design/components";
 import { tapFeedback } from "../../../src/design/haptics";
 import { tokens } from "../../../src/design/tokens";
 import { useBooking } from "../../../src/requests/booking/BookingProvider";
@@ -26,6 +26,7 @@ const problemTitle = { car_towing: "What happened?", fuel_delivery: "What do you
 export default function ProblemAndFare() {
   const b = useBooking();
   const insets = useSafeAreaInsets();
+  const topInset = useMapTopInset();
   const [aiOpen, setAiOpen] = useState(false);
   const [manualVersion, setManualVersion] = useState(0);
   useEffect(() => { if (!b.pickup) router.back(); }, [b.pickup]);
@@ -49,7 +50,7 @@ export default function ProblemAndFare() {
       <StatusBar style="dark" />
       <View style={styles.map}>
         <MapCanvas accessibilityLabel="Route preview" markers={markers} route={route?.coordinates}
-          inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: tokens.radius.sheet }} />
+          inset={{ top: topInset, bottom: tokens.radius.sheet }} />
       </View>
       <MapTopBar left={<IconButton icon="arrow-back" label="Back to location" onPress={() => router.back()} />}
         center={<MapPill title={getServiceTitle(b.category)} subtitle={route ? `${route.distanceKm.toFixed(1)} km · ${route.durationMinutes} min` : "Problem & fare"} />} />

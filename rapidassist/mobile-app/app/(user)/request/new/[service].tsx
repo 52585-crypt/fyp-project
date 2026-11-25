@@ -2,11 +2,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LocationAutocompleteField } from "../../../../src/components/LocationAutocompleteField";
 import { MapCanvas, type MapCanvasMarker } from "../../../../src/components/maps/MapCanvas";
 import {
-  Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, SegmentedControl, Text
+  Banner, BottomSheet, Button, CenterPin, Icon, IconButton, MapPill, MapTopBar, SegmentedControl, Text, useMapTopInset
 } from "../../../../src/design/components";
 import { SERVICE_AREA_MESSAGE, isInServiceArea } from "../../../../src/config/serviceArea";
 import { TWIN_CITY_LANDMARKS } from "../../../../src/config/twinCityLandmarks";
@@ -27,9 +26,9 @@ type Step = "pickup" | "destination";
 type ProvidersView = "map" | "list";
 
 const VIEWS = [{ value: "map", label: "Map", icon: "map-outline" }, { value: "list", label: "List", icon: "list" }] as const;
-// Below the top bar, which itself sits under the status bar (safe-area inset on Android).
-const TOGGLE_TOP = MAP_TOP_BAR_HEIGHT + tokens.space.sm;
-const LIST_TOP = TOGGLE_TOP + tokens.sizes.buttonSmall + tokens.space.xxs * 2 + tokens.space.lg;
+// The toggle sits just below the top bar; the list starts below the toggle.
+const TOGGLE_GAP = tokens.space.sm;
+const LIST_GAP = TOGGLE_GAP + tokens.sizes.buttonSmall + tokens.space.xxs * 2 + tokens.space.lg;
 
 /** Pickup pin: the map moves under a fixed centre pin. Towing adds a drop-off step. Next: request/estimate. */
 export default function PickupPin() {
@@ -40,7 +39,7 @@ export default function PickupPin() {
   const [step, setStep] = useState<Step>(towing && stepParam === "destination" ? "destination" : "pickup");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<ProvidersView>("map");
-  const safeTop = useSafeAreaInsets().top;
+  const topInset = useMapTopInset();
 
   useEffect(() => { b.setCategory(category); b.setError(null); }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -93,16 +92,16 @@ export default function PickupPin() {
       <StatusBar style="dark" />
       <View style={styles.map}>
         <MapCanvas accessibilityLabel={`Map. Drag to set the ${step === "pickup" ? "pickup" : "drop-off"} point`}
-          focus={b.cameraFocus} markers={markers} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)}
+          focus={b.cameraFocus} markers={markers} inset={{ top: topInset, bottom: 0 }} onCenterChange={(c) => b.pinLocation(step, c)}
           onMarkerPress={step === "pickup" ? preview.select : undefined} />
         <CenterPin label={step === "pickup" ? "Help here" : "Drop-off here"} tone={step === "pickup" ? "primary" : "red"} />
         {listing ? (
           <View style={StyleSheet.absoluteFill}>
-            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={LIST_TOP + safeTop} />
+            <NearbyProviderList providers={near.providers} category={category} pickup={b.pickup} onRequest={confirm} topInset={topInset + LIST_GAP} />
           </View>
         ) : null}
         {step === "pickup" ? (
-          <View pointerEvents="box-none" style={[styles.toggle, { top: TOGGLE_TOP + safeTop }]}>
+          <View pointerEvents="box-none" style={[styles.toggle, { top: topInset + TOGGLE_GAP }]}>
             <SegmentedControl accessibilityLabel="Show nearby providers as" options={VIEWS} value={view}
               onChange={(v) => { preview.close(); setView(v); }} />
           </View>

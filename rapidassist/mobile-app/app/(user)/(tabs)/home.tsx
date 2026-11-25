@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useAuth } from "../../../src/auth/AuthProvider";
 import { MapCanvas } from "../../../src/components/maps/MapCanvas";
 import {
-  Avatar, Badge, Banner, BottomSheet, Icon, IconButton, MapPill, MapTopBar, MAP_TOP_BAR_HEIGHT, ServiceTile, SkeletonCard, Text
+  Avatar, Badge, Banner, BottomSheet, Icon, IconButton, MapPill, MapTopBar, ServiceTile, SkeletonCard, Text, useMapTopInset
 } from "../../../src/design/components";
 import { tapFeedback } from "../../../src/design/haptics";
 import { tokens } from "../../../src/design/tokens";
@@ -37,6 +37,7 @@ export default function CustomerHome() {
   const { unread } = useNotifications();
   const mine = useMyRequests();
   const map = useHomeMap();
+  const topInset = useMapTopInset();
   const near = useNearbyProviders(ALL_SERVICES, map.position ? { lat: map.position.latitude, lng: map.position.longitude } : null, Boolean(map.position));
   const preview = useProviderPreview(near.providers, map.position);
   const firstName = user?.name?.trim().split(/\s+/)[0];
@@ -46,7 +47,7 @@ export default function CustomerHome() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <MapCanvas accessibilityLabel={map.approximate ? "Map of your approximate location" : "Map of your location"} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: peek }}
+      <MapCanvas accessibilityLabel={map.approximate ? "Map of your approximate location" : "Map of your location"} inset={{ top: topInset, bottom: peek }}
         focus={map.focus} onMarkerPress={preview.select} markers={map.position
           ? [...nearbyProviderMarkers(near.providers ?? []), {
             id: "me", kind: "user", coordinate: map.position, accuracyMeters: map.approximate ? map.accuracyMeters ?? undefined : undefined

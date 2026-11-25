@@ -4,8 +4,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tokens } from "../tokens";
 import { Text } from "./Text";
 
-/** Height the top bar occupies below the safe-area inset; map screens pass it to MapCanvas `inset.top`. */
+/** Height the top bar occupies below the safe-area inset. */
 export const MAP_TOP_BAR_HEIGHT = tokens.sizes.iconButton + tokens.space.lg;
+
+/**
+ * Everything the top bar covers from the screen's top edge: the status bar (safe-area inset, large on Android)
+ * plus the bar. Map screens pass this to MapCanvas `inset.top`, so map controls (zoom +/−) and fitted content
+ * sit below the bar instead of behind it.
+ */
+export function useMapTopInset() {
+  return useSafeAreaInsets().top + MAP_TOP_BAR_HEIGHT;
+}
 
 /** Floating controls over a full-bleed map: left / centre / right slots under the status bar. */
 export function MapTopBar({ left, center, right }: { left?: ReactNode; center?: ReactNode; right?: ReactNode }) {
