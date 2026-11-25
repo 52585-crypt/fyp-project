@@ -1,0 +1,153 @@
+{
+  "suite": "ADMIN-UI",
+  "ranAt": "2026-11-25T07:46:31.423Z",
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0
+  },
+  "console": {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border",
+      "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "pageErrors": [],
+    "apiFailures": [],
+    "api4xx": [
+      "401 GET /api/auth/me",
+      "401 GET /api/auth/me",
+      "401 POST /api/auth/admin/login",
+      "401 GET /api/auth/me",
+      "401 GET /api/auth/me"
+    ]
+  },
+  "results": [
+    {
+      "id": "ADMIN-UI-001",
+      "area": "Admin UI",
+      "useCase": "Login page renders",
+      "steps": "open http://localhost:5173/login",
+      "expected": "Email + password form",
+      "actual": "form visible=true, screenshot=screenshots/admin-01-login.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-002",
+      "area": "Admin UI",
+      "useCase": "Login with wrong password shows an error",
+      "steps": "submit wrong password",
+      "expected": "error message, stays on /login",
+      "actual": "error shown=true, url=http://localhost:5173/login, screenshot=screenshots/admin-02-login-error.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-003",
+      "area": "Admin UI",
+      "useCase": "Login with valid credentials",
+      "steps": "submit correct admin email/password",
+      "expected": "redirect to /dashboard",
+      "actual": "url=http://localhost:5173/dashboard",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-004",
+      "area": "Admin UI",
+      "useCase": "Dashboard loads stats from the API",
+      "steps": "wait for 'Operations overview' and compare pending-provider count with GET /api/admin/dashboard",
+      "expected": "stats rendered, numbers match API",
+      "actual": "banner shows \"7 provider reviews pending\"=true, completed=4, screenshot=screenshots/admin-03-dashboard.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-005",
+      "area": "Admin UI",
+      "useCase": "Provider verification page lists the pending provider",
+      "steps": "navigate Provider verification, filter=pending",
+      "expected": "new provider in list",
+      "actual": "listed, screenshot=screenshots/admin-04-providers-pending.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-006",
+      "area": "Admin UI",
+      "useCase": "Approve a pending provider from the UI",
+      "steps": "select provider -> click Approve",
+      "expected": "UI shows verified; GET /api/admin/providers?id= shows verified",
+      "actual": "API status=verified, screenshot=screenshots/admin-05-provider-approved.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-007",
+      "area": "Admin UI",
+      "useCase": "Reject a provider with a reason from the UI",
+      "steps": "select provider -> Reject -> enter reason in prompt",
+      "expected": "API shows rejected with reviewNote",
+      "actual": "status=rejected, note=Licence photo is unreadable",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-008",
+      "area": "Admin UI",
+      "useCase": "Verified filter shows the approved provider",
+      "steps": "click 'verified' filter",
+      "expected": "approved provider listed",
+      "actual": "listed, screenshot=screenshots/admin-06-providers-verified.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-009",
+      "area": "Admin UI",
+      "useCase": "Live jobs map page loads",
+      "steps": "navigate Live jobs map",
+      "expected": "page renders without API 5xx",
+      "actual": "rendered, api 5xx=0, screenshot=screenshots/admin-07-live-jobs.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-010",
+      "area": "Admin UI",
+      "useCase": "Request heatmap page loads",
+      "steps": "navigate Request heatmap",
+      "expected": "page renders without API 5xx",
+      "actual": "rendered, api 5xx=0, screenshot=screenshots/admin-08-heatmap.png",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-011",
+      "area": "Admin UI",
+      "useCase": "Logout returns to login and protects routes",
+      "steps": "click Sign out / Logout, then open /dashboard",
+      "expected": "redirect to /login",
+      "actual": "url after visiting /dashboard=http://localhost:5173/login",
+      "result": "PASS"
+    },
+    {
+      "id": "ADMIN-UI-012",
+      "area": "Admin UI",
+      "useCase": "No uncaught JS errors on admin pages",
+      "steps": "collect pageerror events",
+      "expected": "0",
+      "actual": "0 page errors; console errors=20 (Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized))",
+      "result": "PASS"
+    }
+  ]
+}

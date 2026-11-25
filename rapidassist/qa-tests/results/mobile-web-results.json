@@ -1,0 +1,357 @@
+{
+  "suite": "MOBILE-WEB",
+  "ranAt": "2026-11-25T08:07:32.760Z",
+  "summary": {
+    "total": 36,
+    "passed": 35,
+    "failed": 1,
+    "skipped": 0
+  },
+  "console": {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "[GSI_LOGGER]: The given origin is not allowed for the given client ID.",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "[GSI_LOGGER]: The given origin is not allowed for the given client ID."
+    ],
+    "pageErrors": [],
+    "apiFailures": [],
+    "api4xx": [
+      "401 POST /api/auth/login"
+    ]
+  },
+  "providerConsole": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "apiFailures": [],
+    "api4xx": []
+  },
+  "results": [
+    {
+      "id": "MOBILE-WEB-001",
+      "area": "Customer",
+      "useCase": "Welcome screen",
+      "steps": "open http://localhost:8081/",
+      "expected": "Welcome screen with Get Started",
+      "actual": "welcome shown; url=/welcome; screenshot=screenshots/mobile-01-welcome-screen.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-002",
+      "area": "Customer",
+      "useCase": "Sign up as customer",
+      "steps": "Get Started -> I need roadside help -> Next -> name/phone/password -> Create account",
+      "expected": "account created, lands on home",
+      "actual": "on home; url=/home; screenshot=screenshots/mobile-02-sign-up-as-customer.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-003",
+      "area": "Security",
+      "useCase": "Web build keeps the JWT in localStorage",
+      "steps": "inspect localStorage after sign-up",
+      "expected": "Token only in the httpOnly cookie (not readable by scripts)",
+      "actual": "JWT readable from localStorage (XSS can steal the session) – src/auth/auth.storage.ts",
+      "result": "FAIL"
+    },
+    {
+      "id": "MOBILE-WEB-004",
+      "area": "Customer",
+      "useCase": "Log out and log in again",
+      "steps": "clear session -> /login -> phone + password -> Sign in",
+      "expected": "home screen",
+      "actual": "wrong password showed an error; correct password reached home; url=/home; screenshot=screenshots/mobile-03-log-out-and-log-in-again.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-005",
+      "area": "Customer",
+      "useCase": "Home screen",
+      "steps": "wait for services sheet",
+      "expected": "Tow Truck / Fuel / Mechanic tiles visible; nearby providers loaded",
+      "actual": "tiles visible; url=/home; screenshot=screenshots/mobile-04-home-screen.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-006",
+      "area": "Customer",
+      "useCase": "Add vehicle",
+      "steps": "open vehicles -> Add vehicle form -> Car, Toyota Corolla 2018 -> Save vehicle",
+      "expected": "vehicle saved and listed; GET /api/vehicles has it",
+      "actual": "API vehicles=1; url=/vehicles; screenshot=screenshots/mobile-05-add-vehicle.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-007",
+      "area": "Customer",
+      "useCase": "Create fuel delivery request (diesel 10 L)",
+      "steps": "Home -> Fuel -> Blue Area -> Confirm location -> Diesel, 10 Ltr -> Find providers",
+      "expected": "request created; tracking screen opens",
+      "actual": "request searching_provider, diesel 10 L, UI fare Rs 3,500, API total 3500; url=/request/6b0696b97d1927ab5176033f; screenshot=screenshots/mobile-06-create-fuel-delivery-request-diesel-10-l.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-008",
+      "area": "Customer",
+      "useCase": "Tracking: provider accepts and is shown",
+      "steps": "fuel provider accepts via API; tracking screen updates in real time",
+      "expected": "provider name visible on tracking",
+      "actual": "accept HTTP 200; provider shown; url=/request/6b0696b97d1927ab5176033f; screenshot=screenshots/mobile-07-tracking-provider-accepts-and-is-shown.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-009",
+      "area": "Customer",
+      "useCase": "Chat with provider",
+      "steps": "Tracking -> Chat -> type message -> Send; provider replies via API",
+      "expected": "message stored on server; reply appears in UI",
+      "actual": "server messages: Hello from QA customer / Reply from QA provider; url=/request/6b0696b97d1927ab5176033f/chat; screenshot=screenshots/mobile-08-chat-with-provider.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-010",
+      "area": "Customer",
+      "useCase": "Tracking shows live status changes",
+      "steps": "provider: arrived -> fuel_delivered -> service_finished (API); open tracking",
+      "expected": "UI reflects 'finished' state and offers confirmation",
+      "actual": " Confirm Completion  Confirm fuel delivered Please check the delivered fuel before confirming.  Delivered quantity 10 Ltr Bill summary Diesel (10L) Rs. 2,900; url=/request/6b0696b97d1927ab5176033f; screenshot=screenshots/mobile-09-tracking-shows-live-status-changes.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-011",
+      "area": "Customer",
+      "useCase": "Confirm completion, pay cash, review",
+      "steps": "tap the confirm/complete button; choose Cash; rate 5 stars",
+      "expected": "request completed; payment pending cash; review saved",
+      "actual": "status=completed; screen:  Completed  Thank you! Your service has been completed successfully. QW QA Web Fuel Rider Your service provider Diesel (10L) Rs. 2,900 Del; url=/request/6b0696b97d1927ab5176033f; screenshot=screenshots/mobile-10-confirm-completion-pay-cash-review.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-012",
+      "area": "Customer",
+      "useCase": "Payment screen (cash)",
+      "steps": "open /request/<id>/pay -> Cash",
+      "expected": "cash selected; payment pending until provider confirms",
+      "actual": "payment=cash/pending, invoice total=3500; url=/request/6b0696b97d1927ab5176033f/pay; screenshot=screenshots/mobile-11-payment-screen-cash-.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-013",
+      "area": "Customer",
+      "useCase": "Review screen",
+      "steps": "open /request/<id>/review -> 5 stars -> comment -> Submit",
+      "expected": "review saved via API",
+      "actual": "review={\"rating\":5,\"comment\":\"Quick diesel delivery\"}; url=/request/6b0696b97d1927ab5176033f/review; screenshot=screenshots/mobile-12-review-screen.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-014",
+      "area": "Customer",
+      "useCase": "Create towing request",
+      "steps": "Home -> Tow Truck -> Blue Area -> Confirm pickup -> G-9 Markaz -> Confirm drop-off -> Find providers",
+      "expected": "request created with destination; tracking opens",
+      "actual": "UI fare Rs 1,630 vs server total 1630 (same route distance fed to both), destination=Islamabad Model School G-7/3, Street 4, G-7; url=/request/6b0696d77d1927ab51760452; screenshot=screenshots/mobile-13-create-towing-request.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-015",
+      "area": "Customer",
+      "useCase": "Cancel towing request before assignment",
+      "steps": "Tracking -> Cancel request -> confirm",
+      "expected": "status=cancelled",
+      "actual": "status=cancelled; url=/request/6b0696d77d1927ab51760452; screenshot=screenshots/mobile-14-cancel-towing-request-before-assignment.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-016",
+      "area": "Customer",
+      "useCase": "Create mechanic request (battery)",
+      "steps": "Home -> Mechanic -> Blue Area -> Confirm -> Battery -> Find providers",
+      "expected": "request created with issueCategory=battery",
+      "actual": "issue=battery, total=1250; url=/request/6b0696dd7d1927ab5176048d; screenshot=screenshots/mobile-15-create-mechanic-request-battery-.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-017",
+      "area": "Customer",
+      "useCase": "History / Requests tab",
+      "steps": "open Requests tab -> History",
+      "expected": "lists the fuel (completed), towing and mechanic (cancelled) requests",
+      "actual": "My Requests Active History Payments  Mechanic Service Blue Area, Islamabad Cancelled Nov 25, 1:05 PM Rs. 1,250  Car Towing Blue Area, Islamabad Cancelled Nov 25, 1:05 PM Rs. 1,630  Fuel Delivery Bl; url=/requests; screenshot=screenshots/mobile-16-history-requests-tab.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-018",
+      "area": "Customer",
+      "useCase": "Payments tab",
+      "steps": "Requests -> Payments",
+      "expected": "fuel payment (cash) listed",
+      "actual": "My Requests Active History Payments PKR 3,500 Cash • Nov 25, 1:05 PM Pending   Home   Requests   Support   Profile; url=/requests; screenshot=screenshots/mobile-17-payments-tab.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-019",
+      "area": "Customer",
+      "useCase": "Profile / Account",
+      "steps": "open Profile tab",
+      "expected": "name and phone shown",
+      "actual": "Profile QW QA Web Customer 033389498501 Customer  Language English اردو Labels without a translation stay in English. Messages from the server are in English f; url=/account; screenshot=screenshots/mobile-18-profile-account.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-020",
+      "area": "Customer",
+      "useCase": "Log out",
+      "steps": "Profile -> Log out / Sign out",
+      "expected": "back to welcome/login; protected page redirects",
+      "actual": "after visiting /home: /login; url=/login; screenshot=screenshots/mobile-19-log-out.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-021",
+      "area": "Provider",
+      "useCase": "Sign up as provider (mechanic)",
+      "steps": "Welcome -> Register as a Service Provider -> Continue with Phone -> Car Mechanic -> details -> upload workshop photo + certificate -> Fetch location -> Continue to identity verification",
+      "expected": "account created with verificationStatus=pending",
+      "actual": "status=pending, docs stored=true, location captured=true; url=/verification; screenshot=screenshots/mobile-20-sign-up-as-provider-mechanic-.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-022",
+      "area": "Provider",
+      "useCase": "Verification screen",
+      "steps": "identity verification screen (selfies + CNIC)",
+      "expected": "camera/CNIC capture form with consent; submission needs AWS",
+      "actual": " Identity verification  Service  Account  Documents Identity Review Biometric consent RapidAssist compares your selfie with the portrait on your CNIC, checks that your three se; url=/verification; screenshot=screenshots/mobile-21-verification-screen.png",
+      "result": "PASS",
+      "note": "Selfie/CNIC submission goes to AWS S3 + Rekognition and needs a live camera: not exercised. Approved via admin API instead."
+    },
+    {
+      "id": "MOBILE-WEB-023",
+      "area": "Provider",
+      "useCase": "Unverified provider cannot go online",
+      "steps": "Dashboard -> Online status toggle while pending",
+      "expected": "toggle disabled or server refuses",
+      "actual": "toggle disabled=true, server isOnline=false; url=/dashboard; screenshot=screenshots/mobile-22-unverified-provider-cannot-go-online.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-024",
+      "area": "Provider",
+      "useCase": "Admin approval reaches the app",
+      "steps": "admin approves via API (seeded submission) -> reload dashboard",
+      "expected": "dashboard no longer asks for verification",
+      "actual": "admin approve HTTP 200; screen: Hello, QA 👋 Offline  Go online to share your area  Completed jobs 0 All time  Earnings Rs. 0 Today  Rating New 0 reviews  This week Rs; url=/dashboard; screenshot=screenshots/mobile-23-admin-approval-reaches-the-app.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-025",
+      "area": "Provider",
+      "useCase": "Go online from dashboard",
+      "steps": "tap Online status toggle",
+      "expected": "server isOnline=true with fresh location",
+      "actual": "online at 33.7128,73.0630; url=/dashboard; screenshot=screenshots/mobile-24-go-online-from-dashboard.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-026",
+      "area": "Provider",
+      "useCase": "Incoming job offer and accept",
+      "steps": "customer creates mechanic request (API) -> offer appears in app -> Accept",
+      "expected": "request assigned to this provider",
+      "actual": "status=provider_assigned; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-25-incoming-job-offer-and-accept.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-027",
+      "area": "Provider",
+      "useCase": "Job detail: Start Navigation",
+      "steps": "tap \"Start Navigation\"",
+      "expected": "status=provider_on_way",
+      "actual": "status=provider_on_way; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-26-job-detail-start-navigation.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-028",
+      "area": "Provider",
+      "useCase": "Job detail: I've Arrived",
+      "steps": "tap \"I've Arrived\"",
+      "expected": "status=provider_arrived",
+      "actual": "status=provider_arrived; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-27-job-detail-i-ve-arrived.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-029",
+      "area": "Provider",
+      "useCase": "Job detail: Start Inspection",
+      "steps": "tap \"Start Inspection\"",
+      "expected": "status=inspection_started",
+      "actual": "status=inspection_started; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-28-job-detail-start-inspection.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-030",
+      "area": "Provider",
+      "useCase": "Request extra work",
+      "steps": "Request Extra Work -> findings, part, price 4000, labour 500 -> Send for Approval; customer approves (API)",
+      "expected": "extra_work_requested, then work_started with total 1250+4500",
+      "actual": "after send status=extra_work_requested; after approval status=work_started, total=5750; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-29-request-extra-work.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-031",
+      "area": "Provider",
+      "useCase": "Chat with customer",
+      "steps": "open /job/<id>/chat -> send; customer replies (API)",
+      "expected": "messages delivered both ways",
+      "actual": "Thanks, see you / On site now; url=/job/6b0697057d1927ab5176054c/chat; screenshot=screenshots/mobile-30-chat-with-customer.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-032",
+      "area": "Provider",
+      "useCase": "Finish job and confirm cash",
+      "steps": "job screen -> Mark as Completed (service_finished); customer confirms + selects cash (API); provider taps Confirm cash collected",
+      "expected": "completed and cash paid",
+      "actual": "after Mark as Completed=service_finished, payment=paid; url=/job/6b0697057d1927ab5176054c; screenshot=screenshots/mobile-31-finish-job-and-confirm-cash.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-033",
+      "area": "Provider",
+      "useCase": "Jobs tab",
+      "steps": "open Jobs tab",
+      "expected": "completed job listed",
+      "actual": "My Jobs Job history  Mechanic Service Blue Area, Islamabad Completed Nov 25, 1:07 PM Rs. 5,750   Dashboard   Jobs   Earnings   5 Inbox   Profile; url=/jobs; screenshot=screenshots/mobile-32-jobs-tab.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-034",
+      "area": "Provider",
+      "useCase": "Earnings tab",
+      "steps": "open Earnings",
+      "expected": "shows Rs 5,750 (1250 + 4500, no service fee on mechanic jobs) matching /provider/earnings",
+      "actual": "API total=5750; UI shows 5,750=true; url=/earnings; screenshot=screenshots/mobile-33-earnings-tab.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-035",
+      "area": "Provider",
+      "useCase": "Profile tab",
+      "steps": "open Profile",
+      "expected": "provider name + service shown",
+      "actual": "Profile QW QA Web Provider 034589498502 Mechanic service provider  Verification: Approved Your verification is complete. You can go on duty and accept service ; url=/profile; screenshot=screenshots/mobile-34-profile-tab.png",
+      "result": "PASS"
+    },
+    {
+      "id": "MOBILE-WEB-036",
+      "area": "Provider",
+      "useCase": "Provider log out",
+      "steps": "Profile -> Log out",
+      "expected": "back to login",
+      "actual": "/welcome; url=/welcome; screenshot=screenshots/mobile-35-provider-log-out.png",
+      "result": "PASS"
+    }
+  ]
+}

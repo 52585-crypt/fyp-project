@@ -1,0 +1,16 @@
+{
+  "name": "rapidassist-qa-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "End-to-end QA harness for RapidAssist (API, admin panel and Expo Web). Does not modify application code.",
+  "scripts": {
+    "stack": "node lib/start-stack.js",
+    "test:api": "node api/run-api-tests.js",
+    "test:admin-ui": "node ui/admin-panel.e2e.js",
+    "test:mobile-web": "node ui/mobile-web.e2e.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1",
+    "socket.io-client": "^4.8.4"
+  }
+}
