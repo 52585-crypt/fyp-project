@@ -115,3 +115,15 @@ test("times out a stalled location request and maps browser-unavailable errors",
     /current location is unavailable/i
   );
 });
+
+test("treats a fix worse than 100 m as approximate, and a missing or precise fix as not", () => {
+  const { isApproximateFix, APPROXIMATE_ACCURACY_METERS } = loadCurrentLocation();
+  assert.equal(APPROXIMATE_ACCURACY_METERS, 100);
+  assert.equal(isApproximateFix(25), false);
+  assert.equal(isApproximateFix(100), false);
+  assert.equal(isApproximateFix(101), true);
+  assert.equal(isApproximateFix(1800), true);
+  assert.equal(isApproximateFix(null), false);
+  assert.equal(isApproximateFix(undefined), false);
+  assert.equal(isApproximateFix(NaN), false);
+});

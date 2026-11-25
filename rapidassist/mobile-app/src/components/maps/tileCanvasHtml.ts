@@ -3,7 +3,7 @@ import { LEGACY_MAP_TILES } from "./legacyMapTiles";
 import { MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasProps } from "./MapCanvas.types";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { safeNumber, safePoint, safePoints, safeText, scriptJson } from "./mapHtmlSafety";
-import { MAP_CANVAS_SERVICES, type MapCanvasMarker } from "./MapCanvas.types";
+import { accuracyRadius, MAP_CANVAS_SERVICES, type MapCanvasMarker } from "./MapCanvas.types";
 import { serviceMarkerDataUrl } from "./serviceGlyphs";
 
 const c = tokens.color;
@@ -25,7 +25,8 @@ export function tileCanvasState(props: MapCanvasProps) {
       const kind = MARKER_KINDS.includes(m.kind) ? m.kind : "pickup";
       // The service picks a fixed icon from boot.icons, so it is whitelisted like the kind.
       const service = kind === "provider" && MAP_CANVAS_SERVICES.includes(m.service!) ? m.service : undefined;
-      return [{ id: String(m.id), kind, coordinate, label: safeText(m.label), service, ambient: m.ambient === true }];
+      const accuracyMeters = kind === "user" ? accuracyRadius({ kind, accuracyMeters: safeNumber(m.accuracyMeters, NaN) }) ?? undefined : undefined;
+      return [{ id: String(m.id), kind, coordinate, label: safeText(m.label), service, ambient: m.ambient === true, accuracyMeters }];
     }),
     route: safePoints(props.route),
     focus: focusPoint ? { coordinate: focusPoint, requestId: safeNumber(props.focus!.requestId) } : null,
@@ -55,7 +56,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-f
 .m{position:absolute;transform:translate(-50%,-50%);border-radius:50%;box-sizing:border-box;z-index:3}
 .pickup{width:${s.mapMarker}px;height:${s.mapMarker}px;background:${c.primary};border:4px solid ${c.surface};box-shadow:0 2px 8px ${c.shadowSoft}}
 .destination{width:${s.mapMarker}px;height:${s.mapMarker}px;background:${c.red};border:4px solid ${c.surface};box-shadow:0 2px 8px ${c.shadowSoft}}
-.user{width:16px;height:16px;background:${c.primary};border:3px solid ${c.surface};box-shadow:0 0 0 8px ${c.primaryHalo}}
+.user{width:${s.mapMyLocation}px;height:${s.mapMyLocation}px;background:${c.myLocation};border:3px solid ${c.surface};box-shadow:0 0 0 8px ${c.myLocationHalo}}
+.acc{position:absolute;transform:translate(-50%,-50%);border-radius:50%;box-sizing:border-box;background:${c.myLocationAccuracy};border:1px solid ${c.myLocationAccuracyEdge};pointer-events:none;z-index:1}
 .provider{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;background:${c.amber};border:3px solid ${c.surface};box-shadow:0 3px 10px ${c.shadowSoft};display:flex;align-items:center;justify-content:center}
 .provider:after{content:"";width:10px;height:10px;border-radius:50%;background:${c.ink}}
 .svc{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;border-radius:50%;filter:drop-shadow(0 2px 4px ${c.shadowSoft})}
@@ -85,6 +87,9 @@ function draw(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=
  for(let x=Math.floor(L/256);x<=Math.floor((L+W())/256);x++)for(let y=Math.floor(T/256);y<=Math.floor((T+H())/256);y++){const n=Math.pow(2,z);if(y<0||y>=n)continue;const i=document.createElement('img');i.className='tile';i.alt='';i.draggable=false;i.src=boot.tiles.baseUrl+'/'+z+'/'+(((x%n)+n)%n)+'/'+y+'.png'+boot.tiles.query;i.style.left=(x*256-L)+'px';i.style.top=(y*256-T)+'px';map.append(i);}
  if(st.route.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:2';const pts=st.route.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' ');
   [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});map.append(g);}
+ // Accuracy circles: metres to pixels at this latitude and zoom (Web Mercator).
+ st.markers.forEach(m=>{if(!(m.accuracyMeters>0))return;const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const r=m.accuracyMeters/(156543.03392*Math.cos(m.coordinate.latitude*Math.PI/180)/Math.pow(2,z));
+  const a=document.createElement('div');a.className='acc';a.style.width=a.style.height=(2*r)+'px';a.style.left=(p.x-L)+'px';a.style.top=(p.y-T)+'px';map.append(a);});
  st.markers.forEach(m=>{const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const icon=m.service&&boot.icons[m.service];const d=document.createElement(icon?'img':'div');
   d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.dataset.mid=m.id;d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
   // Ambient markers (nearby providers) carry their name for screen readers only, so many of them do not clutter the map.

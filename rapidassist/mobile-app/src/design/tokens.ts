@@ -65,6 +65,11 @@ const palette = {
   onServiceTowing: "#FFFFFF",
   serviceFuel: brand.green,
   onServiceFuel: "#FFFFFF",
+  /** The customer's own position: blue dot, halo, and the faint circle (fill + edge) drawn when the fix is approximate. */
+  myLocation: "#2563EB",
+  myLocationHalo: "rgba(37, 99, 235, 0.22)",
+  myLocationAccuracy: "rgba(37, 99, 235, 0.12)",
+  myLocationAccuracyEdge: "rgba(37, 99, 235, 0.35)",
   shadow: brand.ink,
   transparent: "transparent"
 } as const;
@@ -192,7 +197,9 @@ const sizes = {
   mapMarker: 22,
   mapMarkerProvider: 34,
   /** Service glyph inside a provider marker. */
-  mapMarkerGlyph: 20
+  mapMarkerGlyph: 20,
+  /** The customer's blue location dot. */
+  mapMyLocation: 16
 } as const;
 
 const shadow = {

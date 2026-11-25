@@ -3,6 +3,12 @@ import { isValidCoordinates, type Coordinate } from "../utils/distance";
 
 export const CURRENT_LOCATION_TIMEOUT_MS = 15_000;
 export const MAX_CURRENT_LOCATION_ACCURACY_METERS = 2_000;
+/** A fix worse than this (coarse/"approximate" permission, Wi-Fi or IP location) is shown as approximate. */
+export const APPROXIMATE_ACCURACY_METERS = 100;
+
+export function isApproximateFix(accuracyMeters: number | null | undefined) {
+  return accuracyMeters != null && Number.isFinite(accuracyMeters) && accuracyMeters > APPROXIMATE_ACCURACY_METERS;
+}
 
 type PermissionResult = {
   granted: boolean;

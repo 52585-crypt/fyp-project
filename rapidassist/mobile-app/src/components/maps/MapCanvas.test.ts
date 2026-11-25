@@ -1,4 +1,4 @@
-import { canvasPoints, isCoordinate, parseCanvasMarkerTap, parseCanvasMessage } from "./MapCanvas.types";
+import { accuracyRadius, canvasPoints, isCoordinate, parseCanvasMarkerTap, parseCanvasMessage } from "./MapCanvas.types";
 
 describe("MapCanvas helpers", () => {
   it("accepts only centre reports from its own canvas instance", () => {
@@ -30,6 +30,15 @@ describe("MapCanvas helpers", () => {
     expect(parseCanvasMarkerTap(JSON.stringify({ type: "center", id: "canvas-1", latitude: 1, longitude: 2 }), "canvas-1")).toBeNull();
     expect(parseCanvasMarkerTap("not json", "canvas-1")).toBeNull();
     expect(parseCanvasMarkerTap({ type: "marker" }, "canvas-1")).toBeNull();
+  });
+
+  it("draws an accuracy circle only for the customer's own marker, capped at the coarsest accepted fix", () => {
+    expect(accuracyRadius({ kind: "user", accuracyMeters: 800 })).toBe(800);
+    expect(accuracyRadius({ kind: "user", accuracyMeters: 9000 })).toBe(2000);
+    expect(accuracyRadius({ kind: "user" })).toBeNull();
+    expect(accuracyRadius({ kind: "user", accuracyMeters: 0 })).toBeNull();
+    expect(accuracyRadius({ kind: "user", accuracyMeters: NaN })).toBeNull();
+    expect(accuracyRadius({ kind: "provider", accuracyMeters: 800 })).toBeNull();
   });
 
   it("keeps ambient markers (nearby providers) out of camera fitting", () => {

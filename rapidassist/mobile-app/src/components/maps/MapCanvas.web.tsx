@@ -4,7 +4,7 @@ import { tokens } from "../../design/tokens";
 import { isGoogleMapConfigured } from "../../services/googleMapsAvailability";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { loadMaps } from "../GoogleMapView.web";
-import { canvasPoints, MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
+import { accuracyRadius, canvasPoints, MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
 import { serviceMarkerDataUrl } from "./serviceGlyphs";
 import { TileCanvas } from "./TileCanvas";
 
@@ -18,7 +18,7 @@ const c = tokens.color;
 const look: Record<MapCanvasMarker["kind"], { fill: string; scale: number; stroke: number }> = {
   pickup: { fill: c.primary, scale: 9, stroke: 4 },
   destination: { fill: c.red, scale: 9, stroke: 4 },
-  user: { fill: c.primary, scale: 7, stroke: 3 },
+  user: { fill: c.myLocation, scale: tokens.sizes.mapMyLocation / 2, stroke: 3 },
   provider: { fill: c.amber, scale: 14, stroke: 3 }
 };
 
@@ -59,7 +59,7 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
   const at = (p: { latitude: number; longitude: number }) => ({ lat: p.latitude, lng: p.longitude });
   // Overlays redraw whenever any marker changes; the camera only moves for its own inputs (ambient markers excluded),
   // so a 20 s refresh of nearby providers never yanks the map.
-  const overlayKey = JSON.stringify([markers.map((m) => [m.id, m.kind, m.service, m.label, m.coordinate]), route]);
+  const overlayKey = JSON.stringify([markers.map((m) => [m.id, m.kind, m.service, m.label, m.coordinate, m.accuracyMeters]), route]);
   useEffect(() => {
     if (!ready || !map.current) return;
     const maps = (window as any).google.maps;
@@ -74,6 +74,14 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
       });
       marker.addListener("click", () => onMarker.current?.(m.id));
       return marker;
+    });
+    // The customer's position: a soft halo under the blue dot, plus a faint accuracy circle when the fix is approximate.
+    markers.filter((m) => m.kind === "user").forEach((m) => {
+      overlays.current.push(new maps.Marker({ map: map.current, position: at(m.coordinate), clickable: false, zIndex: 0,
+        icon: { path: maps.SymbolPath.CIRCLE, fillColor: c.myLocationHalo, fillOpacity: 1, strokeWeight: 0, scale: tokens.sizes.mapMyLocation } }));
+      const radius = accuracyRadius(m);
+      if (radius) overlays.current.push(new maps.Circle({ map: map.current, center: at(m.coordinate), radius, clickable: false, zIndex: 0,
+        fillColor: c.myLocationAccuracy, fillOpacity: 1, strokeColor: c.myLocationAccuracyEdge, strokeOpacity: 1, strokeWeight: 1 }));
     });
     if (route.length > 1) {
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.surface, strokeWeight: 10, zIndex: 3 }));

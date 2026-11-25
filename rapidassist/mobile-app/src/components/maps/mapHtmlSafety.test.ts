@@ -150,6 +150,28 @@ describe("map documents treat names, labels and addresses as text", () => {
     dom.window.close();
   });
 
+  it("draws a faint accuracy circle (metres to pixels) only for an approximate customer position", () => {
+    const state = tileCanvasState({ markers: [
+      { id: "me", kind: "user", accuracyMeters: 800, coordinate: { latitude: 33.7, longitude: 73.05 } },
+      { id: "p", kind: "provider", accuracyMeters: 800, coordinate: { latitude: 33.7, longitude: 73.05 } },
+      { id: "x", kind: "user", accuracyMeters: "1e3px" as never, coordinate: { latitude: 33.7, longitude: 73.05 } }
+    ] });
+    expect(state.markers.map((m) => m.accuracyMeters)).toEqual([800, undefined, undefined]);
+
+    const circles = (accuracyMeters?: number) => {
+      const dom = new JSDOM(buildTileCanvasHtml("canvas-acc", { focus: { coordinate: { latitude: 33.7, longitude: 73.05 }, requestId: 1 },
+        markers: [{ id: "me", kind: "user", accuracyMeters, coordinate: { latitude: 33.7, longitude: 73.05 } }] }),
+      { runScripts: "dangerously", pretendToBeVisual: true });
+      const found = [...dom.window.document.querySelectorAll(".acc")].map((e) => parseFloat((e as HTMLElement).style.width));
+      dom.window.close();
+      return found;
+    };
+    const [width] = circles(800);
+    // Zoom 15 at 33.7° N: 156543.03392 × cos(33.7°) / 2^15 ≈ 3.975 m per pixel, so 800 m ≈ 201 px radius.
+    expect(width / 2).toBeCloseTo(800 / (156543.03392 * Math.cos(33.7 * Math.PI / 180) / 2 ** 15), 1);
+    expect(circles(undefined)).toEqual([]);
+  });
+
   it("escapes script-breaking characters in embedded JSON", () => {
     const hostile = "</script><!-- & " + String.fromCharCode(0x2028, 0x2029) + " >";
     const out = scriptJson({ s: hostile });

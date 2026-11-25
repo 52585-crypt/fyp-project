@@ -7,7 +7,7 @@ import { Icon } from "../../design/components/Icon";
 import { tokens } from "../../design/tokens";
 import { isGoogleMapConfigured } from "../../services/googleMapsAvailability";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
-import { canvasPoints, MAP_CANVAS_EDGE, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
+import { accuracyRadius, canvasPoints, MAP_CANVAS_EDGE, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
 import { SERVICE_MARKERS } from "./serviceGlyphs";
 import { TileCanvas } from "./TileCanvas";
 
@@ -20,7 +20,7 @@ export function MapCanvas(props: MapCanvasProps) {
 
 function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, bottom: 0 }, onCenterChange, onMarkerPress, initialCenter, accessibilityLabel, style, testID }: MapCanvasProps) {
   // Loaded lazily so builds that only use the tile canvas never touch the native map module.
-  const { default: MapView, Marker, Polyline, PROVIDER_GOOGLE } = require("react-native-maps") as typeof import("react-native-maps");
+  const { default: MapView, Circle, Marker, Polyline, PROVIDER_GOOGLE } = require("react-native-maps") as typeof import("react-native-maps");
   const map = useRef<MapViewType>(null);
   const start = initialCenter ?? markers[0]?.coordinate ?? BOOKING_MAP_CENTER;
   const contentKey = JSON.stringify(canvasPoints(markers, route));
@@ -56,6 +56,13 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
             <Polyline coordinates={route} strokeColor={tokens.color.primary} strokeWidth={6} lineCap="round" lineJoin="round" />
           </>
         ) : null}
+        {markers.map((m) => {
+          const radius = accuracyRadius(m);
+          return radius ? (
+            <Circle key={`accuracy:${m.id}`} center={m.coordinate} radius={radius} zIndex={0}
+              fillColor={tokens.color.myLocationAccuracy} strokeColor={tokens.color.myLocationAccuracyEdge} strokeWidth={1} />
+          ) : null;
+        })}
         {markers.map((m) => (
           <Marker key={m.id} coordinate={m.coordinate} title={onMarkerPress ? undefined : m.label} anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={m.kind === "provider"} onPress={onMarkerPress ? () => onMarkerPress(m.id) : undefined}>
@@ -82,7 +89,8 @@ function MarkerDot({ marker: { kind, service } }: { marker: MapCanvasMarker }) {
   if (kind === "provider") {
     return <View style={[styles.dot, styles.provider]}><Icon name="car-sport" color="ink" size={tokens.sizes.iconSmall} /></View>;
   }
-  return <View style={[styles.dot, kind === "destination" ? styles.destination : kind === "user" ? styles.user : styles.pickup]} />;
+  if (kind === "user") return <View style={styles.halo}><View style={[styles.dot, styles.user]} /></View>;
+  return <View style={[styles.dot, kind === "destination" ? styles.destination : styles.pickup]} />;
 }
 
 const styles = StyleSheet.create({
@@ -90,7 +98,15 @@ const styles = StyleSheet.create({
   dot: { borderColor: tokens.color.surface, alignItems: "center", justifyContent: "center", ...tokens.shadow.card },
   pickup: { width: tokens.sizes.mapMarker, height: tokens.sizes.mapMarker, borderRadius: tokens.sizes.mapMarker / 2, borderWidth: 4, backgroundColor: tokens.color.primary },
   destination: { width: tokens.sizes.mapMarker, height: tokens.sizes.mapMarker, borderRadius: tokens.sizes.mapMarker / 2, borderWidth: 4, backgroundColor: tokens.color.red },
-  user: { width: tokens.space.lg, height: tokens.space.lg, borderRadius: tokens.space.sm, borderWidth: 3, backgroundColor: tokens.color.primary },
+  user: {
+    width: tokens.sizes.mapMyLocation, height: tokens.sizes.mapMyLocation, borderRadius: tokens.sizes.mapMyLocation / 2,
+    borderWidth: 3, backgroundColor: tokens.color.myLocation
+  },
+  halo: {
+    width: tokens.sizes.mapMyLocation + tokens.space.lg, height: tokens.sizes.mapMyLocation + tokens.space.lg,
+    borderRadius: (tokens.sizes.mapMyLocation + tokens.space.lg) / 2, alignItems: "center", justifyContent: "center",
+    backgroundColor: tokens.color.myLocationHalo
+  },
   provider: {
     width: tokens.sizes.mapMarkerProvider, height: tokens.sizes.mapMarkerProvider, borderRadius: tokens.sizes.mapMarkerProvider / 2,
     borderWidth: 3, backgroundColor: tokens.color.amber

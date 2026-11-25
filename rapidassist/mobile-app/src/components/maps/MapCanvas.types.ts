@@ -20,6 +20,8 @@ export type MapCanvasMarker = {
   service?: MapCanvasService;
   /** Shown, but ignored when fitting the camera (e.g. nearby providers around the customer). */
   ambient?: boolean;
+  /** "user" markers: radius in metres of a faint accuracy circle, set only when the position is approximate. */
+  accuracyMeters?: number;
 };
 
 export type MapCanvasFocus = { coordinate: Coordinate; requestId: number };
@@ -44,6 +46,15 @@ export type MapCanvasProps = {
 
 export const MAP_CANVAS_FOCUS_ZOOM = 15;
 export const MAP_CANVAS_EDGE = 48;
+/** Largest accuracy circle drawn; matches the coarsest fix the app accepts. */
+export const MAP_CANVAS_MAX_ACCURACY_METERS = 2_000;
+
+/** The accuracy circle radius for a marker, or null when none should be drawn. */
+export function accuracyRadius(marker: Pick<MapCanvasMarker, "kind" | "accuracyMeters">): number | null {
+  const r = Number(marker.accuracyMeters);
+  return marker.kind === "user" && marker.accuracyMeters != null && Number.isFinite(r) && r > 0
+    ? Math.min(r, MAP_CANVAS_MAX_ACCURACY_METERS) : null;
+}
 
 export function isCoordinate(value: unknown): value is Coordinate {
   const c = value as Partial<Coordinate> | null;

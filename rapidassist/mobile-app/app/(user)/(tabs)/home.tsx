@@ -46,9 +46,11 @@ export default function CustomerHome() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <MapCanvas accessibilityLabel="Map of your location" inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: peek }}
+      <MapCanvas accessibilityLabel={map.approximate ? "Map of your approximate location" : "Map of your location"} inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: peek }}
         focus={map.focus} onMarkerPress={preview.select} markers={map.position
-          ? [...nearbyProviderMarkers(near.providers ?? []), { id: "me", kind: "user", coordinate: map.position }] : []} />
+          ? [...nearbyProviderMarkers(near.providers ?? []), {
+            id: "me", kind: "user", coordinate: map.position, accuracyMeters: map.approximate ? map.accuracyMeters ?? undefined : undefined
+          }] : []} />
 
       <MapTopBar
         left={<Avatar name={user?.name ?? "You"} size={tokens.sizes.iconButton} />}
@@ -77,7 +79,7 @@ export default function CustomerHome() {
 
           <View style={styles.gapSm}>
             <Text variant="title">Where do you need help?</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}. Recentre map`}
+            <Pressable accessibilityRole="button" accessibilityLabel={`Help location: ${map.address ?? "current location"}${map.approximate ? " (approximate)" : ""}. Recentre map`}
               onPress={() => { tapFeedback(); void map.locate(); }} style={styles.place}>
               <View style={styles.placeIcon}><Icon name="navigate" color="primary" size={tokens.sizes.iconSmall} /></View>
               <View style={styles.flex}>
@@ -85,6 +87,9 @@ export default function CustomerHome() {
                 <Text variant="bodyStrong" numberOfLines={1}>
                   {map.locating && !map.position ? "Finding you…" : map.address ?? (map.position ? "Current location" : "Location off")}
                 </Text>
+                {map.approximate && map.accuracyMeters ? (
+                  <Text variant="caption" color="muted">Approximate, within about {Math.round(map.accuracyMeters)} m</Text>
+                ) : null}
               </View>
               <Text variant="captionStrong" color="primary">Refresh</Text>
             </Pressable>
