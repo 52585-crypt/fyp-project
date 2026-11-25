@@ -514,6 +514,10 @@ async function listProviderRequests(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Map preview only: when nobody is inside the dispatch radius, widen the search so the customer still sees the nearest
+// providers, clearly marked as outside the auto-dispatch range. Dispatch itself always uses radiusFor().
+const PREVIEW_EXPANSION_KM = [10, 20, 30];
+
 async function listNearbyProviders(req, res, next) {
   try {
     if (req.authRole !== "user") throw forbidden("Customer account required");
@@ -530,39 +534,59 @@ async function listNearbyProviders(req, res, next) {
       throw badRequest("Valid lat and lng are required");
     }
 
-    const radiusKm = radiusFor();
-    const candidates = await User.find({
-      ...eligibleQuery(category),
-      _id: { $ne: req.user._id },
-      "providerState.currentLocation.lat": { $type: "number" },
-      "providerState.currentLocation.lng": { $type: "number" }
-    })
-      .select("name mechanicProfile.serviceCategory providerState ratingAvg ratingCount completedJobs")
-      .limit(100);
-
-    const providers = candidates
-      .flatMap((provider) => {
+    const dispatchRadiusKm = radiusFor();
+    const steps = [dispatchRadiusKm, ...PREVIEW_EXPANSION_KM.filter((km) => km > dispatchRadiusKm)];
+    const noCap = withinDispatchRadius(1e9, 0); // true only when the test-mode radius bypass (same switch as dispatch) is on
+    let radiusKm = dispatchRadiusKm;
+    let providers = [];
+    for (const stepKm of steps) {
+      radiusKm = stepKm;
+      // The 2dsphere index narrows candidates; membership uses the same haversine rule as dispatch, so a provider
+      // shown "within 8 km" is exactly one dispatch could offer to (MongoDB's sphere radius differs slightly).
+      const candidates = await User.aggregate([
+        { $geoNear: {
+          near: { type: "Point", coordinates: [origin.lng, origin.lat] },
+          key: "providerState.locationPoint",
+          distanceField: "geoDistanceMeters",
+          spherical: true,
+          ...(noCap ? {} : { maxDistance: stepKm * 1000 * 1.005 + 1 }),
+          query: { ...eligibleQuery(category), _id: { $ne: req.user._id } }
+        } },
+        { $limit: 100 },
+        { $project: { name: 1, "mechanicProfile.serviceCategory": 1, providerState: 1, ratingAvg: 1, ratingCount: 1, completedJobs: 1 } }
+      ]);
+      providers = candidates.flatMap((provider) => {
         const location = provider.providerState?.currentLocation;
         const distance = distanceKm(origin, { lat: location.lat, lng: location.lng });
-        if (!withinDispatchRadius(distance, radiusKm)) return [];
-        return [{
+        if (!noCap && !(distance <= stepKm)) return [];
+        return [{ provider, distance }];
+      });
+      if (providers.length || noCap) break;
+    }
+
+    res.json({
+      ok: true,
+      radiusKm,
+      dispatchRadiusKm,
+      expanded: radiusKm > dispatchRadiusKm,
+      providers: providers
+        .map(({ provider, distance }) => ({
           distance,
           score: nearbyProviderScore(provider, distance),
           summary: {
-            id: provider.id,
+            id: String(provider._id),
             name: provider.name,
             serviceCategory: provider.mechanicProfile?.serviceCategory || null,
             ratingAvg: provider.ratingAvg || 0,
             ratingCount: provider.ratingCount || 0,
             completedJobs: provider.completedJobs || 0
+            // No per-provider distance: exact distances from several query points would reveal a provider's position.
           }
-        }];
-      })
-      .sort((a, b) => b.score - a.score || a.distance - b.distance)
-      .slice(0, 20)
-      .map(({ summary }) => summary);
-
-    res.json({ ok: true, radiusKm, providers });
+        }))
+        .sort((a, b) => b.score - a.score || a.distance - b.distance)
+        .slice(0, 20)
+        .map(({ summary }) => summary)
+    });
   } catch (err) {
     next(err);
   }
@@ -707,6 +731,9 @@ async function updateProviderAvailability(req, res, next) {
     if (isOnline && req.user.verificationStatus !== "verified") throw forbidden("Complete provider verification before going online.");
     const location = optionalLocation(req.body?.location);
     if (isOnline && !isFreshProviderLocation(location)) throw badRequest("A fresh GPS location is required to go online.");
+    if (isOnline && !isInServiceArea(location.lat, location.lng)) {
+      throw badRequest(`${SERVICE_AREA_MESSAGE}. Go online from inside Islamabad or Rawalpindi.`);
+    }
 
     const $set = {
       "providerState.isOnline": isOnline,
@@ -741,6 +768,10 @@ async function updateProviderLocation(req, res, next) {
 
     if (!req.user.providerState?.isOnline && !req.user.providerState?.activeRequestId) {
       throw forbidden("Go online before sharing provider location");
+    }
+    // During an active job tracking must continue (e.g. towing towards a garage outside the area).
+    if (!req.user.providerState?.activeRequestId && !isInServiceArea(location.lat, location.lng)) {
+      throw badRequest(`${SERVICE_AREA_MESSAGE}. Location updates outside the service area are not accepted while you are available for jobs.`);
     }
 
     const provider = await User.findOneAndUpdate(

@@ -32,6 +32,19 @@ const faceChecksSchema = new mongoose.Schema({
   checkedAt: { type: Date, default: null }
 }, { _id: false });
 
+// GeoJSON point for the 2dsphere index ([lng, lat]); derived from providerState.currentLocation by the hooks below.
+const pointSchema = new mongoose.Schema({
+  type: { type: String, enum: ["Point"], required: true },
+  coordinates: { type: [Number], required: true }
+}, { _id: false });
+
+function pointFromLocation(location) {
+  const lat = Number(location?.lat);
+  const lng = Number(location?.lng);
+  if (location?.lat == null || location?.lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { type: "Point", coordinates: [lng, lat] };
+}
+
 const mechanicVerificationSchema = new mongoose.Schema({
   submissionId: String,
   reviewState: { type: String, enum: ["awaiting_review", "approved", "rejected", "resubmission_requested"] },
@@ -163,6 +176,10 @@ const userSchema = new mongoose.Schema(
         receivedAt: { type: Date, default: null },
         updatedAt: { type: Date, default: null }
       },
+      // Same position as currentLocation, as GeoJSON for $geoNear; currentLocation.updatedAt is the last-location time.
+      locationPoint: { type: pointSchema, default: undefined },
+      // Seeded demo providers: shown on the customer map, never offered real jobs.
+      isDemo: { type: Boolean, default: undefined },
       activeRequestId: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceRequest", default: null },
       claimedAt: { type: Date, default: null },
       reservedRequestId: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceRequest", default: null },
@@ -173,6 +190,34 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.index({ "providerState.locationPoint": "2dsphere" });
+
+// Keep providerState.locationPoint in sync with providerState.currentLocation however the location is written.
+userSchema.pre("save", function syncLocationPoint() {
+  if (!this.isModified("providerState.currentLocation")) return;
+  const point = pointFromLocation(this.providerState?.currentLocation);
+  this.set("providerState.locationPoint", point || undefined);
+});
+
+function syncLocationPointInUpdate() {
+  const update = this.getUpdate();
+  if (!update || Array.isArray(update)) return;
+  const set = update.$set || {};
+  const whole = set["providerState.currentLocation"] ?? update["providerState.currentLocation"];
+  const lat = set["providerState.currentLocation.lat"];
+  const lng = set["providerState.currentLocation.lng"];
+  let point;
+  if (whole !== undefined) point = pointFromLocation(whole);
+  else if (lat !== undefined && lng !== undefined) point = pointFromLocation({ lat, lng });
+  else return;
+  if (point) update.$set = { ...set, "providerState.locationPoint": point };
+  else update.$unset = { ...(update.$unset || {}), "providerState.locationPoint": 1 };
+  this.setUpdate(update);
+}
+userSchema.pre("findOneAndUpdate", syncLocationPointInUpdate);
+userSchema.pre("updateOne", syncLocationPointInUpdate);
+userSchema.pre("updateMany", syncLocationPointInUpdate);
 
 userSchema.methods.verifyPassword = async function verifyPassword(password) {
   if (this.authProvider === "google" || !this.passwordHash) return false;
@@ -256,4 +301,4 @@ userSchema.methods.toSafeJSON = function toSafeJSON(activeRole = this.role) {
 
 const User = mongoose.model("User", userSchema);
 
-module.exports = { User, USER_ROLES, VERIFICATION_STATUSES, MECHANIC_SERVICE_CATEGORIES };
+module.exports = { User, USER_ROLES, VERIFICATION_STATUSES, MECHANIC_SERVICE_CATEGORIES, pointFromLocation };

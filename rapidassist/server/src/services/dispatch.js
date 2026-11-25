@@ -468,7 +468,8 @@ async function runDispatchBatchCore(now = new Date()) {
   }
   if (!requests.length) return { assignments: [], unassignedRequestIds: unavailableRequestIds, totalCost: 0, offersCreated: 0, offersFailed: [] };
 
-  const providers = await User.find(eligibleQuery(null, now));
+  // Seeded demo providers (scripts/seedDemoProviders.js) appear on the customer map but are never offered jobs.
+  const providers = await User.find({ ...eligibleQuery(null, now), "providerState.isDemo": { $ne: true } });
   if (!providers.length) {
     await logDispatchDiagnostics(requests, now).catch((error) => console.warn("Dispatch diagnostics failed:", error.message));
     return { assignments: [], unassignedRequestIds: [...unavailableRequestIds, ...requests.map((request) => request.id)], totalCost: 0, offersCreated: 0, offersFailed: [] };

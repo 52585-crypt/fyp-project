@@ -256,7 +256,7 @@ describe("Google customer and mechanic authentication", { concurrency: false }, 
     assert.equal(await User.countDocuments({ googleId: "dual-role" }), 1);
     assert.equal((await api("/api/auth/me", null, "GET", signAccessToken({ sub: id }))).data.user.activeRole, "user");
     assert.equal((await api("/api/auth/me", null, "GET", provider.token)).data.user.activeRole, "mechanic");
-    const availability = { isOnline: true, location: { lat: 31.52, lng: 74.35 } };
+    const availability = { isOnline: true, location: { lat: 33.72, lng: 73.05 } };
     assert.equal((await api("/api/requests/provider/availability", availability, "PATCH", provider.token)).status, 403);
     const expiresAt = new Date(Date.now() + 60_000);
     const pendingOffer = await ServiceRequest.create({ userId: admin.id, category: "car_towing", status: "searching_provider",

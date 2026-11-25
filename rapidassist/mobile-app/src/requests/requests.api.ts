@@ -26,7 +26,9 @@ export async function listNearbyProviders(
   token: string,
   input: { category: RequestCategory; lat: number; lng: number }
 ) {
-  const res = await api.get<{ ok: boolean; radiusKm: number; providers: NearbyProvider[] }>(
+  // radiusKm = radius actually searched; when nobody is inside dispatchRadiusKm the server widens the search
+  // (expanded: true) so the map still shows the nearest providers, outside the auto-dispatch range.
+  const res = await api.get<{ ok: boolean; radiusKm: number; dispatchRadiusKm?: number; expanded?: boolean; providers: NearbyProvider[] }>(
     "/api/requests/nearby-providers",
     {
       params: input,

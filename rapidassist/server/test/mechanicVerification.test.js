@@ -221,12 +221,12 @@ test("verification survives concurrent submissions and decisions and gates dispa
 
     const expiresAt = new Date(Date.now() + 60_000);
     const job = await ServiceRequest.create({
-      userId: admin._id, category: "mechanic", status: "searching_provider", pickupLocation: { lat: 31.52, lng: 74.35 },
+      userId: admin._id, category: "mechanic", status: "searching_provider", pickupLocation: { lat: 33.72, lng: 73.05 },
       dispatch: { enabled: true, state: "offered", offerId: "test-offer", offeredProviderId: mechanic._id, expiresAt }
     });
     function reserveOffer() {
       return User.updateOne({ _id: mechanic._id }, { $set: { providerState: {
-        isOnline: true, currentLocation: { lat: 31.52, lng: 74.35, updatedAt: new Date() }, reservedRequestId: job._id,
+        isOnline: true, currentLocation: { lat: 33.72, lng: 73.05, updatedAt: new Date() }, reservedRequestId: job._id,
         reservedOfferId: "test-offer", reservedUntil: expiresAt
       } } });
     }
@@ -291,7 +291,7 @@ test("verification survives concurrent submissions and decisions and gates dispa
     assert.equal((await (await api(mechanic, own, "GET", undefined, webOrigin)).json()).verification.reviewState, "approved");
 
     const availability = () => api(mechanic, "/api/requests/provider/availability", "PATCH", {
-      isOnline: true, location: { lat: 31.52, lng: 74.35 }
+      isOnline: true, location: { lat: 33.72, lng: 73.05 }
     });
     assert.equal((await availability()).status, 200);
     const accepted = await accept();

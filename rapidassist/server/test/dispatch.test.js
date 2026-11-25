@@ -495,7 +495,7 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     const boundaries = [[7.99, true], [8, true], [8.01, false]];
     if (category === "fuel_delivery") boundaries.push([2, true], [7.9, true], [8.1, false], [10.73, false]);
     for (const [distance, eligible] of boundaries) {
-      it(`uses the same fixed radius for ${category} preview and dispatch at ${distance} km`, async (t) => {
+      it(`keeps the 8 km dispatch radius for ${category} at ${distance} km and labels any wider preview`, async (t) => {
         mockRadiusTestRouting(t);
         const origin = { ...RADIUS_ORIGIN };
         const location = equatorialLocation(distance);
@@ -511,8 +511,12 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
         for (const suffix of ["", "&radiusKm=50"]) {
           const preview = await api(customer, `/api/requests/nearby-providers?category=${category}&lat=${RADIUS_ORIGIN.lat}&lng=${RADIUS_ORIGIN.lng}${suffix}`);
           assert.equal(preview.status, 200);
-          assert.deepEqual(preview.data.providers.map(item => item.id), eligible ? [candidate.id] : []);
-          assert.equal(preview.data.radiusKm, 8);
+          // Inside 8 km preview and dispatch agree exactly. Beyond it the map widens (10 -> 20 -> 30 km) so the customer
+          // still sees the nearest provider, flagged as outside the auto-dispatch range; dispatch never offers to it.
+          assert.deepEqual(preview.data.providers.map(item => item.id), [candidate.id]);
+          assert.equal(preview.data.dispatchRadiusKm, 8);
+          assert.equal(preview.data.expanded, !eligible);
+          assert.equal(preview.data.radiusKm, eligible ? 8 : distance <= 10 ? 10 : 20);
         }
         const saved = await advanceDispatch(created.data.request.id);
         assert.equal(saved.dispatch.radiusKm, 8);
@@ -574,7 +578,10 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       assert.equal(withinDispatchRadius(15, 8), false);
       const preview = await api(customer, `/api/requests/nearby-providers?category=mechanic&lat=${RADIUS_ORIGIN.lat}&lng=${RADIUS_ORIGIN.lng}`);
       assert.equal(preview.status, 200);
-      assert.deepEqual(preview.data.providers, []);
+      // No bypass: the 15 km provider is only shown through the labelled preview expansion, never offered.
+      assert.equal(preview.data.providers.length, 1);
+      assert.equal(preview.data.expanded, true);
+      assert.equal(preview.data.radiusKm, 20);
       const job = await advanceDispatch(created.data.request.id);
       assert.equal(job.dispatch.radiusKm, 8);
       assert.equal(job.dispatch.state, "searching");
@@ -621,7 +628,8 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
     for (const actor of [customer, dual]) {
       const result = await api(actor, preview, "GET", undefined, undefined, "user");
       assert.equal(result.status, 200);
-      assert.deepEqual(Object.keys(result.data).sort(), ["ok", "providers", "radiusKm"]);
+      assert.deepEqual(Object.keys(result.data).sort(), ["dispatchRadiusKm", "expanded", "ok", "providers", "radiusKm"]);
+      assert.equal(result.data.expanded, false);
       assert.equal(result.data.providers.length, 2);
       assert.equal(result.data.providers[0].id, candidate.id);
       for (const row of result.data.providers) {

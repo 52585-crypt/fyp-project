@@ -46,9 +46,14 @@ export function OffersSheet({ state, request, unavailable }: StageProps & { unav
       {!unavailable ? (
         <View style={styles.list}>
           <Text variant="headline">Nearby {who}{near.providers ? ` · ${list.length}` : ""}</Text>
+          {near.updatedAt ? <UpdatedAgo at={near.updatedAt} /> : null}
+          {near.expanded && list.length ? (
+            <Banner icon="resize-outline" title={`Nearest ${who} found within ${near.radiusKm} km`}
+              message={`They are outside the ${near.dispatchRadiusKm} km auto-dispatch range, so they may not receive your request automatically. We'll keep searching.`} />
+          ) : null}
           {near.loading ? <><Skeleton height={tokens.sizes.avatarLarge} radius={tokens.radius.card} /><Skeleton height={tokens.sizes.avatarLarge} radius={tokens.radius.card} /></> : null}
           {!near.loading && list.length === 0 ? (
-            <Banner icon="time-outline" message={`No ${providerNoun(request.category).toLowerCase()}s online nearby right now. We'll keep searching.`} />
+            <Banner icon="time-outline" message={`No ${providerNoun(request.category).toLowerCase()}s online${near.radiusKm ? ` within ${near.radiusKm} km` : " nearby"} right now. We'll keep searching.`} />
           ) : null}
           {list.map((p) => <ProviderRowCard key={p.id} provider={p} />)}
         </View>
@@ -130,3 +135,15 @@ const styles = StyleSheet.create({
   online: { flexDirection: "row", alignItems: "center", gap: tokens.space.xs },
   dot: { width: tokens.space.sm, height: tokens.space.sm, borderRadius: tokens.space.xs, backgroundColor: tokens.color.green }
 });
+
+/** "Updated 12 s ago", re-rendered every 5 s on its own so the whole sheet does not re-render. */
+function UpdatedAgo({ at }: { at: number }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.max(0, Math.round((now - at) / 1000));
+  const label = seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min`;
+  return <Text variant="caption" color="muted" accessibilityLiveRegion="polite">Updated {label} ago</Text>;
+}
