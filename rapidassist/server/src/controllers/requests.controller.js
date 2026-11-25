@@ -30,6 +30,7 @@ const { recordActivity, recordRejectedAction } = require("../services/adminActiv
 const { ensureOperationalLocation } = require("../services/operationalLocation");
 const { getDrivingRouteMetrics } = require("../services/roadRouting");
 const { SERVICE_AREA_MESSAGE, isInServiceArea } = require("../config/serviceArea");
+const { approxLocation, distanceBand } = require("../services/approxLocation");
 
 function badRequest(message) {
   const err = new Error(message);
@@ -570,19 +571,26 @@ async function listNearbyProviders(req, res, next) {
       dispatchRadiusKm,
       expanded: radiusKm > dispatchRadiusKm,
       providers: providers
-        .map(({ provider, distance }) => ({
-          distance,
-          score: nearbyProviderScore(provider, distance),
-          summary: {
-            id: String(provider._id),
-            name: provider.name,
-            serviceCategory: provider.mechanicProfile?.serviceCategory || null,
-            ratingAvg: provider.ratingAvg || 0,
-            ratingCount: provider.ratingCount || 0,
-            completedJobs: provider.completedJobs || 0
-            // No per-provider distance: exact distances from several query points would reveal a provider's position.
-          }
-        }))
+        .map(({ provider }) => {
+          // Everything below depends only on the snapped ~500 m cell, never on the exact position (see approxLocation.js).
+          const cell = approxLocation(provider.providerState.currentLocation);
+          const distance = distanceKm(origin, { lat: cell.latitude, lng: cell.longitude });
+          return {
+            distance,
+            score: nearbyProviderScore(provider, distance),
+            summary: {
+              id: String(provider._id),
+              name: provider.name,
+              serviceCategory: provider.mechanicProfile?.serviceCategory || null,
+              ratingAvg: provider.ratingAvg || 0,
+              ratingCount: provider.ratingCount || 0,
+              completedJobs: provider.completedJobs || 0,
+              // No exact coordinates or distance: from several query points they would reveal a provider's position.
+              approxLocation: cell,
+              distanceBand: distanceBand(distance)
+            }
+          };
+        })
         .sort((a, b) => b.score - a.score || a.distance - b.distance)
         .slice(0, 20)
         .map(({ summary }) => summary)

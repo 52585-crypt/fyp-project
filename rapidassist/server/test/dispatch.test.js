@@ -633,7 +633,10 @@ describe("Smart roadside dispatch (isolated real MongoDB)", { concurrency: false
       assert.equal(result.data.providers.length, 2);
       assert.equal(result.data.providers[0].id, candidate.id);
       for (const row of result.data.providers) {
-        assert.deepEqual(Object.keys(row).sort(), ["completedJobs", "id", "name", "ratingAvg", "ratingCount", "serviceCategory"]);
+        // Only a grid-snapped position and a coarse band: never exact coordinates or an exact distance.
+        assert.deepEqual(Object.keys(row).sort(), ["approxLocation", "completedJobs", "distanceBand", "id", "name", "ratingAvg", "ratingCount", "serviceCategory"]);
+        assert.deepEqual(Object.keys(row.approxLocation).sort(), ["latitude", "longitude"]);
+        assert.ok(["under 2 km", "2–5 km", "5–10 km", "10+ km"].includes(row.distanceBand));
       }
     }
 

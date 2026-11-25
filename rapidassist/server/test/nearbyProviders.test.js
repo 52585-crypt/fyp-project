@@ -13,6 +13,7 @@ const { signAccessToken } = require("../src/utils/jwt");
 const { newDispatch, runDispatchBatch, acceptOffer } = require("../src/services/dispatch");
 const { planBackfill, applyBackfill } = require("../scripts/migrateProviderLocationPoints");
 const seedDemo = require("../scripts/seedDemoProviders");
+const { GRID_DEG, approxLocation, distanceBand } = require("../src/services/approxLocation");
 
 process.env.JWT_SECRET = "nearby-providers-test-secret";
 process.env.NODE_ENV = "test";
@@ -107,6 +108,48 @@ describe("live nearby providers (isolated real MongoDB)", { concurrency: false }
     const result = await preview();
     assert.deepEqual(result.data.providers, []);
     assert.equal(result.data.radiusKm, 30, "searched up to the widest step");
+  });
+
+  it("returns grid-snapped approximate locations and distance bands, never exact coordinates or distances", async () => {
+    // Two providers in the same ~500 m cell at different exact spots.
+    const exactA = { lat: 33.70123, lng: 73.05234 };
+    const exactB = { lat: 33.70201, lng: 73.05189 };
+    const a = await provider(exactA);
+    const b = await provider(exactB);
+    const fromPickups = [{ lat: 33.69, lng: 73.06 }, { lat: 33.72, lng: 73.04 }, { lat: 33.6995, lng: 73.0522 }];
+    const seen = [];
+    for (const pickup of fromPickups) {
+      const result = await preview("mechanic", pickup);
+      assert.equal(result.status, 200);
+      assert.deepEqual(Object.keys(result.data).sort(), ["dispatchRadiusKm", "expanded", "ok", "providers", "radiusKm"]);
+      assert.equal(result.data.providers.length, 2);
+      const text = JSON.stringify(result.data);
+      for (const exact of [exactA, exactB]) {
+        assert.ok(!text.includes(String(exact.lat)) && !text.includes(String(exact.lng)), "exact coordinates never leave the server");
+      }
+      assert.doesNotMatch(text, /"(distance|distanceKm|lat|lng|currentLocation|locationPoint|providerState)"/);
+      for (const row of result.data.providers) {
+        assert.deepEqual(row.approxLocation, { latitude: 33.7, longitude: 73.05 });
+        for (const value of Object.values(row.approxLocation)) {
+          const steps = value / GRID_DEG;
+          assert.ok(Math.abs(steps - Math.round(steps)) < 1e-9, `${value} is on the ${GRID_DEG}° grid`);
+        }
+      }
+      // Same cell => same band, whatever the exact spot: the band comes from the cell, not the real distance.
+      assert.equal(result.data.providers[0].distanceBand, result.data.providers[1].distanceBand);
+      seen.push(Object.fromEntries(result.data.providers.map((row) => [row.id, row.approxLocation])));
+    }
+    assert.deepEqual(seen[1], seen[0], "identical approximate location from different pickup points");
+    assert.deepEqual(seen[2], seen[0]);
+    assert.ok(seen[0][a.id] && seen[0][b.id]);
+  });
+
+  it("snaps deterministically and bands distances coarsely", () => {
+    assert.deepEqual(approxLocation({ lat: 33.70123, lng: 73.05234 }), { latitude: 33.7, longitude: 73.05 });
+    assert.deepEqual(approxLocation({ lat: 33.7026, lng: 73.0476 }), { latitude: 33.705, longitude: 73.05 });
+    for (let i = 0; i < 5; i += 1) assert.deepEqual(approxLocation({ lat: 33.61386, lng: 73.06517 }), { latitude: 33.615, longitude: 73.065 });
+    assert.deepEqual([0, 1.99, 2, 4.99, 5, 9.99, 10, 25].map(distanceBand),
+      ["under 2 km", "under 2 km", "2–5 km", "2–5 km", "5–10 km", "5–10 km", "10+ km", "10+ km"]);
   });
 
   it("rejects provider locations outside the service area unless the provider is on an active job", async () => {
