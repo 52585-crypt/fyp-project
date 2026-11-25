@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Banner, Button, Card, EmptyState, InfoRow, PriceBreakdown, RadioCard, RatingStars, SuccessHero, Text } from "../../design/components";
+import { Banner, Button, Card, EmptyState, InfoRow, PriceBreakdown, RatingStars, SuccessHero, Text } from "../../design/components";
 import { tokens } from "../../design/tokens";
 import { providerRoutes } from "../../navigation/routes";
 import { usePayment } from "../../payments/usePayment";
@@ -27,10 +27,12 @@ export function PaymentCompletionStage({ job, request }: JobProps) {
   return (
     <>
       <Card><PriceBreakdown title="Bill Summary" lines={request.estimate.lines} total={request.estimate.total} totalLabel="Total Amount" /></Card>
-      <Text variant="headline">Payment Method</Text>
-      <RadioCard title="Cash" subtitle="To be collected from customer" selected />
-      <RadioCard title="Online Payment" subtitle="Card / wallet" tag="Coming soon" selected={false} disabled />
-      <Banner message="Please collect full payment from the customer before marking as completed." />
+      <Text variant="headline">Payment</Text>
+      <Card>
+        <InfoRow icon="cash-outline" label="Cash" value="Collect from the customer, then confirm" />
+        <InfoRow icon="card-outline" label="Online Payment" value="Customer pays by card (Stripe)" />
+      </Card>
+      <Banner message="After you mark the job completed, the customer chooses cash or online payment. For cash, confirm collection on the Payment screen." />
       <Button title="Mark as Completed" icon="checkmark-done" loading={job.updating} onPress={job.advance} />
     </>
   );
