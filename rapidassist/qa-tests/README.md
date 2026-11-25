@@ -26,6 +26,12 @@ APP_API_ORIGIN=http://192.168.0.116:4001 node ui/mobile-web.e2e.js
 node make-report.js
 ```
 
+Shortcuts (each starts and stops its own stack):
+
+- `./run-api-regression.sh`: API suite plus a regression check against `results/api-baseline.json`.
+- `./run-mobile-web.sh`: Expo Web walkthrough (Expo must already run on :8081; restart it after app changes, because with `CI=1` Metro does not watch files).
+- `node ui/cookie-probe.js` (stack running): checks whether the httpOnly auth cookie works from the Expo Web origin.
+
 - Playwright uses the installed Google Chrome (`/usr/bin/google-chrome`; set `CHROME_PATH` to change it).
 - Login is rate-limited to 30 attempts per 15 minutes per IP. Restart the stack between repeated full runs.
 - Results: `results/*.json`. Screenshots: `screenshots/`.

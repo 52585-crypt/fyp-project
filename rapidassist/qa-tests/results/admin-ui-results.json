@@ -1,6 +1,6 @@
 {
   "suite": "ADMIN-UI",
-  "ranAt": "2026-11-25T07:46:31.423Z",
+  "ranAt": "2026-11-25T08:32:24.541Z",
   "summary": {
     "total": 12,
     "passed": 12,
@@ -14,18 +14,6 @@
       "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
       "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border",
       "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing borderColor border",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
-      "Failed to load resource: the server responded with a status of 403 ()",
       "Failed to load resource: the server responded with a status of 403 ()",
       "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
       "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
@@ -74,7 +62,7 @@
       "useCase": "Dashboard loads stats from the API",
       "steps": "wait for 'Operations overview' and compare pending-provider count with GET /api/admin/dashboard",
       "expected": "stats rendered, numbers match API",
-      "actual": "banner shows \"7 provider reviews pending\"=true, completed=4, screenshot=screenshots/admin-03-dashboard.png",
+      "actual": "banner shows \"2 provider reviews pending\"=true, completed=0, screenshot=screenshots/admin-03-dashboard.png",
       "result": "PASS"
     },
     {
@@ -146,7 +134,7 @@
       "useCase": "No uncaught JS errors on admin pages",
       "steps": "collect pageerror events",
       "expected": "0",
-      "actual": "0 page errors; console errors=20 (Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized))",
+      "actual": "0 page errors; console errors=8 (Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized) | Failed to load resource: the server responded with a status of 401 (Unauthorized))",
       "result": "PASS"
     }
   ]

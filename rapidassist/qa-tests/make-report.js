@@ -26,9 +26,21 @@ for (const [, s] of suites) { total += s.summary.total; passed += s.summary.pass
 const out = [];
 out.push(`# RapidAssist – End-to-end QA Report
 
-Run date: ${new Date().toISOString().slice(0, 10)} · Branch: \`feature/twin-cities-live-map\` · Tester: automated QA harness in \`qa-tests/\`
+Run date: ${new Date().toISOString().slice(0, 10)} · Branch: \`fix/qa-top5\` (after the top-5 fix round) · Tester: automated QA harness in \`qa-tests/\`
 
-**Result: ${total} checks · ${passed} passed · ${failed} failed.** No application code was changed; only \`qa-tests/\` was added.
+**Result: ${total} checks · ${passed} passed · ${failed} failed.** Baseline before the fixes: 328 checks · 320 passed · 8 failed.
+
+## Fix round (branch \`fix/qa-top5\`, not pushed)
+
+| Finding | Status | Commit | Change |
+|---|---|---|---|
+| B1 Duplicate review | **Fixed** | \`8c1a5fc\` | 409 on a second review; conditional write keeps the first review and the provider rating unchanged (also under concurrent submits). |
+| B2 Extra-work \`approved\` parsing | **Fixed** | \`498c043\` | Only boolean \`true\`/\`false\` accepted; missing, \`"false"\`, \`1\`, \`null\` → 400. App Reject / Approve & Continue buttons verified on Expo Web. |
+| B3 Many open requests | **Fixed** | \`4864cb9\` | 409 \`{code: ACTIVE_REQUEST_EXISTS, requestId, status}\`; the booking screen shows a message and an **Open active request** button. |
+| S1 Token valid after logout | **Fixed** | \`45ad63f\` | \`User.tokenVersion\` signed into the JWT as \`tv\`; logout increments it; HTTP auth and Socket.io reject stale versions; tokens without \`tv\` keep working until expiry. |
+| S2 Web token in localStorage | **Not changed** (as instructed) | \`32bab9d\` (probe only) | The cookie works only when the web page and API share a hostname. With the dev config in \`mobile-app/.env\` (API on a LAN IP, page on localhost) Chrome does not store the SameSite=Lax cookie: \`/me\` 401, socket refused. See \`results/cookie-probe.json\`. |
+
+Regression check: every API use case that passed in the baseline still passes (\`lib/compare.js\` against \`results/api-baseline.json\`).
 
 | Suite | Total | Pass | Fail |
 |---|---|---|---|
@@ -62,14 +74,14 @@ for (const [name, s] of suites) {
 out.push(`
 ## 2. Bugs (sorted by severity)
 
-No **Critical** bugs were found: authentication, role checks, IDOR protection, dispatch races, status transitions and
+Status after the fix round: B1–B3 fixed (see above); B4–B7 open. No **Critical** bugs were found: authentication, role checks, IDOR protection, dispatch races, status transitions and
 payments all behaved correctly.
 
 | # | Severity | Bug | Where | Evidence | Suggested fix |
 |---|---|---|---|---|---|
-| B1 | **High** | A customer can review the same job any number of times; each call overwrites the rating, so a provider's \`ratingAvg\` can be changed after the fact (5 → 1 in the test). | \`server/src/controllers/requests.controller.js:713\` (\`submitRequestReview\`) | API-167 | Reject when \`request.review?.rating\` exists (409), or write atomically with \`findOneAndUpdate({ _id, userId, status: "completed", "review.rating": null }, …)\`. |
-| B2 | **Medium** | Extra-work decision is parsed with \`Boolean(req.body?.approved ?? true)\`: the string \`"false"\` **approves** (and charges) the extra work, and a missing field also approves. The mobile app sends a real boolean, so this affects other API clients. | \`server/src/controllers/requests.controller.js:966\` | API-250 (\`approved:"false"\` → status approved, total +2000) | Require \`typeof approved === "boolean"\`, else 400. Never default to approval. |
-| B3 | **Medium** | A customer can have unlimited simultaneous open requests (3 created back-to-back in the test). Each one goes through dispatch, so a single account can tie up nearby providers with offers. | \`server/src/controllers/requests.controller.js:375\` (\`createRequest\`) | API-198 | Before creating, refuse with 409 if the customer already has a request whose status is not completed/cancelled (the \`clientRequestId\` retry path already returns the existing request). |
+| B1 | ~~High~~ **Fixed** | A customer can review the same job any number of times; each call overwrites the rating, so a provider's \`ratingAvg\` can be changed after the fact (5 → 1 in the test). | \`server/src/controllers/requests.controller.js:713\` (\`submitRequestReview\`) | API-167 | Reject when \`request.review?.rating\` exists (409), or write atomically with \`findOneAndUpdate({ _id, userId, status: "completed", "review.rating": null }, …)\`. |
+| B2 | ~~Medium~~ **Fixed** | Extra-work decision is parsed with \`Boolean(req.body?.approved ?? true)\`: the string \`"false"\` **approves** (and charges) the extra work, and a missing field also approves. The mobile app sends a real boolean, so this affects other API clients. | \`server/src/controllers/requests.controller.js:966\` | API-250 (\`approved:"false"\` → status approved, total +2000) | Require \`typeof approved === "boolean"\`, else 400. Never default to approval. |
+| B3 | ~~Medium~~ **Fixed** | A customer can have unlimited simultaneous open requests (3 created back-to-back in the test). Each one goes through dispatch, so a single account can tie up nearby providers with offers. | \`server/src/controllers/requests.controller.js:375\` (\`createRequest\`) | API-198 | Before creating, refuse with 409 if the customer already has a request whose status is not completed/cancelled (the \`clientRequestId\` retry path already returns the existing request). |
 | B4 | **Low** | Passwords only need 6 characters; \`123456\` is accepted. | \`server/src/routes/auth.routes.js:240\` | API-014 | Minimum 8 characters, at least one letter and one digit, and reject a short list of common passwords. Mirror the rule in \`mobile-app/src/auth/signup/DetailsStep.tsx\`. |
 | B5 | **Low** | Phone numbers are only length-checked, so \`abcdefghijk\` registers. Providers and customers call each other on this number. | \`server/src/routes/auth.routes.js:239\` (also \`:297\`) | API-015 | Normalise and validate a Pakistani mobile, e.g. \`/^(\\+92|0)3\\d{9}$/\`, and store it in one canonical form. |
 | B6 | **Low** | Provider accounts can create, list and delete vehicles; there is no role check (providers have no vehicle screen). | \`server/src/controllers/vehicles.controller.js:32\` (all handlers) | API-050 | \`if (req.authRole !== "user") throw forbidden("Customer account required")\` in each handler, or \`requireRole("user")\` on the router. |
@@ -92,8 +104,8 @@ payments all behaved correctly.
 
 | # | Severity | Finding | Where | Suggested fix |
 |---|---|---|---|---|
-| S1 | **Medium** | **JWT still valid after logout.** Logout only clears the cookie; a copied bearer token keeps working for up to \`JWT_EXPIRES_IN\` (7 days). | \`server/src/routes/auth.routes.js:485\`, \`server/src/utils/jwt.js:5\` | Add a \`tokenVersion\` (or \`sessionsRevokedAt\`) on the user, put it in the JWT, check it in \`readSession\`, bump it on logout/password change. Shorter expiry (e.g. 1 day). |
-| S2 | **Medium** | **Web build stores the JWT in \`localStorage\`** as well as the httpOnly cookie, so any XSS on the web app can steal the session. | \`mobile-app/src/auth/auth.storage.ts:19\` | On \`Platform.OS === "web"\` rely on the httpOnly cookie (\`withCredentials\` is already on) and don't persist the token in JS-readable storage. |
+| S1 | ~~Medium~~ **Fixed** | **JWT still valid after logout.** Logout only clears the cookie; a copied bearer token keeps working for up to \`JWT_EXPIRES_IN\` (7 days). | \`server/src/routes/auth.routes.js:485\`, \`server/src/utils/jwt.js:5\` | Add a \`tokenVersion\` (or \`sessionsRevokedAt\`) on the user, put it in the JWT, check it in \`readSession\`, bump it on logout/password change. Shorter expiry (e.g. 1 day). |
+| S2 | **Medium (open)** | **Web build stores the JWT in \`localStorage\`** as well as the httpOnly cookie, so any XSS on the web app can steal the session. | \`mobile-app/src/auth/auth.storage.ts:19\` | On \`Platform.OS === "web"\` rely on the httpOnly cookie (\`withCredentials\` is already on) and don't persist the token in JS-readable storage. |
 | S3 | Low | Review overwrite (B1) and string-boolean approval (B2) are also integrity issues: ratings can be manipulated and a crafted request can approve a charge. | see B1, B2 | see B1, B2 |
 | S4 | Low | No limit on concurrent requests per customer (B3) enables dispatch spam. | see B3 | see B3 |
 
@@ -119,7 +131,7 @@ customers' requests; nearby-provider search returns only approximate (~500 m gri
 
 ## 5. Dummy / hard-coded data check
 
-- \`mobile-app/src/services/dummyApi.ts\` **no longer exists**. It was removed in commit \`fb34aeb\` ("phase 0 cleanup for redesign") and nothing imports it.
+- \`mobile-app/src/services/dummyApi.ts\` **no longer exists**. It was removed in commit \`44dfa2f\` ("phase 0 cleanup for redesign") and nothing imports it.
 - A search for \`mock|fake|dummy|sample\` in \`mobile-app/app\`, \`mobile-app/src\` and \`admin-panel/src\` only finds comments mentioning design mockups
   (\`src/requests/customer/shared.tsx:53\`, \`src/design/components/*.tsx\`). Every screen tested reads live API data
   (fares, provider names, chat, history, payments and earnings all matched the API).

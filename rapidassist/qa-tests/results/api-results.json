@@ -1,10 +1,10 @@
 {
   "suite": "API",
-  "ranAt": "2026-11-25T07:38:09.458Z",
+  "ranAt": "2026-11-25T08:31:59.207Z",
   "summary": {
-    "total": 275,
-    "passed": 268,
-    "failed": 7,
+    "total": 289,
+    "passed": 286,
+    "failed": 3,
     "skipped": 0
   },
   "leaks": [],
@@ -264,6 +264,15 @@
     {
       "id": "API-029",
       "area": "Auth",
+      "useCase": "Login token carries a token version",
+      "steps": "decode the JWT payload from POST /login",
+      "expected": "payload has tv (number)",
+      "actual": "tv=0",
+      "result": "PASS"
+    },
+    {
+      "id": "API-030",
+      "area": "Auth",
       "useCase": "Logout clears cookie",
       "steps": "POST /api/auth/logout then GET /me with cookie",
       "expected": "Set-Cookie clears token; /me with cookie -> 401",
@@ -271,16 +280,61 @@
       "result": "PASS"
     },
     {
-      "id": "API-030",
+      "id": "API-031",
       "area": "Security",
       "useCase": "JWT still valid after logout (no server-side revocation)",
       "steps": "Logout, then reuse the same bearer token",
       "expected": "401 – a logged-out token should not keep working",
-      "actual": "HTTP 200 – token issued before logout still accepted (stateless JWT, 7-day expiry)",
-      "result": "FAIL"
+      "actual": "HTTP 401 – revoked token rejected",
+      "result": "PASS"
     },
     {
-      "id": "API-031",
+      "id": "API-032",
+      "area": "Security",
+      "useCase": "Logout also revokes the account's other sessions",
+      "steps": "second login of the same account (other device), first device logs out, other device calls /me",
+      "expected": "401 (tokenVersion is per account)",
+      "actual": "HTTP 401 \"Unauthorized\"",
+      "result": "PASS"
+    },
+    {
+      "id": "API-033",
+      "area": "Security",
+      "useCase": "Socket.io refuses a token revoked by logout",
+      "steps": "io(BASE,{auth:{token:<logged-out token>}})",
+      "expected": "connect_error Unauthorized",
+      "actual": "connect_error: Unauthorized",
+      "result": "PASS"
+    },
+    {
+      "id": "API-034",
+      "area": "Auth",
+      "useCase": "Signing in again after logout works",
+      "steps": "POST /login again, GET /me with the new token",
+      "expected": "200",
+      "actual": "/me HTTP 200, socket connected",
+      "result": "PASS"
+    },
+    {
+      "id": "API-035",
+      "area": "Auth",
+      "useCase": "Other users' sessions are unaffected by a logout",
+      "steps": "GET /me with the main customer's token",
+      "expected": "200",
+      "actual": "HTTP 200",
+      "result": "PASS"
+    },
+    {
+      "id": "API-036",
+      "area": "Auth",
+      "useCase": "Pre-deploy token without a version keeps working",
+      "steps": "JWT {sub, role} with no tv (as issued before this change), after the account has logged out",
+      "expected": "200 on /me and socket connects (valid until it expires)",
+      "actual": "/me HTTP 200, socket connected",
+      "result": "PASS"
+    },
+    {
+      "id": "API-037",
       "area": "Security",
       "useCase": "NoSQL injection in login phone",
       "steps": "POST /login {\"phone\":{\"$ne\":null},\"password\":\"x\"}",
@@ -289,7 +343,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-032",
+      "id": "API-038",
       "area": "Security",
       "useCase": "NoSQL injection in login password",
       "steps": "POST /login {\"phone\":<real>,\"password\":{\"$ne\":null}}",
@@ -298,7 +352,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-033",
+      "id": "API-039",
       "area": "Security",
       "useCase": "NoSQL injection in admin login",
       "steps": "POST /auth/admin/login {\"email\":{\"$ne\":null},\"password\":{\"$ne\":null}}",
@@ -307,7 +361,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-034",
+      "id": "API-040",
       "area": "Security",
       "useCase": "NoSQL injection in register phone",
       "steps": "POST /register phone={\"$gt\":\"\"}",
@@ -316,7 +370,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-035",
+      "id": "API-041",
       "area": "Security",
       "useCase": "Malformed JSON body",
       "steps": "POST /login with invalid JSON",
@@ -325,7 +379,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-036",
+      "id": "API-042",
       "area": "Security",
       "useCase": "CORS rejects untrusted origin",
       "steps": "GET /health with Origin: https://evil.example",
@@ -334,7 +388,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-037",
+      "id": "API-043",
       "area": "Security",
       "useCase": "CORS allows admin-panel origin",
       "steps": "GET /health with Origin: http://localhost:5173",
@@ -343,7 +397,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-038",
+      "id": "API-044",
       "area": "Vehicles",
       "useCase": "Create vehicle",
       "steps": "POST /api/vehicles {type:car, make, model, year}",
@@ -352,7 +406,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-039",
+      "id": "API-045",
       "area": "Vehicles",
       "useCase": "List my vehicles",
       "steps": "GET /api/vehicles",
@@ -361,7 +415,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-040",
+      "id": "API-046",
       "area": "Vehicles",
       "useCase": "Other customer's list does not include my vehicles",
       "steps": "GET /api/vehicles as user2",
@@ -370,7 +424,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-041",
+      "id": "API-047",
       "area": "Vehicles",
       "useCase": "Update vehicle",
       "steps": "PATCH /api/vehicles/:id {model, year}",
@@ -379,7 +433,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-042",
+      "id": "API-048",
       "area": "Vehicles",
       "useCase": "Create vehicle with invalid type",
       "steps": "POST /api/vehicles type=plane",
@@ -388,7 +442,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-043",
+      "id": "API-049",
       "area": "Vehicles",
       "useCase": "Create vehicle with invalid year",
       "steps": "POST /api/vehicles year=1800",
@@ -397,7 +451,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-044",
+      "id": "API-050",
       "area": "Vehicles",
       "useCase": "Create vehicle with missing make/model",
       "steps": "POST /api/vehicles {type:car, year}",
@@ -406,7 +460,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-045",
+      "id": "API-051",
       "area": "Security",
       "useCase": "IDOR: other customer edits my vehicle",
       "steps": "PATCH /api/vehicles/:myId as user2",
@@ -415,7 +469,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-046",
+      "id": "API-052",
       "area": "Security",
       "useCase": "IDOR: other customer deletes my vehicle",
       "steps": "DELETE /api/vehicles/:myId as user2",
@@ -424,7 +478,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-047",
+      "id": "API-053",
       "area": "Security",
       "useCase": "IDOR: provider edits a customer's vehicle",
       "steps": "PATCH /api/vehicles/:id as mechanic",
@@ -433,7 +487,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-048",
+      "id": "API-054",
       "area": "Vehicles",
       "useCase": "Invalid vehicle id",
       "steps": "PATCH /api/vehicles/not-an-id",
@@ -442,7 +496,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-049",
+      "id": "API-055",
       "area": "Vehicles",
       "useCase": "Unknown vehicle id",
       "steps": "DELETE /api/vehicles/<random ObjectId>",
@@ -451,7 +505,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-050",
+      "id": "API-056",
       "area": "Vehicles",
       "useCase": "Provider account can manage vehicles",
       "steps": "POST /api/vehicles as mechanic",
@@ -460,7 +514,7 @@
       "result": "FAIL"
     },
     {
-      "id": "API-051",
+      "id": "API-057",
       "area": "Vehicles",
       "useCase": "Delete vehicle",
       "steps": "DELETE /api/vehicles/:id then GET list",
@@ -469,7 +523,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-052",
+      "id": "API-058",
       "area": "Security",
       "useCase": "Vehicles without JWT",
       "steps": "GET /api/vehicles no auth",
@@ -478,7 +532,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-053",
+      "id": "API-059",
       "area": "Admin",
       "useCase": "Admin login",
       "steps": "POST /api/auth/admin/login",
@@ -487,7 +541,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-054",
+      "id": "API-060",
       "area": "Admin",
       "useCase": "Admin login wrong password",
       "steps": "POST /api/auth/admin/login wrong password",
@@ -496,16 +550,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-055",
+      "id": "API-061",
       "area": "Admin",
       "useCase": "Dashboard stats",
       "steps": "GET /api/admin/dashboard",
       "expected": "200 with stats.users/providers/vehicles/pendingProviders",
-      "actual": "HTTP 200, users=4, providers=6, pending=6, vehicles=1",
+      "actual": "HTTP 200, users=5, providers=6, pending=6, vehicles=1",
       "result": "PASS"
     },
     {
-      "id": "API-056",
+      "id": "API-062",
       "area": "Admin",
       "useCase": "List pending providers",
       "steps": "GET /api/admin/providers?status=pending",
@@ -514,7 +568,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-057",
+      "id": "API-063",
       "area": "Admin",
       "useCase": "List providers with invalid status filter",
       "steps": "GET /api/admin/providers?status=foo",
@@ -523,7 +577,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-058",
+      "id": "API-064",
       "area": "Admin",
       "useCase": "Admin routes require admin (customer token)",
       "steps": "GET /api/admin/dashboard as customer",
@@ -532,7 +586,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-059",
+      "id": "API-065",
       "area": "Admin",
       "useCase": "Admin routes without token",
       "steps": "GET /api/admin/dashboard no auth",
@@ -541,7 +595,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-060",
+      "id": "API-066",
       "area": "Admin",
       "useCase": "Mechanic self-submits verification (AWS)",
       "steps": "POST /api/mechanic-verification as pending mechanic",
@@ -551,7 +605,7 @@
       "note": "Submission path not exercised end-to-end"
     },
     {
-      "id": "API-061",
+      "id": "API-067",
       "area": "Admin",
       "useCase": "Approve provider without a submission",
       "steps": "PATCH /api/admin/providers/:id/verification {status:verified} before any submission",
@@ -560,7 +614,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-062",
+      "id": "API-068",
       "area": "Admin",
       "useCase": "Verification detail",
       "steps": "GET /api/admin/providers/:id/verification",
@@ -569,7 +623,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-063",
+      "id": "API-069",
       "area": "Admin",
       "useCase": "Verification with invalid status value",
       "steps": "PATCH .../verification {status:approved}",
@@ -578,7 +632,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-064",
+      "id": "API-070",
       "area": "Admin",
       "useCase": "Verification with stale submissionId",
       "steps": "PATCH .../verification {status:verified, submissionId:wrong}",
@@ -587,7 +641,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-065",
+      "id": "API-071",
       "area": "Admin",
       "useCase": "Reject without reason",
       "steps": "PATCH .../verification {status:rejected} no note",
@@ -596,7 +650,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-066",
+      "id": "API-072",
       "area": "Admin",
       "useCase": "Verification on invalid provider id",
       "steps": "PATCH /api/admin/providers/abc/verification",
@@ -605,7 +659,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-067",
+      "id": "API-073",
       "area": "Admin",
       "useCase": "Verification on a customer id",
       "steps": "PATCH /api/admin/providers/<customerId>/verification",
@@ -614,7 +668,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-068",
+      "id": "API-074",
       "area": "Admin",
       "useCase": "Approve provider (mechanic)",
       "steps": "PATCH .../verification {status:verified, submissionId}",
@@ -623,7 +677,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-069",
+      "id": "API-075",
       "area": "Admin",
       "useCase": "Approve provider (fuel_delivery)",
       "steps": "PATCH .../verification {status:verified, submissionId}",
@@ -632,7 +686,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-070",
+      "id": "API-076",
       "area": "Admin",
       "useCase": "Approve provider (towing)",
       "steps": "PATCH .../verification {status:verified, submissionId}",
@@ -641,7 +695,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-071",
+      "id": "API-077",
       "area": "Admin",
       "useCase": "Approve provider (mechanic B)",
       "steps": "PATCH .../verification {status:verified, submissionId}",
@@ -650,7 +704,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-072",
+      "id": "API-078",
       "area": "Admin",
       "useCase": "Reject provider with reason",
       "steps": "PATCH .../verification {status:rejected, note}",
@@ -659,7 +713,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-073",
+      "id": "API-079",
       "area": "Admin",
       "useCase": "Approval visible to provider",
       "steps": "GET /api/auth/me as approved mechanic",
@@ -668,7 +722,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-074",
+      "id": "API-080",
       "area": "Admin",
       "useCase": "Provider directory / active jobs / heatmap / payments / customers endpoints",
       "steps": "GET provider-directory, active-jobs, heatmap, payments, customers, requests, finance/earnings, activity",
@@ -677,7 +731,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-075",
+      "id": "API-081",
       "area": "Realtime",
       "useCase": "Socket connect without token is rejected",
       "steps": "io(BASE) with no auth",
@@ -686,7 +740,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-076",
+      "id": "API-082",
       "area": "Realtime",
       "useCase": "Customer + provider sockets connect with JWT",
       "steps": "io(BASE,{auth:{token}}) for 2 customers and 4 providers",
@@ -695,7 +749,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-077",
+      "id": "API-083",
       "area": "Provider",
       "useCase": "Pending/rejected mechanic cannot go online",
       "steps": "PATCH /requests/provider/availability {isOnline:true} as rejected mechanic",
@@ -704,7 +758,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-078",
+      "id": "API-084",
       "area": "Provider",
       "useCase": "Go online without a location",
       "steps": "PATCH availability {isOnline:true} without location",
@@ -713,7 +767,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-079",
+      "id": "API-085",
       "area": "Provider",
       "useCase": "Go online outside service area",
       "steps": "PATCH availability {isOnline:true, location: Lahore}",
@@ -722,7 +776,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-080",
+      "id": "API-086",
       "area": "Provider",
       "useCase": "Share location while offline",
       "steps": "PATCH /requests/provider/location while offline",
@@ -731,7 +785,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-081",
+      "id": "API-087",
       "area": "Provider",
       "useCase": "Verified mechanic provider goes online",
       "steps": "PATCH availability {isOnline:true, fresh GPS in Islamabad}",
@@ -740,7 +794,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-082",
+      "id": "API-088",
       "area": "Provider",
       "useCase": "Verified fuel provider goes online",
       "steps": "PATCH availability {isOnline:true, fresh GPS in Islamabad}",
@@ -749,7 +803,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-083",
+      "id": "API-089",
       "area": "Provider",
       "useCase": "Verified towing provider goes online",
       "steps": "PATCH availability {isOnline:true, fresh GPS in Islamabad}",
@@ -758,7 +812,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-084",
+      "id": "API-090",
       "area": "Provider",
       "useCase": "Update location while online",
       "steps": "PATCH /requests/provider/location",
@@ -767,7 +821,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-085",
+      "id": "API-091",
       "area": "Provider",
       "useCase": "Out-of-order (older) location fix",
       "steps": "PATCH provider/location with capturedAt 10 min older than stored",
@@ -776,7 +830,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-086",
+      "id": "API-092",
       "area": "Provider",
       "useCase": "Location with invalid coordinates",
       "steps": "PATCH provider/location lat=999",
@@ -785,7 +839,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-087",
+      "id": "API-093",
       "area": "Security",
       "useCase": "Customer cannot use provider availability",
       "steps": "PATCH provider/availability as customer",
@@ -794,7 +848,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-088",
+      "id": "API-094",
       "area": "Requests",
       "useCase": "Nearby providers (mechanic)",
       "steps": "GET /requests/nearby-providers?category=mechanic&lat&lng",
@@ -803,7 +857,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-089",
+      "id": "API-095",
       "area": "Requests",
       "useCase": "Nearby providers (fuel_delivery)",
       "steps": "GET /requests/nearby-providers?category=fuel_delivery&lat&lng",
@@ -812,7 +866,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-090",
+      "id": "API-096",
       "area": "Requests",
       "useCase": "Nearby providers (car_towing)",
       "steps": "GET /requests/nearby-providers?category=car_towing&lat&lng",
@@ -821,7 +875,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-091",
+      "id": "API-097",
       "area": "Requests",
       "useCase": "Nearby providers with invalid category",
       "steps": "GET nearby-providers?category=plumbing",
@@ -830,7 +884,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-092",
+      "id": "API-098",
       "area": "Requests",
       "useCase": "Nearby providers without coordinates",
       "steps": "GET nearby-providers?category=mechanic",
@@ -839,7 +893,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-093",
+      "id": "API-099",
       "area": "Security",
       "useCase": "Provider cannot call nearby-providers",
       "steps": "GET nearby-providers as mechanic",
@@ -848,7 +902,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-094",
+      "id": "API-100",
       "area": "Requests",
       "useCase": "Rejected provider never appears in nearby list",
       "steps": "GET nearby-providers?category=mechanic",
@@ -857,7 +911,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-095",
+      "id": "API-101",
       "area": "Requests",
       "useCase": "Create request rejected: Invalid category",
       "steps": "POST /api/requests",
@@ -866,7 +920,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-096",
+      "id": "API-102",
       "area": "Requests",
       "useCase": "Create request rejected: Pickup outside service area (Lahore)",
       "steps": "POST /api/requests",
@@ -875,7 +929,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-097",
+      "id": "API-103",
       "area": "Requests",
       "useCase": "Create request rejected: Missing pickup location",
       "steps": "POST /api/requests",
@@ -884,7 +938,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-098",
+      "id": "API-104",
       "area": "Requests",
       "useCase": "Create request rejected: Fuel type not petrol/diesel",
       "steps": "POST /api/requests",
@@ -893,7 +947,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-099",
+      "id": "API-105",
       "area": "Requests",
       "useCase": "Create request rejected: Fuel liters 0",
       "steps": "POST /api/requests",
@@ -902,7 +956,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-100",
+      "id": "API-106",
       "area": "Requests",
       "useCase": "Create request rejected: Fuel liters 51",
       "steps": "POST /api/requests",
@@ -911,7 +965,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-101",
+      "id": "API-107",
       "area": "Requests",
       "useCase": "Create request rejected: Mechanic issue not in list",
       "steps": "POST /api/requests",
@@ -920,7 +974,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-102",
+      "id": "API-108",
       "area": "Requests",
       "useCase": "Create request rejected: Towing without destination",
       "steps": "POST /api/requests",
@@ -929,7 +983,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-103",
+      "id": "API-109",
       "area": "Requests",
       "useCase": "Create request rejected: Invalid priority",
       "steps": "POST /api/requests",
@@ -938,7 +992,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-104",
+      "id": "API-110",
       "area": "Requests",
       "useCase": "Create request rejected: Invalid vehicleId",
       "steps": "POST /api/requests",
@@ -947,7 +1001,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-105",
+      "id": "API-111",
       "area": "Security",
       "useCase": "IDOR: create request with another customer's vehicle",
       "steps": "POST /api/requests vehicleId=<user1 vehicle> as user2",
@@ -956,7 +1010,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-106",
+      "id": "API-112",
       "area": "Security",
       "useCase": "Provider cannot create a customer request",
       "steps": "POST /api/requests as mechanic",
@@ -965,7 +1019,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-107",
+      "id": "API-113",
       "area": "Security",
       "useCase": "Create request without JWT",
       "steps": "POST /api/requests no auth",
@@ -974,7 +1028,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-108",
+      "id": "API-114",
       "area": "Requests",
       "useCase": "Create fuel (petrol 10 L) request",
       "steps": "POST /api/requests {\"category\":\"fuel_delivery\",\"fuelType\":\"petrol\",\"liters\":10}",
@@ -983,7 +1037,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-109",
+      "id": "API-115",
       "area": "Realtime",
       "useCase": "fuel (petrol 10 L): customer socket receives request:changed after create",
       "steps": "listen request:changed on customer socket",
@@ -992,16 +1046,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-110",
+      "id": "API-116",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): offer sent to the matching-category provider",
       "steps": "poll GET /requests/open as the provider",
       "expected": "request appears with dispatch.offerId within 30 s",
-      "actual": "offerId=c9fb25f3…",
+      "actual": "offerId=e96443ad…",
       "result": "PASS"
     },
     {
-      "id": "API-111",
+      "id": "API-117",
       "area": "Realtime",
       "useCase": "fuel (petrol 10 L): provider socket receives the new-offer event",
       "steps": "listen request:changed on provider socket",
@@ -1010,7 +1064,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-112",
+      "id": "API-118",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): wrong-category provider (tow) does not see the request",
       "steps": "GET /requests/open as other-category provider",
@@ -1019,7 +1073,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-113",
+      "id": "API-119",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): wrong-category provider (tow) cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as other provider",
@@ -1028,7 +1082,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-114",
+      "id": "API-120",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): wrong-category provider (mech) does not see the request",
       "steps": "GET /requests/open as other-category provider",
@@ -1037,7 +1091,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-115",
+      "id": "API-121",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): wrong-category provider (mech) cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as other provider",
@@ -1046,7 +1100,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-116",
+      "id": "API-122",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): customer cannot accept",
       "steps": "PATCH /requests/:id/accept as customer",
@@ -1055,7 +1109,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-117",
+      "id": "API-123",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): rejected mechanic cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as rejected mechanic",
@@ -1064,7 +1118,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-118",
+      "id": "API-124",
       "area": "Requests",
       "useCase": "fuel (petrol 10 L): offered provider can view request details",
       "steps": "GET /requests/:id as offered provider",
@@ -1073,7 +1127,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-119",
+      "id": "API-125",
       "area": "Security",
       "useCase": "fuel (petrol 10 L): non-offered provider cannot view request details",
       "steps": "GET /requests/:id as unrelated provider",
@@ -1082,7 +1136,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-120",
+      "id": "API-126",
       "area": "Chat",
       "useCase": "fuel (petrol 10 L): chat before assignment",
       "steps": "POST /requests/:id/messages before accept",
@@ -1091,7 +1145,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-121",
+      "id": "API-127",
       "area": "Dispatch",
       "useCase": "fuel (petrol 10 L): provider accepts offer",
       "steps": "PATCH /requests/:id/accept {offerId}",
@@ -1100,7 +1154,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-122",
+      "id": "API-128",
       "area": "Realtime",
       "useCase": "fuel (petrol 10 L): customer receives accept event",
       "steps": "listen request:changed kind=assigned",
@@ -1109,7 +1163,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-123",
+      "id": "API-129",
       "area": "Requests",
       "useCase": "fuel (petrol 10 L): provider sees customer contact after assignment",
       "steps": "GET /requests/:id as assigned provider",
@@ -1118,7 +1172,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-124",
+      "id": "API-130",
       "area": "Provider",
       "useCase": "fuel (petrol 10 L): provider/active returns the job",
       "steps": "GET /requests/provider/active",
@@ -1127,7 +1181,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-125",
+      "id": "API-131",
       "area": "Requests",
       "useCase": "fuel: estimate correct (petrol 10 L)",
       "steps": "check estimate",
@@ -1136,7 +1190,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-126",
+      "id": "API-132",
       "area": "Lifecycle",
       "useCase": "fuel: skip transition (assigned -> arrived)",
       "steps": "PATCH status=provider_arrived from provider_assigned",
@@ -1145,7 +1199,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-127",
+      "id": "API-133",
       "area": "Lifecycle",
       "useCase": "fuel: customer cannot advance status",
       "steps": "PATCH status=provider_on_way as customer",
@@ -1154,7 +1208,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-128",
+      "id": "API-134",
       "area": "Lifecycle",
       "useCase": "fuel: other provider cannot advance status",
       "steps": "PATCH status=provider_on_way as towing provider",
@@ -1163,7 +1217,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-129",
+      "id": "API-135",
       "area": "Lifecycle",
       "useCase": "fuel: unknown status value",
       "steps": "PATCH status=teleported",
@@ -1172,7 +1226,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-130",
+      "id": "API-136",
       "area": "Lifecycle",
       "useCase": "fuel: missing status",
       "steps": "PATCH status={} (no status)",
@@ -1181,7 +1235,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-131",
+      "id": "API-137",
       "area": "ExtraWork",
       "useCase": "fuel: extra work not allowed for fuel",
       "steps": "PATCH /requests/:id/extra-work as fuel provider",
@@ -1190,7 +1244,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-132",
+      "id": "API-138",
       "area": "Chat",
       "useCase": "Customer sends chat message",
       "steps": "POST /requests/:id/messages as customer",
@@ -1199,7 +1253,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-133",
+      "id": "API-139",
       "area": "Realtime",
       "useCase": "Provider receives chat:message socket event",
       "steps": "listen chat:message on provider socket",
@@ -1208,7 +1262,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-134",
+      "id": "API-140",
       "area": "Chat",
       "useCase": "Provider sends chat message",
       "steps": "POST /requests/:id/messages as provider",
@@ -1217,7 +1271,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-135",
+      "id": "API-141",
       "area": "Realtime",
       "useCase": "Customer receives chat:message socket event",
       "steps": "listen chat:message on customer socket",
@@ -1226,7 +1280,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-136",
+      "id": "API-142",
       "area": "Chat",
       "useCase": "Both sides read the conversation",
       "steps": "GET /requests/:id/messages as customer and provider",
@@ -1235,7 +1289,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-137",
+      "id": "API-143",
       "area": "Chat",
       "useCase": "Duplicate clientMessageId is idempotent",
       "steps": "POST same clientMessageId again",
@@ -1244,7 +1298,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-138",
+      "id": "API-144",
       "area": "Security",
       "useCase": "Outsider customer cannot read chat",
       "steps": "GET /requests/:id/messages as user2",
@@ -1253,7 +1307,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-139",
+      "id": "API-145",
       "area": "Security",
       "useCase": "Outsider customer cannot post chat",
       "steps": "POST /requests/:id/messages as user2",
@@ -1262,7 +1316,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-140",
+      "id": "API-146",
       "area": "Security",
       "useCase": "Unassigned provider cannot read chat",
       "steps": "GET /requests/:id/messages as mechanic",
@@ -1271,7 +1325,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-141",
+      "id": "API-147",
       "area": "Chat",
       "useCase": "Empty message rejected",
       "steps": "POST messages body=''",
@@ -1280,7 +1334,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-142",
+      "id": "API-148",
       "area": "Chat",
       "useCase": "Message over 1000 chars rejected",
       "steps": "POST messages body=1001 chars",
@@ -1289,7 +1343,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-143",
+      "id": "API-149",
       "area": "Realtime",
       "useCase": "Outsider socket gets no events for this request",
       "steps": "inspect user2 socket events",
@@ -1298,7 +1352,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-144",
+      "id": "API-150",
       "area": "Security",
       "useCase": "IDOR: other customer reads my request",
       "steps": "GET /requests/:id as user2",
@@ -1307,7 +1361,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-145",
+      "id": "API-151",
       "area": "Security",
       "useCase": "IDOR: other customer cancels my request",
       "steps": "PATCH /requests/:id/status {cancelled} as user2",
@@ -1316,7 +1370,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-146",
+      "id": "API-152",
       "area": "Lifecycle",
       "useCase": "fuel: provider_on_way",
       "steps": "PATCH /requests/:id/status {status:provider_on_way} as provider",
@@ -1325,7 +1379,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-147",
+      "id": "API-153",
       "area": "Realtime",
       "useCase": "fuel: customer receives status event",
       "steps": "listen request:changed kind=status",
@@ -1334,7 +1388,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-148",
+      "id": "API-154",
       "area": "Realtime",
       "useCase": "fuel: provider location update reaches customer",
       "steps": "PATCH provider/location during job; listen kind=location; GET request providerLocation",
@@ -1343,7 +1397,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-149",
+      "id": "API-155",
       "area": "Lifecycle",
       "useCase": "fuel: provider_arrived",
       "steps": "PATCH /requests/:id/status {status:provider_arrived} as provider",
@@ -1352,7 +1406,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-150",
+      "id": "API-156",
       "area": "Lifecycle",
       "useCase": "fuel: fuel_delivered",
       "steps": "PATCH /requests/:id/status {status:fuel_delivered} as provider",
@@ -1361,7 +1415,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-151",
+      "id": "API-157",
       "area": "Lifecycle",
       "useCase": "fuel: service_finished",
       "steps": "PATCH /requests/:id/status {status:service_finished} as provider",
@@ -1370,7 +1424,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-152",
+      "id": "API-158",
       "area": "Review",
       "useCase": "fuel: review before completion",
       "steps": "PATCH /requests/:id/review before completed",
@@ -1379,7 +1433,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-153",
+      "id": "API-159",
       "area": "Lifecycle",
       "useCase": "fuel: provider cannot mark completed",
       "steps": "PATCH status=completed as provider",
@@ -1388,7 +1442,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-154",
+      "id": "API-160",
       "area": "Lifecycle",
       "useCase": "fuel: customer confirms completion",
       "steps": "PATCH status=completed as customer",
@@ -1397,7 +1451,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-155",
+      "id": "API-161",
       "area": "Lifecycle",
       "useCase": "fuel: status change after completion",
       "steps": "PATCH status=provider_on_way after completed",
@@ -1406,7 +1460,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-156",
+      "id": "API-162",
       "area": "Payments",
       "useCase": "fuel: cash payment selected and collected",
       "steps": "POST /payments/request/:id {method:cash}; provider PATCH cash-collected",
@@ -1415,7 +1469,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-157",
+      "id": "API-163",
       "area": "Provider",
       "useCase": "fuel: provider freed after completion",
       "steps": "GET provider/active after completion",
@@ -1424,7 +1478,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-158",
+      "id": "API-164",
       "area": "Review",
       "useCase": "Rating 0 rejected",
       "steps": "PATCH /requests/:id/review {rating:0}",
@@ -1433,7 +1487,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-159",
+      "id": "API-165",
       "area": "Review",
       "useCase": "Rating 6 rejected",
       "steps": "PATCH /requests/:id/review {rating:6}",
@@ -1442,7 +1496,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-160",
+      "id": "API-166",
       "area": "Review",
       "useCase": "Rating 3.5 rejected",
       "steps": "PATCH /requests/:id/review {rating:3.5}",
@@ -1451,7 +1505,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-161",
+      "id": "API-167",
       "area": "Review",
       "useCase": "Rating 'five' rejected",
       "steps": "PATCH /requests/:id/review {rating:'five'}",
@@ -1460,7 +1514,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-162",
+      "id": "API-168",
       "area": "Review",
       "useCase": "Provider cannot review",
       "steps": "PATCH review as provider",
@@ -1469,7 +1523,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-163",
+      "id": "API-169",
       "area": "Review",
       "useCase": "Other customer cannot review",
       "steps": "PATCH review as user2",
@@ -1478,7 +1532,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-164",
+      "id": "API-170",
       "area": "Review",
       "useCase": "Comment over 400 chars rejected",
       "steps": "PATCH review comment=401 chars",
@@ -1487,7 +1541,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-165",
+      "id": "API-171",
       "area": "Review",
       "useCase": "Customer reviews completed job",
       "steps": "PATCH review {rating:5}",
@@ -1496,7 +1550,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-166",
+      "id": "API-172",
       "area": "Review",
       "useCase": "Provider rating/completedJobs updated",
       "steps": "GET /auth/me as fuel provider",
@@ -1505,16 +1559,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-167",
+      "id": "API-173",
       "area": "Review",
       "useCase": "Review can only be submitted once",
       "steps": "PATCH review a second time {rating:1}",
-      "expected": "409/400 – second review rejected",
-      "actual": "HTTP 200, review overwritten to rating=1; provider ratingAvg now 1",
-      "result": "FAIL"
+      "expected": "409; first review unchanged; provider ratingAvg/ratingCount unchanged",
+      "actual": "HTTP 409, stored review=5/\"Fast delivery\", provider ratingAvg=5, ratingCount=1",
+      "result": "PASS"
     },
     {
-      "id": "API-168",
+      "id": "API-174",
       "area": "Requests",
       "useCase": "fuel: diesel estimate (20 L)",
       "steps": "POST /api/requests fuel diesel 20 L then cancel",
@@ -1523,7 +1577,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-169",
+      "id": "API-175",
       "area": "Requests",
       "useCase": "Create towing request",
       "steps": "POST /api/requests {\"category\":\"car_towing\"}",
@@ -1532,7 +1586,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-170",
+      "id": "API-176",
       "area": "Realtime",
       "useCase": "towing: customer socket receives request:changed after create",
       "steps": "listen request:changed on customer socket",
@@ -1541,16 +1595,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-171",
+      "id": "API-177",
       "area": "Dispatch",
       "useCase": "towing: offer sent to the matching-category provider",
       "steps": "poll GET /requests/open as the provider",
       "expected": "request appears with dispatch.offerId within 30 s",
-      "actual": "offerId=a28738f4…",
+      "actual": "offerId=3f5d78ca…",
       "result": "PASS"
     },
     {
-      "id": "API-172",
+      "id": "API-178",
       "area": "Realtime",
       "useCase": "towing: provider socket receives the new-offer event",
       "steps": "listen request:changed on provider socket",
@@ -1559,7 +1613,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-173",
+      "id": "API-179",
       "area": "Dispatch",
       "useCase": "towing: wrong-category provider (fuel) does not see the request",
       "steps": "GET /requests/open as other-category provider",
@@ -1568,7 +1622,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-174",
+      "id": "API-180",
       "area": "Dispatch",
       "useCase": "towing: wrong-category provider (fuel) cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as other provider",
@@ -1577,7 +1631,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-175",
+      "id": "API-181",
       "area": "Dispatch",
       "useCase": "towing: customer cannot accept",
       "steps": "PATCH /requests/:id/accept as customer",
@@ -1586,7 +1640,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-176",
+      "id": "API-182",
       "area": "Dispatch",
       "useCase": "towing: rejected mechanic cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as rejected mechanic",
@@ -1595,7 +1649,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-177",
+      "id": "API-183",
       "area": "Requests",
       "useCase": "towing: offered provider can view request details",
       "steps": "GET /requests/:id as offered provider",
@@ -1604,7 +1658,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-178",
+      "id": "API-184",
       "area": "Security",
       "useCase": "towing: non-offered provider cannot view request details",
       "steps": "GET /requests/:id as unrelated provider",
@@ -1613,7 +1667,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-179",
+      "id": "API-185",
       "area": "Chat",
       "useCase": "towing: chat before assignment",
       "steps": "POST /requests/:id/messages before accept",
@@ -1622,7 +1676,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-180",
+      "id": "API-186",
       "area": "Dispatch",
       "useCase": "towing: provider accepts offer",
       "steps": "PATCH /requests/:id/accept {offerId}",
@@ -1631,7 +1685,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-181",
+      "id": "API-187",
       "area": "Realtime",
       "useCase": "towing: customer receives accept event",
       "steps": "listen request:changed kind=assigned",
@@ -1640,7 +1694,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-182",
+      "id": "API-188",
       "area": "Requests",
       "useCase": "towing: provider sees customer contact after assignment",
       "steps": "GET /requests/:id as assigned provider",
@@ -1649,7 +1703,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-183",
+      "id": "API-189",
       "area": "Provider",
       "useCase": "towing: provider/active returns the job",
       "steps": "GET /requests/provider/active",
@@ -1658,7 +1712,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-184",
+      "id": "API-190",
       "area": "Requests",
       "useCase": "towing: estimate uses road distance",
       "steps": "check estimate lines",
@@ -1667,7 +1721,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-185",
+      "id": "API-191",
       "area": "Lifecycle",
       "useCase": "towing: wrong-category status (fuel_delivered)",
       "steps": "PATCH status=fuel_delivered at provider_arrived on a towing job",
@@ -1676,7 +1730,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-186",
+      "id": "API-192",
       "area": "Lifecycle",
       "useCase": "towing: reached_destination -> completed directly (spec flow)",
       "steps": "vehicle_loaded -> reached_destination -> PATCH completed as customer",
@@ -1685,7 +1739,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-187",
+      "id": "API-193",
       "area": "Lifecycle",
       "useCase": "towing: service_finished after reached_destination",
       "steps": "PATCH status=service_finished",
@@ -1694,7 +1748,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-188",
+      "id": "API-194",
       "area": "Realtime",
       "useCase": "towing: customer saw arrived + loaded + reached events",
       "steps": "inspect customer socket",
@@ -1703,7 +1757,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-189",
+      "id": "API-195",
       "area": "Review",
       "useCase": "towing: review before completion",
       "steps": "PATCH /requests/:id/review before completed",
@@ -1712,7 +1766,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-190",
+      "id": "API-196",
       "area": "Lifecycle",
       "useCase": "towing: provider cannot mark completed",
       "steps": "PATCH status=completed as provider",
@@ -1721,7 +1775,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-191",
+      "id": "API-197",
       "area": "Lifecycle",
       "useCase": "towing: customer confirms completion",
       "steps": "PATCH status=completed as customer",
@@ -1730,7 +1784,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-192",
+      "id": "API-198",
       "area": "Lifecycle",
       "useCase": "towing: status change after completion",
       "steps": "PATCH status=provider_on_way after completed",
@@ -1739,7 +1793,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-193",
+      "id": "API-199",
       "area": "Payments",
       "useCase": "towing: cash payment selected and collected",
       "steps": "POST /payments/request/:id {method:cash}; provider PATCH cash-collected",
@@ -1748,7 +1802,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-194",
+      "id": "API-200",
+      "area": "Review",
+      "useCase": "Two simultaneous reviews: only one is stored",
+      "steps": "Promise.all two PATCH /review on the towing job",
+      "expected": "one 200 and one 409; provider ratingCount=1",
+      "actual": "statuses=200,409, ratingCount=1, ratingAvg=4",
+      "result": "PASS"
+    },
+    {
+      "id": "API-201",
       "area": "Requests",
       "useCase": "mechanic: create 'tyre' request",
       "steps": "POST /api/requests category=mechanic issueCategory=tyre",
@@ -1757,7 +1820,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-195",
+      "id": "API-202",
       "area": "Requests",
       "useCase": "mechanic: create 'brake' request",
       "steps": "POST /api/requests category=mechanic issueCategory=brake",
@@ -1766,7 +1829,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-196",
+      "id": "API-203",
       "area": "Requests",
       "useCase": "mechanic: create 'overheating' request",
       "steps": "POST /api/requests category=mechanic issueCategory=overheating",
@@ -1775,7 +1838,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-197",
+      "id": "API-204",
       "area": "Requests",
       "useCase": "mechanic: create 'general_inspection' request",
       "steps": "POST /api/requests category=mechanic issueCategory=general_inspection",
@@ -1784,16 +1847,34 @@
       "result": "PASS"
     },
     {
-      "id": "API-198",
+      "id": "API-205",
       "area": "Requests",
-      "useCase": "Customer can have many open requests at once",
-      "steps": "Create 3 mechanic requests back-to-back as one customer",
-      "expected": "Spam/duplicate protection (e.g. 409 when an active request exists)",
-      "actual": "3 simultaneous active requests accepted",
-      "result": "FAIL"
+      "useCase": "Second open request is refused with 409 + existing id",
+      "steps": "user2 creates a mechanic request, then a fuel request while the first is open",
+      "expected": "201 then 409 {code:ACTIVE_REQUEST_EXISTS, requestId:<first id>}; only one open request stored",
+      "actual": "first HTTP 201, second HTTP 409 code=ACTIVE_REQUEST_EXISTS, requestId matches=true, open requests=1",
+      "result": "PASS"
     },
     {
-      "id": "API-199",
+      "id": "API-206",
+      "area": "Requests",
+      "useCase": "Invalid booking still returns 400 while a request is open",
+      "steps": "user2 (with an open request) posts an invalid fuel request",
+      "expected": "400 (validation runs before the open-request check)",
+      "actual": "HTTP 400 \"fuelDetails.fuelType must be petrol or diesel\"",
+      "result": "PASS"
+    },
+    {
+      "id": "API-207",
+      "area": "Requests",
+      "useCase": "Booking allowed again after the open request is cancelled",
+      "steps": "cancel the open request, create a new one",
+      "expected": "201",
+      "actual": "new clientRequestId while open HTTP 409; after cancel HTTP 201",
+      "result": "PASS"
+    },
+    {
+      "id": "API-208",
       "area": "Lifecycle",
       "useCase": "Cancel an already-cancelled request",
       "steps": "PATCH status=cancelled twice",
@@ -1802,7 +1883,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-200",
+      "id": "API-209",
       "area": "Lifecycle",
       "useCase": "Customer cannot re-open a cancelled request",
       "steps": "PATCH status=searching_provider on cancelled request",
@@ -1811,7 +1892,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-201",
+      "id": "API-210",
       "area": "Dispatch",
       "useCase": "Cancelled request cannot be accepted",
       "steps": "PATCH /accept on cancelled request",
@@ -1820,7 +1901,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-202",
+      "id": "API-211",
       "area": "Chat",
       "useCase": "Message on a cancelled, never-assigned request",
       "steps": "POST messages on cancelled request",
@@ -1829,7 +1910,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-203",
+      "id": "API-212",
       "area": "Requests",
       "useCase": "List my requests",
       "steps": "GET /api/requests",
@@ -1838,7 +1919,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-204",
+      "id": "API-213",
       "area": "Requests",
       "useCase": "Create mechanic (battery) request",
       "steps": "POST /api/requests {\"category\":\"mechanic\",\"issueCategory\":\"battery\"}",
@@ -1847,7 +1928,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-205",
+      "id": "API-214",
       "area": "Realtime",
       "useCase": "mechanic (battery): customer socket receives request:changed after create",
       "steps": "listen request:changed on customer socket",
@@ -1856,16 +1937,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-206",
+      "id": "API-215",
       "area": "Dispatch",
       "useCase": "mechanic (battery): offer sent to the matching-category provider",
       "steps": "poll GET /requests/open as the provider",
       "expected": "request appears with dispatch.offerId within 30 s",
-      "actual": "offerId=af8589d7…",
+      "actual": "offerId=9ec875ee…",
       "result": "PASS"
     },
     {
-      "id": "API-207",
+      "id": "API-216",
       "area": "Realtime",
       "useCase": "mechanic (battery): provider socket receives the new-offer event",
       "steps": "listen request:changed on provider socket",
@@ -1874,7 +1955,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-208",
+      "id": "API-217",
       "area": "Dispatch",
       "useCase": "mechanic (battery): wrong-category provider (fuel) does not see the request",
       "steps": "GET /requests/open as other-category provider",
@@ -1883,7 +1964,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-209",
+      "id": "API-218",
       "area": "Dispatch",
       "useCase": "mechanic (battery): wrong-category provider (fuel) cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as other provider",
@@ -1892,7 +1973,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-210",
+      "id": "API-219",
       "area": "Dispatch",
       "useCase": "mechanic (battery): wrong-category provider (tow) does not see the request",
       "steps": "GET /requests/open as other-category provider",
@@ -1901,7 +1982,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-211",
+      "id": "API-220",
       "area": "Dispatch",
       "useCase": "mechanic (battery): wrong-category provider (tow) cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as other provider",
@@ -1910,7 +1991,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-212",
+      "id": "API-221",
       "area": "Dispatch",
       "useCase": "mechanic (battery): customer cannot accept",
       "steps": "PATCH /requests/:id/accept as customer",
@@ -1919,7 +2000,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-213",
+      "id": "API-222",
       "area": "Dispatch",
       "useCase": "mechanic (battery): rejected mechanic cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as rejected mechanic",
@@ -1928,7 +2009,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-214",
+      "id": "API-223",
       "area": "Requests",
       "useCase": "mechanic (battery): offered provider can view request details",
       "steps": "GET /requests/:id as offered provider",
@@ -1937,7 +2018,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-215",
+      "id": "API-224",
       "area": "Security",
       "useCase": "mechanic (battery): non-offered provider cannot view request details",
       "steps": "GET /requests/:id as unrelated provider",
@@ -1946,7 +2027,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-216",
+      "id": "API-225",
       "area": "Chat",
       "useCase": "mechanic (battery): chat before assignment",
       "steps": "POST /requests/:id/messages before accept",
@@ -1955,7 +2036,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-217",
+      "id": "API-226",
       "area": "Dispatch",
       "useCase": "mechanic (battery): provider accepts offer",
       "steps": "PATCH /requests/:id/accept {offerId}",
@@ -1964,7 +2045,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-218",
+      "id": "API-227",
       "area": "Realtime",
       "useCase": "mechanic (battery): customer receives accept event",
       "steps": "listen request:changed kind=assigned",
@@ -1973,7 +2054,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-219",
+      "id": "API-228",
       "area": "Requests",
       "useCase": "mechanic (battery): provider sees customer contact after assignment",
       "steps": "GET /requests/:id as assigned provider",
@@ -1982,7 +2063,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-220",
+      "id": "API-229",
       "area": "Provider",
       "useCase": "mechanic (battery): provider/active returns the job",
       "steps": "GET /requests/provider/active",
@@ -1991,7 +2072,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-221",
+      "id": "API-230",
       "area": "ExtraWork",
       "useCase": "Extra work before inspection_started",
       "steps": "PATCH /requests/:id/extra-work at provider_assigned",
@@ -2000,7 +2081,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-222",
+      "id": "API-231",
       "area": "ExtraWork",
       "useCase": "Customer cannot request extra work",
       "steps": "PATCH extra-work as customer",
@@ -2009,7 +2090,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-223",
+      "id": "API-232",
       "area": "ExtraWork",
       "useCase": "Extra work without description/part",
       "steps": "PATCH extra-work {partPrice:100}",
@@ -2018,7 +2099,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-224",
+      "id": "API-233",
       "area": "ExtraWork",
       "useCase": "Mechanic requests extra work",
       "steps": "PATCH /requests/:id/extra-work {partPrice:15000, laborCharge:500}",
@@ -2027,7 +2108,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-225",
+      "id": "API-234",
       "area": "Realtime",
       "useCase": "Customer receives extra-work event",
       "steps": "listen request:changed kind=extra-work",
@@ -2036,7 +2117,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-226",
+      "id": "API-235",
       "area": "ExtraWork",
       "useCase": "Provider cannot approve own extra work",
       "steps": "PATCH extra-work/approve as mechanic",
@@ -2045,7 +2126,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-227",
+      "id": "API-236",
       "area": "Lifecycle",
       "useCase": "Provider cannot skip pending extra-work approval",
       "steps": "PATCH status=work_started while extra_work_requested",
@@ -2054,7 +2135,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-228",
+      "id": "API-237",
       "area": "ExtraWork",
       "useCase": "Customer approves extra work; price updated",
       "steps": "PATCH extra-work/approve {approved:true}",
@@ -2063,7 +2144,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-229",
+      "id": "API-238",
       "area": "ExtraWork",
       "useCase": "Approve twice",
       "steps": "PATCH extra-work/approve again",
@@ -2072,7 +2153,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-230",
+      "id": "API-239",
       "area": "Review",
       "useCase": "mechanic A: review before completion",
       "steps": "PATCH /requests/:id/review before completed",
@@ -2081,7 +2162,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-231",
+      "id": "API-240",
       "area": "Lifecycle",
       "useCase": "mechanic A: provider cannot mark completed",
       "steps": "PATCH status=completed as provider",
@@ -2090,7 +2171,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-232",
+      "id": "API-241",
       "area": "Lifecycle",
       "useCase": "mechanic A: customer confirms completion",
       "steps": "PATCH status=completed as customer",
@@ -2099,7 +2180,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-233",
+      "id": "API-242",
       "area": "Lifecycle",
       "useCase": "mechanic A: status change after completion",
       "steps": "PATCH status=provider_on_way after completed",
@@ -2108,7 +2189,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-234",
+      "id": "API-243",
       "area": "Payments",
       "useCase": "mechanic A: cash payment selected and collected",
       "steps": "POST /payments/request/:id {method:cash}; provider PATCH cash-collected",
@@ -2117,7 +2198,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-235",
+      "id": "API-244",
       "area": "Payments",
       "useCase": "Invoice includes approved extra work",
       "steps": "invoice total for mechanic A",
@@ -2126,7 +2207,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-236",
+      "id": "API-245",
       "area": "Requests",
       "useCase": "Create mechanic (engine) request",
       "steps": "POST /api/requests {\"category\":\"mechanic\",\"issueCategory\":\"engine\"}",
@@ -2135,7 +2216,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-237",
+      "id": "API-246",
       "area": "Realtime",
       "useCase": "mechanic (engine): customer socket receives request:changed after create",
       "steps": "listen request:changed on customer socket",
@@ -2144,16 +2225,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-238",
+      "id": "API-247",
       "area": "Dispatch",
       "useCase": "mechanic (engine): offer sent to the matching-category provider",
       "steps": "poll GET /requests/open as the provider",
       "expected": "request appears with dispatch.offerId within 30 s",
-      "actual": "offerId=c0c774b8…",
+      "actual": "offerId=ae254641…",
       "result": "PASS"
     },
     {
-      "id": "API-239",
+      "id": "API-248",
       "area": "Realtime",
       "useCase": "mechanic (engine): provider socket receives the new-offer event",
       "steps": "listen request:changed on provider socket",
@@ -2162,7 +2243,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-240",
+      "id": "API-249",
       "area": "Dispatch",
       "useCase": "mechanic (engine): customer cannot accept",
       "steps": "PATCH /requests/:id/accept as customer",
@@ -2171,7 +2252,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-241",
+      "id": "API-250",
       "area": "Dispatch",
       "useCase": "mechanic (engine): rejected mechanic cannot accept",
       "steps": "PATCH /requests/:id/accept {offerId} as rejected mechanic",
@@ -2180,7 +2261,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-242",
+      "id": "API-251",
       "area": "Requests",
       "useCase": "mechanic (engine): offered provider can view request details",
       "steps": "GET /requests/:id as offered provider",
@@ -2189,7 +2270,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-243",
+      "id": "API-252",
       "area": "Security",
       "useCase": "mechanic (engine): non-offered provider cannot view request details",
       "steps": "GET /requests/:id as unrelated provider",
@@ -2198,7 +2279,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-244",
+      "id": "API-253",
       "area": "Chat",
       "useCase": "mechanic (engine): chat before assignment",
       "steps": "POST /requests/:id/messages before accept",
@@ -2207,7 +2288,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-245",
+      "id": "API-254",
       "area": "Dispatch",
       "useCase": "mechanic (engine): provider accepts offer",
       "steps": "PATCH /requests/:id/accept {offerId}",
@@ -2216,7 +2297,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-246",
+      "id": "API-255",
       "area": "Realtime",
       "useCase": "mechanic (engine): customer receives accept event",
       "steps": "listen request:changed kind=assigned",
@@ -2225,7 +2306,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-247",
+      "id": "API-256",
       "area": "Requests",
       "useCase": "mechanic (engine): provider sees customer contact after assignment",
       "steps": "GET /requests/:id as assigned provider",
@@ -2234,7 +2315,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-248",
+      "id": "API-257",
       "area": "Provider",
       "useCase": "mechanic (engine): provider/active returns the job",
       "steps": "GET /requests/provider/active",
@@ -2243,7 +2324,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-249",
+      "id": "API-258",
       "area": "ExtraWork",
       "useCase": "Customer rejects extra work; price unchanged",
       "steps": "PATCH extra-work/approve {approved:false}",
@@ -2252,16 +2333,61 @@
       "result": "PASS"
     },
     {
-      "id": "API-250",
+      "id": "API-259",
       "area": "ExtraWork",
-      "useCase": "approved:\"false\" (string) is treated as a rejection",
-      "steps": "PATCH extra-work/approve {approved:\"false\"}",
-      "expected": "400 (invalid) or rejection – never an approval",
-      "actual": "HTTP 200, extraWork.status=approved, total=3250",
-      "result": "FAIL"
+      "useCase": "Extra-work decision rejected: approved:\"false\" (string)",
+      "steps": "PATCH extra-work/approve {\"approved\":\"false\"}",
+      "expected": "400; extra work still pending, price unchanged",
+      "actual": "HTTP 400, status=extra_work_requested, extraWork=pending, total=1250",
+      "result": "PASS"
     },
     {
-      "id": "API-251",
+      "id": "API-260",
+      "area": "ExtraWork",
+      "useCase": "Extra-work decision rejected: approved:\"true\" (string)",
+      "steps": "PATCH extra-work/approve {\"approved\":\"true\"}",
+      "expected": "400; extra work still pending, price unchanged",
+      "actual": "HTTP 400, status=extra_work_requested, extraWork=pending, total=1250",
+      "result": "PASS"
+    },
+    {
+      "id": "API-261",
+      "area": "ExtraWork",
+      "useCase": "Extra-work decision rejected: approved missing",
+      "steps": "PATCH extra-work/approve {}",
+      "expected": "400; extra work still pending, price unchanged",
+      "actual": "HTTP 400, status=extra_work_requested, extraWork=pending, total=1250",
+      "result": "PASS"
+    },
+    {
+      "id": "API-262",
+      "area": "ExtraWork",
+      "useCase": "Extra-work decision rejected: approved:1",
+      "steps": "PATCH extra-work/approve {\"approved\":1}",
+      "expected": "400; extra work still pending, price unchanged",
+      "actual": "HTTP 400, status=extra_work_requested, extraWork=pending, total=1250",
+      "result": "PASS"
+    },
+    {
+      "id": "API-263",
+      "area": "ExtraWork",
+      "useCase": "Extra-work decision rejected: approved:null",
+      "steps": "PATCH extra-work/approve {\"approved\":null}",
+      "expected": "400; extra work still pending, price unchanged",
+      "actual": "HTTP 400, status=extra_work_requested, extraWork=pending, total=1250",
+      "result": "PASS"
+    },
+    {
+      "id": "API-264",
+      "area": "ExtraWork",
+      "useCase": "Boolean true approves the second extra-work request",
+      "steps": "PATCH extra-work/approve {approved:true}",
+      "expected": "200 work_started, total 1250 + 2000 = 3250",
+      "actual": "HTTP 200, status=work_started, total=3250",
+      "result": "PASS"
+    },
+    {
+      "id": "API-265",
       "area": "Lifecycle",
       "useCase": "mechanic: work_started -> service_finished",
       "steps": "PATCH status=service_finished",
@@ -2270,7 +2396,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-252",
+      "id": "API-266",
       "area": "Review",
       "useCase": "mechanic B: review before completion",
       "steps": "PATCH /requests/:id/review before completed",
@@ -2279,7 +2405,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-253",
+      "id": "API-267",
       "area": "Lifecycle",
       "useCase": "mechanic B: provider cannot mark completed",
       "steps": "PATCH status=completed as provider",
@@ -2288,7 +2414,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-254",
+      "id": "API-268",
       "area": "Lifecycle",
       "useCase": "mechanic B: customer confirms completion",
       "steps": "PATCH status=completed as customer",
@@ -2297,7 +2423,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-255",
+      "id": "API-269",
       "area": "Lifecycle",
       "useCase": "mechanic B: status change after completion",
       "steps": "PATCH status=provider_on_way after completed",
@@ -2306,7 +2432,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-256",
+      "id": "API-270",
       "area": "Payments",
       "useCase": "mechanic B: cash payment selected and collected",
       "steps": "POST /payments/request/:id {method:cash}; provider PATCH cash-collected",
@@ -2315,7 +2441,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-257",
+      "id": "API-271",
       "area": "Dispatch",
       "useCase": "Race: only one provider holds an offer at a time",
       "steps": "Two online mechanics; poll both /open",
@@ -2324,7 +2450,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-258",
+      "id": "API-272",
       "area": "Dispatch",
       "useCase": "Race: two mechanics accept the same request concurrently",
       "steps": "Promise.all accept from both mechanics (loser re-uses the leaked offerId) + duplicate accept by winner",
@@ -2333,7 +2459,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-259",
+      "id": "API-273",
       "area": "Lifecycle",
       "useCase": "Cancel after assignment (customer)",
       "steps": "PATCH status=cancelled while provider_on_way",
@@ -2342,7 +2468,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-260",
+      "id": "API-274",
       "area": "Realtime",
       "useCase": "Provider receives cancellation event",
       "steps": "listen request:changed status=cancelled on winner socket",
@@ -2351,7 +2477,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-261",
+      "id": "API-275",
       "area": "Dispatch",
       "useCase": "Provider declines an offer",
       "steps": "PATCH /requests/:id/decline {offerId}",
@@ -2360,7 +2486,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-262",
+      "id": "API-276",
       "area": "Provider",
       "useCase": "Mechanic history lists completed + cancelled jobs",
       "steps": "GET /requests/provider/history as mechanic A",
@@ -2369,7 +2495,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-263",
+      "id": "API-277",
       "area": "Provider",
       "useCase": "Earnings correct (fuel)",
       "steps": "GET /requests/provider/earnings",
@@ -2378,7 +2504,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-264",
+      "id": "API-278",
       "area": "Provider",
       "useCase": "Earnings correct (tow)",
       "steps": "GET /requests/provider/earnings",
@@ -2387,7 +2513,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-265",
+      "id": "API-279",
       "area": "Provider",
       "useCase": "Earnings correct (mech)",
       "steps": "GET /requests/provider/earnings",
@@ -2396,7 +2522,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-266",
+      "id": "API-280",
       "area": "Security",
       "useCase": "Customer cannot read provider earnings/history/active",
       "steps": "GET provider/earnings, provider/history, provider/active as customer",
@@ -2405,16 +2531,16 @@
       "result": "PASS"
     },
     {
-      "id": "API-267",
+      "id": "API-281",
       "area": "Admin",
       "useCase": "Dashboard reflects completed work",
       "steps": "GET /api/admin/dashboard",
       "expected": "completedRequests >= 4, averageRating > 0, providerEarnings > 0",
-      "actual": "completed=4, cancelled=11, avgRating=2.5, revenue=25412, providerEarnings=25012",
+      "actual": "completed=4, cancelled=10, avgRating=4.5, revenue=25412, providerEarnings=25012",
       "result": "PASS"
     },
     {
-      "id": "API-268",
+      "id": "API-282",
       "area": "Security",
       "useCase": "Every protected endpoint returns 401 without JWT",
       "steps": "23 endpoints, no Authorization / cookie",
@@ -2423,7 +2549,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-269",
+      "id": "API-283",
       "area": "Security",
       "useCase": "Invalid ObjectId returns 400 (not 500)",
       "steps": "13 endpoints with id=not-an-id (customer / provider tokens)",
@@ -2432,7 +2558,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-270",
+      "id": "API-284",
       "area": "Security",
       "useCase": "Unknown request id returns 404",
       "steps": "GET /api/requests/<random ObjectId>",
@@ -2441,7 +2567,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-271",
+      "id": "API-285",
       "area": "Security",
       "useCase": "Accept on a non-existent request",
       "steps": "PATCH /api/requests/<random ObjectId>/accept as mechanic",
@@ -2450,7 +2576,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-272",
+      "id": "API-286",
       "area": "Security",
       "useCase": "Wrong role: customer calls provider-only and admin-only endpoints",
       "steps": "GET /requests/open, /mechanic-verification, /admin/providers as customer",
@@ -2459,7 +2585,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-273",
+      "id": "API-287",
       "area": "Security",
       "useCase": "IDOR: other customer reads payment/invoice of my job",
       "steps": "GET /api/payments/request/:id as user2",
@@ -2468,7 +2594,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-274",
+      "id": "API-288",
       "area": "Security",
       "useCase": "Body larger than 12 MB",
       "steps": "POST /api/auth/login with 13 MB JSON",
@@ -2477,7 +2603,7 @@
       "result": "PASS"
     },
     {
-      "id": "API-275",
+      "id": "API-289",
       "area": "Security",
       "useCase": "passwordHash / secrets never returned",
       "steps": "Scanned every API response in this run for passwordHash, bcrypt hashes, googleId, faceDescriptor, providerEnrollment",
