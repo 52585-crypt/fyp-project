@@ -97,6 +97,7 @@ export default function CustomerHome() {
           </View>
 
           {mine.error ? <Banner tone="warning" message={mine.error} /> : null}
+          {near.notice ? <Banner tone="warning" message={near.notice} /> : null}
           {map.error && !map.position ? <Banner tone="warning" message="Turn on location so providers can find you. You can still set a pickup pin manually." /> : null}
 
           <View style={styles.grid}>

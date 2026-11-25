@@ -4,8 +4,11 @@ import * as TaskManager from "expo-task-manager";
 import { getToken } from "../auth/auth.storage";
 import { updateProviderLocation } from "../requests/requests.api";
 import { tokens } from "../design/tokens";
+import { rateLimitWait } from "./rateLimit";
 
 const PROVIDER_LOCATION_TASK = "rapidassist-provider-location";
+/** After a 429 the background task stays quiet until the server's Retry-After has passed. */
+let pausedUntil = 0;
 
 if (!TaskManager.isTaskDefined(PROVIDER_LOCATION_TASK)) {
   TaskManager.defineTask(PROVIDER_LOCATION_TASK, async ({ data, error }) => {
@@ -15,7 +18,7 @@ if (!TaskManager.isTaskDefined(PROVIDER_LOCATION_TASK)) {
       const locations = (data as { locations?: Location.LocationObject[] }).locations || [];
       const latest = locations.at(-1);
       const token = await getToken();
-      if (!latest || !token) return;
+      if (!latest || !token || Date.now() < pausedUntil) return;
       await updateProviderLocation(token, {
         lat: latest.coords.latitude,
         lng: latest.coords.longitude,
@@ -26,6 +29,8 @@ if (!TaskManager.isTaskDefined(PROVIDER_LOCATION_TASK)) {
         capturedAt: new Date(latest.timestamp).toISOString()
       });
     } catch (requestError: any) {
+      const limited = rateLimitWait(requestError);
+      if (limited) { pausedUntil = Date.now() + limited.waitMs; return; }
       // 409 means the server already has a newer foreground/background position.
       if (requestError?.response?.status !== 409) console.warn("Background location update failed:", requestError?.message);
     }

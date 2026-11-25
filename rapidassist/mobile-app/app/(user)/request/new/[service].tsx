@@ -164,7 +164,8 @@ export default function PickupPin() {
             </ScrollView>
           ) : null}
 
-          {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
+          {step === "pickup" && near.notice ? <Banner tone="warning" message={near.notice} /> : null}
+        {outsideArea ? <Banner tone="warning" title="Outside our service area" message={`${SERVICE_AREA_MESSAGE}. Move the pin or pick a place below.`} /> : null}
           {b.error && !(outsideArea && b.error === SERVICE_AREA_MESSAGE) ? <Banner tone="danger" message={b.error} /> : null}
         </BottomSheet>
       )}

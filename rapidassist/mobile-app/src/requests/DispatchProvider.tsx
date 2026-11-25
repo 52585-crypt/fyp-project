@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import { useAuth } from "../auth/AuthProvider";
 import { createSocket } from "../services/socket";
 import { getFreshPosition } from "../services/currentLocation";
+import { rateLimitWait } from "../services/rateLimit";
 import { getDispatchOffers, getProviderActiveRequest, updateProviderLocation } from "./requests.api";
 import type { ServiceRequest } from "./requests.types";
 import { Icon, Text as DSText } from "../design/components";
@@ -158,7 +159,7 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
     let busy = false;
     let shownError: string | null = null;
     async function sync() {
-      if (busy || stopped) return;
+      if (busy || stopped || Date.now() < pausedUntil) return;
       busy = true;
       try {
         const permission = await Location.requestForegroundPermissionsAsync();
@@ -179,10 +180,14 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
       } catch (e: any) {
         // 409 = the server already holds a newer fix (out-of-order update). The heartbeat still counted; not an error.
         if (e?.response?.status === 409) return;
+        // 429 = too many updates: skip syncs until Retry-After has passed and tell the provider why.
+        const limited = rateLimitWait(e);
+        if (limited) pausedUntil = Date.now() + limited.waitMs;
         const text = e?.response?.data?.message || e?.message || "Unable to update your location.";
         if (!stopped) { shownError = text; setError(text); }
       } finally { busy = false; }
     }
+    let pausedUntil = 0;
     void sync();
     const timer = setInterval(sync, 10000);
     return () => { stopped = true; clearInterval(timer); };
