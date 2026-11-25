@@ -12,6 +12,8 @@ import { customerRoutes } from "../../../src/navigation/routes";
 import { useNotifications } from "../../../src/notifications/NotificationProvider";
 import { RequestCard } from "../../../src/requests/customer/RequestCard";
 import { useHomeMap } from "../../../src/requests/customer/useHomeMap";
+import { nearbyProviderMarkers } from "../../../src/requests/nearbyProviderMarkers";
+import { useNearbyProviders } from "../../../src/requests/useNearbyProviders";
 import { useMyRequests } from "../../../src/requests/useMyRequests";
 
 const services = [
@@ -25,6 +27,7 @@ const services = [
 ] as const;
 
 const ACTIVE_CARD_HEIGHT = tokens.sizes.avatarLarge * 2;
+const ALL_SERVICES = ["mechanic", "car_towing", "fuel_delivery"] as const;
 
 /** Map-first home: live map of where you are, services in a bottom sheet above the tab bar. */
 export default function CustomerHome() {
@@ -32,6 +35,7 @@ export default function CustomerHome() {
   const { unread } = useNotifications();
   const mine = useMyRequests();
   const map = useHomeMap();
+  const near = useNearbyProviders(ALL_SERVICES, map.position ? { lat: map.position.latitude, lng: map.position.longitude } : null, Boolean(map.position));
   const firstName = user?.name?.trim().split(/\s+/)[0];
   const active = mine.active[0];
   const peek = tokens.sizes.sheetPeek + (active ? ACTIVE_CARD_HEIGHT : 0);
@@ -40,7 +44,8 @@ export default function CustomerHome() {
     <View style={styles.root}>
       <StatusBar style="dark" />
       <MapCanvas accessibilityLabel="Map of your location" inset={{ top: MAP_TOP_BAR_HEIGHT, bottom: peek }}
-        focus={map.focus} markers={map.position ? [{ id: "me", kind: "user", coordinate: map.position }] : []} />
+        focus={map.focus} markers={map.position
+          ? [...nearbyProviderMarkers(near.providers ?? []), { id: "me", kind: "user", coordinate: map.position }] : []} />
 
       <MapTopBar
         left={<Avatar name={user?.name ?? "You"} size={tokens.sizes.iconButton} />}

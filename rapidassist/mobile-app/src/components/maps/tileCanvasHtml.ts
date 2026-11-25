@@ -3,7 +3,8 @@ import { LEGACY_MAP_TILES } from "./legacyMapTiles";
 import { MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasProps } from "./MapCanvas.types";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { safeNumber, safePoint, safePoints, safeText, scriptJson } from "./mapHtmlSafety";
-import type { MapCanvasMarker } from "./MapCanvas.types";
+import { MAP_CANVAS_SERVICES, type MapCanvasMarker } from "./MapCanvas.types";
+import { serviceMarkerDataUrl } from "./serviceGlyphs";
 
 const c = tokens.color;
 const s = tokens.sizes;
@@ -22,7 +23,9 @@ export function tileCanvasState(props: MapCanvasProps) {
       const coordinate = safePoint(m.coordinate);
       if (!coordinate) return [];
       const kind = MARKER_KINDS.includes(m.kind) ? m.kind : "pickup";
-      return [{ id: String(m.id), kind, coordinate, label: safeText(m.label) }];
+      // The service picks a fixed icon from boot.icons, so it is whitelisted like the kind.
+      const service = kind === "provider" && MAP_CANVAS_SERVICES.includes(m.service!) ? m.service : undefined;
+      return [{ id: String(m.id), kind, coordinate, label: safeText(m.label), service, ambient: m.ambient === true }];
     }),
     route: safePoints(props.route),
     focus: focusPoint ? { coordinate: focusPoint, requestId: safeNumber(props.focus!.requestId) } : null,
@@ -43,7 +46,8 @@ export function tileCanvasUpdateScript(props: MapCanvasProps) {
  * Text values only ever reach the DOM through textContent.
  */
 export function buildTileCanvasHtml(instance: string, props: MapCanvasProps) {
-  const boot = scriptJson({ id: String(instance), tiles: LEGACY_MAP_TILES, state: tileCanvasState(props) });
+  const icons = Object.fromEntries(MAP_CANVAS_SERVICES.map((service) => [service, serviceMarkerDataUrl(service)]));
+  const boot = scriptJson({ id: String(instance), tiles: LEGACY_MAP_TILES, icons, state: tileCanvasState(props) });
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>
 html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-family:Inter,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
 #map{position:absolute;inset:0;touch-action:none;cursor:grab;user-select:none}
@@ -54,6 +58,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:${c.surfaceAlt};font-f
 .user{width:16px;height:16px;background:${c.primary};border:3px solid ${c.surface};box-shadow:0 0 0 8px ${c.primaryHalo}}
 .provider{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;background:${c.amber};border:3px solid ${c.surface};box-shadow:0 3px 10px ${c.shadowSoft};display:flex;align-items:center;justify-content:center}
 .provider:after{content:"";width:10px;height:10px;border-radius:50%;background:${c.ink}}
+.svc{width:${s.mapMarkerProvider}px;height:${s.mapMarkerProvider}px;border-radius:50%;filter:drop-shadow(0 2px 4px ${c.shadowSoft})}
+.ambient{z-index:2}
 .lbl{position:absolute;transform:translate(-50%,16px);background:${c.ink};color:${c.surface};border-radius:8px;padding:3px 7px;font-size:11px;font-weight:600;white-space:nowrap;z-index:4}
 .credit{position:absolute;right:6px;background:${c.surfaceGlass};font-size:9px;padding:2px 4px;border-radius:4px;z-index:5}.credit a{color:${c.slate};text-decoration:none}
 .ctl{position:absolute;right:12px;display:grid;gap:8px;z-index:6}
@@ -67,7 +73,7 @@ const W=()=>innerWidth,H=()=>innerHeight;
 function px(lat,lng,z){const s=Math.sin(Math.max(-85,Math.min(85,lat))*Math.PI/180),n=256*Math.pow(2,z);return{x:(lng+180)/360*n,y:(0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n};}
 function ll(x,y,z){const n=256*Math.pow(2,z),lng=x/n*360-180,k=Math.PI-2*Math.PI*y/n;return{lat:180/Math.PI*Math.atan(0.5*(Math.exp(k)-Math.exp(-k))),lng};}
 function send(m){m.id=boot.id;const t=JSON.stringify(m);if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(t);else parent.postMessage({rapidassistMap:t},'*');}
-function pts(){return st.markers.map(m=>m.coordinate).concat(st.route);}
+function pts(){return st.markers.filter(m=>!m.ambient).map(m=>m.coordinate).concat(st.route);}
 // Pin mode keeps the target under the fixed centre pin; otherwise centre it in the gap between overlays.
 function centerOn(lat,lng,z){const o=px(lat,lng,z);const c=ll(o.x,o.y+(st.pinMode?0:(st.inset.bottom-st.inset.top)/2),z);cam={lat:c.lat,lng:c.lng,z};}
 function fit(){const p=pts();const top=st.inset.top+${MAP_CANVAS_EDGE},bot=st.inset.bottom+${MAP_CANVAS_EDGE};
@@ -79,8 +85,11 @@ function draw(){const z=Math.round(cam.z),o=px(cam.lat,cam.lng,z),L=o.x-W()/2,T=
  for(let x=Math.floor(L/256);x<=Math.floor((L+W())/256);x++)for(let y=Math.floor(T/256);y<=Math.floor((T+H())/256);y++){const n=Math.pow(2,z);if(y<0||y>=n)continue;const i=document.createElement('img');i.className='tile';i.alt='';i.draggable=false;i.src=boot.tiles.baseUrl+'/'+z+'/'+(((x%n)+n)%n)+'/'+y+'.png'+boot.tiles.query;i.style.left=(x*256-L)+'px';i.style.top=(y*256-T)+'px';map.append(i);}
  if(st.route.length>1){const g=document.createElementNS('http://www.w3.org/2000/svg','svg');g.setAttribute('width',W());g.setAttribute('height',H());g.style.cssText='position:absolute;left:0;top:0;z-index:2';const pts=st.route.map(c=>{const p=px(c.latitude,c.longitude,z);return(p.x-L)+','+(p.y-T);}).join(' ');
   [['${c.surface}',10],['${c.primary}',6]].forEach(([col,w])=>{const l=document.createElementNS(g.namespaceURI,'polyline');l.setAttribute('points',pts);l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);l.setAttribute('stroke-linecap','round');l.setAttribute('stroke-linejoin','round');g.append(l);});map.append(g);}
- st.markers.forEach(m=>{const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const d=document.createElement('div');d.className='m '+m.kind;d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
-  if(m.label){const b=document.createElement('div');b.className='lbl';b.textContent=m.label;b.style.left=d.style.left;b.style.top=d.style.top;map.append(b);}});
+ st.markers.forEach(m=>{const p=px(m.coordinate.latitude,m.coordinate.longitude,z);const icon=m.service&&boot.icons[m.service];const d=document.createElement(icon?'img':'div');
+  d.className='m '+(icon?'svc':m.kind)+(m.ambient?' ambient':'');if(icon){d.src=icon;d.alt='';d.draggable=false;}d.style.left=(p.x-L)+'px';d.style.top=(p.y-T)+'px';map.append(d);
+  // Ambient markers (nearby providers) carry their name for screen readers only, so many of them do not clutter the map.
+  if(m.label&&m.ambient){d.setAttribute('role','img');d.setAttribute('aria-label',m.label);}
+  else if(m.label){const b=document.createElement('div');b.className='lbl';b.textContent=m.label;b.style.left=d.style.left;b.style.top=d.style.top;map.append(b);}});
  document.getElementById('ctl').style.top=(st.inset.top+16)+'px';document.getElementById('credit').style.bottom=(st.inset.bottom+4)+'px';}
 function update(next){st=next;const f=st.focus;if(f&&(!lastFocus||f.requestId!==lastFocus)){lastFocus=f.requestId;moved=false;centerOn(f.coordinate.latitude,f.coordinate.longitude,${MAP_CANVAS_FOCUS_ZOOM});}
  else if(!moved&&!st.pinMode)fit();draw();}

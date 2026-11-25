@@ -132,13 +132,20 @@ export type ServiceRequest = {
   updatedAt: string;
 };
 
+export type ProviderService = "mechanic" | "fuel_delivery" | "towing";
+export type DistanceBand = "under 2 km" | "2–5 km" | "5–10 km" | "10+ km";
+
 export type NearbyProvider = {
   id: string;
   name: string;
-  serviceCategory: "mechanic" | "fuel_delivery" | "towing" | null;
+  serviceCategory: ProviderService | null;
   ratingAvg: number;
   ratingCount: number;
   completedJobs: number;
+  /** Real position snapped by the server to a fixed ~500 m grid. Never the exact position. */
+  approxLocation: { latitude: number; longitude: number };
+  /** Coarse distance from the queried point to approxLocation. */
+  distanceBand: DistanceBand;
 };
 
 export type CreateRequestInput = {

@@ -58,6 +58,13 @@ const palette = {
   heroGlow: "rgba(255, 255, 255, 0.12)",
   /** Translucent indigo halo around the live / search pulse on maps. */
   primaryHalo: "rgba(45, 12, 158, 0.16)",
+  /** Map markers for nearby providers, one colour per service, with the glyph colour drawn on top. */
+  serviceMechanic: brand.amber,
+  onServiceMechanic: brand.ink,
+  serviceTowing: "#BE185D",
+  onServiceTowing: "#FFFFFF",
+  serviceFuel: brand.green,
+  onServiceFuel: "#FFFFFF",
   shadow: brand.ink,
   transparent: "transparent"
 } as const;
@@ -183,7 +190,9 @@ const sizes = {
   pin: 44,
   pinStem: 14,
   mapMarker: 22,
-  mapMarkerProvider: 34
+  mapMarkerProvider: 34,
+  /** Service glyph inside a provider marker. */
+  mapMarkerGlyph: 20
 } as const;
 
 const shadow = {

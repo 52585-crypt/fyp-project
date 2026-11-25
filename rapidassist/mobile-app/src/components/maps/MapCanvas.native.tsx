@@ -2,11 +2,13 @@ import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import type MapViewType from "react-native-maps";
 import type { Details, Region } from "react-native-maps";
+import Svg, { Path } from "react-native-svg";
 import { Icon } from "../../design/components/Icon";
 import { tokens } from "../../design/tokens";
 import { isGoogleMapConfigured } from "../../services/googleMapsAvailability";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { canvasPoints, MAP_CANVAS_EDGE, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
+import { SERVICE_MARKERS } from "./serviceGlyphs";
 import { TileCanvas } from "./TileCanvas";
 
 const DELTA = 0.012;
@@ -57,7 +59,7 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
         {markers.map((m) => (
           <Marker key={m.id} coordinate={m.coordinate} title={m.label} anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={m.kind === "provider"}>
-            <MarkerDot kind={m.kind} />
+            <MarkerDot marker={m} />
           </Marker>
         ))}
       </MapView>
@@ -65,7 +67,18 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
   );
 }
 
-function MarkerDot({ kind }: { kind: MapCanvasMarker["kind"] }) {
+function MarkerDot({ marker: { kind, service } }: { marker: MapCanvasMarker }) {
+  if (kind === "provider" && service) {
+    const look = SERVICE_MARKERS[service];
+    return (
+      <View style={[styles.dot, styles.provider, { backgroundColor: look.fill }]}>
+        <Svg width={tokens.sizes.mapMarkerGlyph} height={tokens.sizes.mapMarkerGlyph} viewBox="0 0 24 24" fill="none"
+          stroke={look.glyph} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          {look.paths.map((d) => <Path key={d} d={d} />)}
+        </Svg>
+      </View>
+    );
+  }
   if (kind === "provider") {
     return <View style={[styles.dot, styles.provider]}><Icon name="car-sport" color="ink" size={tokens.sizes.iconSmall} /></View>;
   }

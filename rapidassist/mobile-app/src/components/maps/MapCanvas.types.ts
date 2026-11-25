@@ -8,11 +8,18 @@ import type { Coordinate } from "../../utils/distance";
  */
 export type MapCanvasMarkerKind = "pickup" | "destination" | "provider" | "user";
 
+export type MapCanvasService = "mechanic" | "towing" | "fuel_delivery";
+export const MAP_CANVAS_SERVICES: ReadonlyArray<MapCanvasService> = ["mechanic", "towing", "fuel_delivery"];
+
 export type MapCanvasMarker = {
   id: string;
   coordinate: Coordinate;
   kind: MapCanvasMarkerKind;
   label?: string;
+  /** Provider markers: which service, drawn with its own colour and glyph. */
+  service?: MapCanvasService;
+  /** Shown, but ignored when fitting the camera (e.g. nearby providers around the customer). */
+  ambient?: boolean;
 };
 
 export type MapCanvasFocus = { coordinate: Coordinate; requestId: number };
@@ -42,9 +49,9 @@ export function isCoordinate(value: unknown): value is Coordinate {
     && typeof c!.longitude === "number" && Number.isFinite(c!.longitude) && Math.abs(c!.longitude) <= 180;
 }
 
-/** Everything the camera should keep in view. */
+/** Everything the camera should keep in view (ambient markers excluded). */
 export function canvasPoints(markers: MapCanvasMarker[] = [], route: Coordinate[] = []) {
-  return [...markers.map((m) => m.coordinate), ...route].filter(isCoordinate);
+  return [...markers.filter((m) => !m.ambient).map((m) => m.coordinate), ...route].filter(isCoordinate);
 }
 
 /** Parses a centre report posted from the tile canvas document. Returns null for anything else. */

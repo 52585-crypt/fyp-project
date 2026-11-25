@@ -5,6 +5,7 @@ import { isGoogleMapConfigured } from "../../services/googleMapsAvailability";
 import { BOOKING_MAP_CENTER } from "../GoogleMap.shared";
 import { loadMaps } from "../GoogleMapView.web";
 import { canvasPoints, MAP_CANVAS_EDGE, MAP_CANVAS_FOCUS_ZOOM, type MapCanvasMarker, type MapCanvasProps } from "./MapCanvas.types";
+import { serviceMarkerDataUrl } from "./serviceGlyphs";
 import { TileCanvas } from "./TileCanvas";
 
 /** Web: Google Maps JS when a web key is configured, otherwise the OSM tile canvas. Falls back if Google fails to load. */
@@ -53,20 +54,31 @@ function GoogleCanvas({ markers = [], route = [], focus, inset = { top: 0, botto
     return () => { active = false; map.current = null; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const contentKey = JSON.stringify([canvasPoints(markers, route), markers.map((m) => m.kind)]);
+  const at = (p: { latitude: number; longitude: number }) => ({ lat: p.latitude, lng: p.longitude });
+  // Overlays redraw whenever any marker changes; the camera only moves for its own inputs (ambient markers excluded),
+  // so a 20 s refresh of nearby providers never yanks the map.
+  const overlayKey = JSON.stringify([markers.map((m) => [m.id, m.kind, m.service, m.label, m.coordinate]), route]);
   useEffect(() => {
     if (!ready || !map.current) return;
     const maps = (window as any).google.maps;
-    const at = (p: { latitude: number; longitude: number }) => ({ lat: p.latitude, lng: p.longitude });
+    const size = tokens.sizes.mapMarkerProvider;
     overlays.current.forEach((o) => o.setMap(null));
     overlays.current = markers.map((m) => new maps.Marker({
-      map: map.current, position: at(m.coordinate), title: m.label,
-      icon: { path: maps.SymbolPath.CIRCLE, fillColor: look[m.kind].fill, fillOpacity: 1, strokeColor: c.surface, strokeWeight: look[m.kind].stroke, scale: look[m.kind].scale }
+      map: map.current, position: at(m.coordinate), title: m.label, zIndex: m.ambient ? 1 : 2,
+      icon: m.kind === "provider" && m.service
+        ? { url: serviceMarkerDataUrl(m.service), scaledSize: new maps.Size(size, size), anchor: new maps.Point(size / 2, size / 2) }
+        : { path: maps.SymbolPath.CIRCLE, fillColor: look[m.kind].fill, fillOpacity: 1, strokeColor: c.surface, strokeWeight: look[m.kind].stroke, scale: look[m.kind].scale }
     }));
     if (route.length > 1) {
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.surface, strokeWeight: 10, zIndex: 3 }));
       overlays.current.push(new maps.Polyline({ map: map.current, path: route.map(at), strokeColor: c.primary, strokeWeight: 6, zIndex: 4 }));
     }
+  }, [ready, overlayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const contentKey = JSON.stringify([canvasPoints(markers, route), markers.filter((m) => !m.ambient).map((m) => m.kind)]);
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    const maps = (window as any).google.maps;
     if (focus) {
       map.current.setZoom(MAP_CANVAS_FOCUS_ZOOM);
       map.current.panTo(at(focus.coordinate));

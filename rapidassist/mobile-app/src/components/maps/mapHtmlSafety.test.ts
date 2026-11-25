@@ -77,8 +77,42 @@ describe("map documents treat names, labels and addresses as text", () => {
       ],
       route: [{ latitude: "</script>" as never, longitude: 1 }, { latitude: 3, longitude: 4 }]
     });
-    expect(state.markers).toEqual([{ id: "b", kind: "pickup", coordinate: { latitude: 1, longitude: 2 }, label: undefined }]);
+    expect(state.markers).toEqual([{ id: "b", kind: "pickup", coordinate: { latitude: 1, longitude: 2 }, label: undefined, ambient: false }]);
     expect(state.route).toEqual([{ latitude: 3, longitude: 4 }]);
+  });
+
+  it("whitelists provider services and keeps ambient provider names as literal accessible text", () => {
+    const state = tileCanvasState({
+      markers: [
+        { id: "a", kind: "provider", service: "towing", ambient: true, coordinate: { latitude: 33.7, longitude: 73.05 } },
+        { id: "b", kind: "provider", service: "x\" onerror=\"alert(1)" as never, coordinate: { latitude: 33.7, longitude: 73.05 } },
+        { id: "c", kind: "pickup", service: "mechanic", coordinate: { latitude: 33.7, longitude: 73.05 } },
+        { id: "d", kind: "provider", ambient: "yes" as never, coordinate: { latitude: 33.7, longitude: 73.05 } }
+      ]
+    });
+    expect(state.markers.map((m) => [m.id, m.service, m.ambient])).toEqual([
+      ["a", "towing", true], ["b", undefined, false], ["c", undefined, false], ["d", undefined, false]
+    ]);
+
+    const html = buildTileCanvasHtml("canvas-test", {
+      markers: [
+        { id: "m", kind: "provider", service: "mechanic", ambient: true, label: XSS, coordinate: { latitude: 33.7, longitude: 73.05 } },
+        { id: "t", kind: "provider", service: "towing", ambient: true, label: BREAKOUT, coordinate: { latitude: 33.71, longitude: 73.06 } },
+        { id: "f", kind: "provider", service: "fuel_delivery", ambient: true, label: ATTR, coordinate: { latitude: 33.69, longitude: 73.04 } },
+        { id: "me", kind: "user", coordinate: { latitude: 33.7, longitude: 73.05 } }
+      ]
+    });
+    const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true });
+    const w = dom.window as unknown as Window & { pwned?: number };
+    const icons = [...w.document.querySelectorAll("img.svc")];
+    expect(w.pwned).toBeUndefined();
+    expect(icons).toHaveLength(3);
+    expect(icons.every((i) => i.getAttribute("src")!.startsWith("data:image/svg+xml"))).toBe(true);
+    expect(new Set(icons.map((i) => i.getAttribute("src"))).size).toBe(3);
+    expect(icons.map((i) => i.getAttribute("aria-label"))).toEqual([XSS, BREAKOUT, ATTR]);
+    expect(w.document.querySelectorAll(".lbl")).toHaveLength(0);
+    expect(w.document.querySelectorAll("[onerror],[onmouseover],[onload]")).toHaveLength(0);
+    dom.window.close();
   });
 
   it("escapes script-breaking characters in embedded JSON", () => {

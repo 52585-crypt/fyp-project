@@ -20,4 +20,11 @@ describe("MapCanvas helpers", () => {
     expect(pts).toEqual([{ latitude: 1, longitude: 2 }, { latitude: 3, longitude: 4 }]);
     expect(isCoordinate({ latitude: 0, longitude: 181 })).toBe(false);
   });
+
+  it("keeps ambient markers (nearby providers) out of camera fitting", () => {
+    expect(canvasPoints([
+      { id: "me", kind: "user", coordinate: { latitude: 33.7, longitude: 73.05 } },
+      { id: "provider:1", kind: "provider", service: "towing", ambient: true, coordinate: { latitude: 33.6, longitude: 73.1 } }
+    ])).toEqual([{ latitude: 33.7, longitude: 73.05 }]);
+  });
 });

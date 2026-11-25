@@ -11,6 +11,8 @@ import { tokens } from "../../../../src/design/tokens";
 import { customerRoutes } from "../../../../src/navigation/routes";
 import { useBooking } from "../../../../src/requests/booking/BookingProvider";
 import { normalizeBookingCategory } from "../../../../src/requests/booking/category";
+import { nearbyProviderMarkers } from "../../../../src/requests/nearbyProviderMarkers";
+import { useNearbyProviders } from "../../../../src/requests/useNearbyProviders";
 import { mechanicServices } from "../../../../src/requests/booking/options";
 import { getServiceTitle } from "../../../../src/requests/serviceCatalog";
 import { applyNormalizedLocationTarget, normalizeLocation, type NormalizedLocation } from "../../../../src/services/normalizedLocation";
@@ -37,8 +39,11 @@ export default function PickupPin() {
   // Same rule as the server: a pickup outside Islamabad/Rawalpindi cannot be booked.
   const outsideArea = step === "pickup" && Boolean(value) && !isInServiceArea(value!.latitude, value!.longitude);
   const pinned = value?.source === "manual_map" && /^Pinned /.test(value.address ?? "");
+  // Nearby providers for this service around the pickup pin (approximate positions, refreshed every 20 s).
+  const near = useNearbyProviders(category, b.pickup ? { lat: b.pickup.latitude, lng: b.pickup.longitude } : null, step === "pickup");
   const markers: MapCanvasMarker[] = step === "destination" && b.pickup
-    ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }] : [];
+    ? [{ id: "pickup", kind: "pickup", coordinate: b.pickup, label: "Pickup" }]
+    : nearbyProviderMarkers(near.providers ?? [], category);
   const tow = towing && step === "destination" && b.route.route ? `${b.route.route.distanceKm.toFixed(1)} km tow · ${b.route.route.durationMinutes} min` : null;
 
   function choose(loc: NormalizedLocation) {

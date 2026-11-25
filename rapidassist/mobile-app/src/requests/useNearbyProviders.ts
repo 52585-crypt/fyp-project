@@ -5,6 +5,8 @@ import { listNearbyProviders } from "./requests.api";
 import type { NearbyProvider, RequestCategory } from "./requests.types";
 
 const REFRESH_MS = 20_000;
+/** Wait for the point to settle (pin drags) before querying. */
+const SETTLE_MS = 400;
 
 type NearbyState = {
   providers: NearbyProvider[] | null;
@@ -17,15 +19,17 @@ type NearbyState = {
 const EMPTY: NearbyState = { providers: null, radiusKm: null, dispatchRadiusKm: null, expanded: false, updatedAt: null };
 
 /**
- * Online providers near a point for a category, refreshed every 20 s while `enabled` and the screen is focused,
- * and immediately when the point or category changes.
+ * Online providers near a point for one or more categories, refreshed every 20 s while `enabled` and the screen
+ * is focused, and shortly after the point or categories change. With several categories the lists are merged.
  */
-export function useNearbyProviders(category: RequestCategory, at: { lat: number; lng: number } | null, enabled: boolean) {
+export function useNearbyProviders(categories: RequestCategory | readonly RequestCategory[], at: { lat: number; lng: number } | null, enabled: boolean) {
   const { token } = useAuth();
   const [state, setState] = useState<NearbyState>(EMPTY);
-  const [focused, setFocused] = useState(true);
+  // Starts unfocused: a screen mounted underneath another (e.g. Home below a deep-linked booking) must not poll.
+  const [focused, setFocused] = useState(false);
   const lat = at?.lat;
   const lng = at?.lng;
+  const key = (typeof categories === "string" ? [categories] : [...categories]).join(",");
 
   useFocusEffect(useCallback(() => {
     setFocused(true);
@@ -33,24 +37,25 @@ export function useNearbyProviders(category: RequestCategory, at: { lat: number;
   }, []));
 
   useEffect(() => {
-    if (!enabled || !focused || !token || lat == null || lng == null) return;
+    if (!enabled || !focused || !token || lat == null || lng == null || !key) return;
     let active = true;
-    const load = () => listNearbyProviders(token, { category, lat, lng })
-      .then((r) => {
+    const list = key.split(",") as RequestCategory[];
+    const load = () => Promise.all(list.map((category) => listNearbyProviders(token, { category, lat, lng })))
+      .then((results) => {
         if (!active) return;
         setState({
-          providers: r.providers,
-          radiusKm: r.radiusKm,
-          dispatchRadiusKm: r.dispatchRadiusKm ?? r.radiusKm,
-          expanded: Boolean(r.expanded),
+          providers: results.flatMap((r) => r.providers),
+          radiusKm: Math.max(...results.map((r) => r.radiusKm)),
+          dispatchRadiusKm: results[0].dispatchRadiusKm ?? results[0].radiusKm,
+          expanded: results.some((r) => Boolean(r.expanded)),
           updatedAt: Date.now()
         });
       })
       .catch(() => { if (active) setState((v) => ({ ...v, providers: v.providers ?? [] })); });
-    void load();
-    const timer = setInterval(load, REFRESH_MS);
-    return () => { active = false; clearInterval(timer); };
-  }, [category, enabled, focused, lat, lng, token]);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const settle = setTimeout(() => { void load(); timer = setInterval(load, REFRESH_MS); }, SETTLE_MS);
+    return () => { active = false; clearTimeout(settle); if (timer) clearInterval(timer); };
+  }, [key, enabled, focused, lat, lng, token]);
 
   return { ...state, loading: enabled && state.providers === null };
 }
