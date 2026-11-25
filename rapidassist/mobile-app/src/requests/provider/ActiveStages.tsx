@@ -27,8 +27,8 @@ export function OnTheWayStage(props: JobProps) {
   return (
     <>
       <View style={styles.eta}>
-        <StatTile label="ETA" value={job.route.minutes ? `${job.route.minutes} min` : "—"} />
-        <StatTile label="Distance" value={job.route.km ? `${job.route.km.toFixed(1)} km` : "—"} />
+        <StatTile label="ETA" value={job.route.minutes ? `${job.route.approximate ? "~" : ""}${job.route.minutes} min` : "—"} />
+        <StatTile label="Distance" value={job.route.km ? `${job.route.approximate ? "~" : ""}${job.route.km.toFixed(1)} km` : "—"} />
       </View>
       <JobMap {...props} height={tokens.sizes.mapLarge} />
       <CustomerRow request={request} />

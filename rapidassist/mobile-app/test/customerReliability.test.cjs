@@ -74,15 +74,15 @@ test("tracking retries an approximate ETA with unchanged coordinates and restore
     }
   };
   let calls = 0;
+  const routing = { getDrivingRouteMetrics: async (from, to) => {
+    if (++calls === 1) throw new Error("unavailable");
+    return { distanceKm: 5, durationMinutes: 10, coordinates: [from, to] };
+  } };
+  const liveEta = load("src/requests/liveEta.ts", { "../utils/distance": { distanceKm: () => 4 } }, { Math, Date });
   const { useCustomerRoute } = load("src/requests/useCustomerRoute.ts", {
     react,
     "../services/locationMapPolicy": { hasOperationalCoordinates: (value) => Boolean(value) },
-    "../utils/distance": { distanceKm: () => 4 },
-    "./liveEta": load("src/requests/liveEta.ts", { "../utils/distance": { distanceKm: () => 4 } }, { Math, Date }),
-    "../services/routing": { getDrivingRouteMetrics: async (from, to) => {
-      if (++calls === 1) throw new Error("unavailable");
-      return { distanceKm: 5, durationMinutes: 10, coordinates: [from, to] };
-    } }
+    "./useThrottledRoute": load("src/requests/useThrottledRoute.ts", { react, "../services/routing": routing, "./liveEta": liveEta }, { Date })
   });
   const request = {
     id: "request", category: "mechanic", status: "provider_on_way",

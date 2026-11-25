@@ -49,7 +49,8 @@ export function JobSummary({ request }: { request: ServiceRequest }) {
 
 export function JobMap({ job, request, height }: JobProps & { height?: number }) {
   const centre = job.from ?? job.to;
-  const badge = job.route.minutes ? `${job.route.minutes} min${job.route.km ? ` • ${job.route.km.toFixed(1)} km` : ""}` : null;
+  const approx = job.route.approximate ? "~" : "";
+  const badge = job.route.minutes ? `${approx}${job.route.minutes} min${job.route.km ? ` • ${approx}${job.route.km.toFixed(1)} km` : ""}` : null;
   return (
     <MapCard height={height} badge={badge} pickup={centre ?? undefined} destination={job.from ? job.to : null} route={job.route.coords}
       pickupLabel={job.from ? "You" : "Customer"} destinationLabel={job.toDestination ? "Drop-off" : "Customer"}

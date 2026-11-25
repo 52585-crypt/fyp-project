@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { hasOperationalCoordinates } from "../services/locationMapPolicy";
-import { getDrivingRouteMetrics } from "../services/routing";
 import type { Coordinate } from "../utils/distance";
-import { liveEta, nextEtaDelay, type LiveEta } from "./liveEta";
+import { useThrottledRoute } from "./useThrottledRoute";
 import type { RequestLocation, ServiceRequest } from "./requests.types";
 
 const GPS_FRESHNESS_MS = 45_000;
-const EMPTY_ROUTE: Coordinate[] = [];
 
 function useRequestCoordinate(location?: RequestLocation | null): Coordinate | null {
   const latitude = hasOperationalCoordinates(location) ? location.lat : null;
@@ -14,16 +12,10 @@ function useRequestCoordinate(location?: RequestLocation | null): Coordinate | n
   return useMemo(() => latitude === null || longitude === null ? null : { latitude, longitude }, [latitude, longitude]);
 }
 
-type RouteResult = LiveEta & {
-  /** Request + target the ETA belongs to; kept while the provider moves within the same leg. */
-  leg: string;
-  attempt: number;
-};
-
 /**
  * Live route + ETA from the provider's latest position to the current target (pickup, or the drop-off once a
- * towed vehicle is loaded). OSRM is called at most every 30 s per leg (trailing, so the newest position is
- * used); between calls the last ETA stays on screen. When OSRM fails the straight-line estimate is shown.
+ * towed vehicle is loaded), via useThrottledRoute (OSRM at most every 30 s, straight-line fallback). Paused while
+ * the provider's GPS is stale or the request is closed.
  */
 export function useCustomerRoute(request: ServiceRequest | null) {
   const provider = useRequestCoordinate(request?.providerLocation);
@@ -33,49 +25,10 @@ export function useCustomerRoute(request: ServiceRequest | null) {
   const lastUpdate = Date.parse(request?.providerLocation?.updatedAt || "");
   const closed = request?.status === "cancelled" || request?.status === "completed";
   const stale = Boolean(provider && (!Number.isFinite(lastUpdate) || Date.now() - lastUpdate > GPS_FRESHNESS_MS));
-  const fromLat = provider?.latitude;
-  const fromLng = provider?.longitude;
-  const toLat = target?.latitude;
-  const toLng = target?.longitude;
   const live = Boolean(provider && target && !closed && !stale);
-  const leg = live ? JSON.stringify([request?.id, toLat, toLng]) : null;
-  const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<RouteResult | null>(null);
-  const lastCall = useRef<{ leg: string; at: number } | null>(null);
-
-  useEffect(() => {
-    if (!leg || fromLat === undefined || fromLng === undefined || toLat === undefined || toLng === undefined) return;
-    let active = true;
-    const from = { latitude: fromLat, longitude: fromLng };
-    const to = { latitude: toLat, longitude: toLng };
-    const run = () => {
-      lastCall.current = { leg, at: Date.now() };
-      void liveEta(from, to, getDrivingRouteMetrics).then((eta) => { if (active) setResult({ ...eta, leg, attempt }); });
-    };
-    // A newer position cancels a pending timer, so the call that finally runs uses the latest position.
-    const delay = nextEtaDelay(lastCall.current, leg, Date.now());
-    const timer = delay > 0 ? setTimeout(run, delay) : null;
-    if (!timer) run();
-    return () => { active = false; if (timer) clearTimeout(timer); };
-  }, [attempt, fromLat, fromLng, leg, toLat, toLng]);
-
-  const current = leg && result?.leg === leg ? result : null;
-  return {
-    provider,
-    target,
-    toDestination,
-    stale,
-    loading: Boolean(leg && !current),
-    distance: current?.distance ?? null,
-    minutes: current?.minutes ?? null,
-    route: current?.route ?? EMPTY_ROUTE,
-    approximate: current?.approximate ?? false,
-    retry() {
-      if (!current?.approximate || current.attempt !== attempt) return;
-      lastCall.current = null; // an explicit retry skips the 30 s wait
-      setAttempt((value) => value === attempt ? value + 1 : value);
-    }
-  };
+  const leg = live ? JSON.stringify([request?.id, target?.latitude, target?.longitude]) : null;
+  const route = useThrottledRoute(provider, target, leg);
+  return { provider, target, toDestination, stale, ...route };
 }
 
 export function customerEta(status: ServiceRequest["status"], route: ReturnType<typeof useCustomerRoute>) {

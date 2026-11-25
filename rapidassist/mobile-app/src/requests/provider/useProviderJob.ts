@@ -1,9 +1,8 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { successFeedback } from "../../design/haptics";
 import { hasOperationalCoordinates } from "../../services/locationMapPolicy";
-import { getDrivingRouteMetrics } from "../../services/routing";
 import { t } from "../../i18n/translate";
 import type { Coordinate } from "../../utils/distance";
 import { openExternalNavigation } from "../../utils/navigation";
@@ -11,6 +10,7 @@ import { useDispatchUpdates } from "../DispatchProvider";
 import { getRequest, requestExtraWork, updateRequestStatus } from "../requests.api";
 import type { ExtraWorkInput, RequestLocation, ServiceRequest } from "../requests.types";
 import { getProviderStage, providerNextStatus } from "../stages";
+import { useThrottledRoute } from "../useThrottledRoute";
 
 const REFRESH_MS = 5000;
 const message = (e: any, fallback: string) => e?.response?.data?.message || e?.message || fallback;
@@ -24,7 +24,6 @@ export function useProviderJob(requestId: string | null) {
   const [loadError, setLoadError] = useState<string | null>(requestId ? null : "This job link is invalid.");
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [route, setRoute] = useState<{ coords: Coordinate[]; minutes: number | null; km: number | null }>({ coords: [], minutes: null, km: null });
   const sequence = useRef(0);
 
   const load = useCallback(async () => {
@@ -49,14 +48,10 @@ export function useProviderJob(requestId: string | null) {
   const from = coord(request?.providerLocation);
   const to = coord(toDestination ? request?.destinationLocation : request?.pickupLocation);
   const closed = request?.status === "completed" || request?.status === "cancelled";
-  useEffect(() => {
-    let cancelled = false;
-    if (!from || !to || closed) { setRoute({ coords: [], minutes: null, km: null }); return; }
-    getDrivingRouteMetrics(from, to)
-      .then((m) => { if (!cancelled) setRoute({ coords: m.coordinates, minutes: m.durationMinutes, km: m.distanceKm }); })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [from?.latitude, from?.longitude, to?.latitude, to?.longitude, closed]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Same rule as the customer's live ETA: OSRM at most every 30 s per leg, straight-line estimate when it fails.
+  const leg = from && to && !closed ? JSON.stringify([request?.id, to.latitude, to.longitude]) : null;
+  const live = useThrottledRoute(from, to, leg);
+  const route = { coords: live.route, minutes: live.minutes, km: live.distance, approximate: live.approximate };
 
   async function mutate(action: (t: string, r: ServiceRequest) => Promise<ServiceRequest>, fallback: string) {
     if (!token || !request || updating) return false;
