@@ -36,7 +36,9 @@ fuel delivery). Android and Expo Web are both supported targets (see
 - Screen files stay under ~300 lines. Move logic into hooks (`useXxx.ts`) next
   to the module that owns the data.
 - Never invent backend endpoints. If the backend has no route for a feature,
-  show a "Coming soon" state. Only Cash payment is enabled in the UI.
+  show a "Coming soon" state. Payments: Cash, and card via Stripe in test
+  mode only (PaymentView / StripeCheckout; the server confirms through the
+  Stripe webhook). Do not add live Stripe keys or other payment methods.
 - Keep existing behaviour working: dispatch polling, location sync, chat,
   extra work, reviews, payments, verification.
 
