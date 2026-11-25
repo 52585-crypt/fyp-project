@@ -239,6 +239,17 @@ async function main() {
     const c = client("none"); c.token = `${b64({ alg: "none", typ: "JWT" })}.${b64({ sub: user.user.id, role: "user" })}.`;
     return expectStatus(await c.get("/api/auth/me"), 401);
   });
+  // Logout revokes every token of the account, so the logout checks use their own account.
+  const loPhone = newPhone();
+  await client("x").post("/api/auth/register", { role: "user", name: "QA Logout User", phone: loPhone, password: PASSWORD }, { auth: "none" });
+  const lo = await loginClient.post("/api/auth/login", { phone: loPhone, password: PASSWORD }, { auth: "none" });
+  loginClient.token = lo.body?.token;
+  const otherDevice = client("logout-other-device");
+  otherDevice.token = (await otherDevice.post("/api/auth/login", { phone: loPhone, password: PASSWORD }, { auth: "none" })).body?.token;
+  await R.check("Auth", "Login token carries a token version", "decode the JWT payload from POST /login", "payload has tv (number)", async () => {
+    const payload = JSON.parse(Buffer.from(loginClient.token.split(".")[1], "base64url").toString());
+    return { pass: Number.isInteger(payload.tv), actual: `tv=${payload.tv}` };
+  });
   await R.check("Auth", "Logout clears cookie", "POST /api/auth/logout then GET /me with cookie", "Set-Cookie clears token; /me with cookie -> 401", async () => {
     const out = await loginClient.post("/api/auth/logout", {}, { auth: "cookie" });
     const me = await loginClient.get("/api/auth/me", { auth: "cookie" });
@@ -247,8 +258,31 @@ async function main() {
   await R.check("Security", "JWT still valid after logout (no server-side revocation)", "Logout, then reuse the same bearer token", "401 – a logged-out token should not keep working",
     async () => {
       const r = await loginClient.get("/api/auth/me");
-      return { pass: r.status === 401, actual: `HTTP ${r.status} – token issued before logout still accepted (stateless JWT, 7-day expiry)` };
+      return { pass: r.status === 401, actual: `HTTP ${r.status}${r.status === 200 ? " – token issued before logout still accepted" : " – revoked token rejected"}` };
     });
+  await R.check("Security", "Logout also revokes the account's other sessions", "second login of the same account (other device), first device logs out, other device calls /me", "401 (tokenVersion is per account)", async () =>
+    expectStatus(await otherDevice.get("/api/auth/me"), 401));
+  await R.check("Security", "Socket.io refuses a token revoked by logout", "io(BASE,{auth:{token:<logged-out token>}})", "connect_error Unauthorized", async () => {
+    try { const s = await connectSocket(loginClient.token, "revoked"); s.s.close(); return { pass: false, actual: "connected with a revoked token" }; }
+    catch (e) { return { pass: /Unauthorized/.test(e.message), actual: `connect_error: ${e.message}` }; }
+  });
+  await R.check("Auth", "Signing in again after logout works", "POST /login again, GET /me with the new token", "200", async () => {
+    const again = client("relogin");
+    again.token = (await again.post("/api/auth/login", { phone: loPhone, password: PASSWORD }, { auth: "none" })).body?.token;
+    const me = await again.get("/api/auth/me");
+    const sock = await connectSocket(again.token, "relogin").then((s) => { s.s.close(); return "connected"; }, (e) => e.message);
+    return { pass: me.status === 200 && sock === "connected", actual: `/me HTTP ${me.status}, socket ${sock}` };
+  });
+  await R.check("Auth", "Other users' sessions are unaffected by a logout", "GET /me with the main customer's token", "200", async () =>
+    expectStatus(await user.get("/api/auth/me"), 200));
+  await R.check("Auth", "Pre-deploy token without a version keeps working", "JWT {sub, role} with no tv (as issued before this change), after the account has logged out", "200 on /me and socket connects (valid until it expires)", async () => {
+    const jwt = require(path.join(ROOT, "server/node_modules/jsonwebtoken"));
+    const legacy = client("legacy");
+    legacy.token = jwt.sign({ sub: user.user.id, role: "user" }, state.jwtSecret, { expiresIn: "1h" });
+    const me = await legacy.get("/api/auth/me");
+    const sock = await connectSocket(legacy.token, "legacy").then((s) => { s.s.close(); return "connected"; }, (e) => e.message);
+    return { pass: me.status === 200 && sock === "connected", actual: `/me HTTP ${me.status}, socket ${sock}` };
+  });
   await R.check("Security", "NoSQL injection in login phone", 'POST /login {"phone":{"$ne":null},"password":"x"}', "401/400, never 200", async () =>
     expectStatus(await client("x").post("/api/auth/login", { phone: { $ne: null }, password: "x" }, { auth: "none" }), [400, 401]));
   await R.check("Security", "NoSQL injection in login password", 'POST /login {"phone":<real>,"password":{"$ne":null}}', "401/400", async () =>

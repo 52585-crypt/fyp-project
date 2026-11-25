@@ -110,7 +110,7 @@ async function main() {
 
   const health = await waitForHealth(`http://127.0.0.1:${API_PORT}/health`);
   fs.writeFileSync(STATE_FILE, JSON.stringify({
-    apiUrl: `http://127.0.0.1:${API_PORT}`, mongoUri, admin: QA_ADMIN, startedAt: new Date().toISOString()
+    apiUrl: `http://127.0.0.1:${API_PORT}`, mongoUri, admin: QA_ADMIN, jwtSecret: env.JWT_SECRET, startedAt: new Date().toISOString()
   }, null, 2));
   console.log("QA stack ready", JSON.stringify({ health, apiUrl: `http://127.0.0.1:${API_PORT}`, mongoUri }));
 }

@@ -103,7 +103,7 @@ async function findGoogleAccount(identity) {
 
 function createSessionToken(user, role) {
   try {
-    return signAccessToken({ sub: user.id, role });
+    return signAccessToken({ sub: user.id, role, tv: user.tokenVersion ?? 0 });
   } catch {
     throw authUnavailable("AUTH_SESSION_UNAVAILABLE", "Your sign-in session could not be created. Try again shortly.", 500);
   }
@@ -455,7 +455,7 @@ router.post("/admin/login", createAdminLoginRateLimit(), async (req, res, next) 
       throw authError("Invalid admin credentials");
     }
 
-    const token = signAccessToken({ sub: admin._id.toString(), role: admin.role });
+    const token = signAccessToken({ sub: admin._id.toString(), role: admin.role, tv: admin.tokenVersion ?? 0 });
     const safeAdmin = await User.findById(admin._id);
     if (safeAdmin?.role !== "admin") throw authError("Account no longer available");
     await recordActivity(req, res, { action: "admin.login", adminId: safeAdmin._id }, "success", 200);
@@ -486,14 +486,16 @@ router.post("/logout", async (req, res) => {
   clearAccessTokenCookie(res);
   let session;
   try {
-    session = await readSession(req, { adminOnly: true });
+    session = await readSession(req);
+    // Revoke every token issued to this account so far (all devices).
+    if (session) await User.updateOne({ _id: session.user._id }, { $inc: { tokenVersion: 1 } });
   } catch (error) {
     if (!["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error.name)) {
       res.set("X-Admin-Audit-Status", "unavailable");
       console.error("Unable to resolve session to audit sign-out");
     }
   }
-  if (session) await recordActivity(req, res, { action: "admin.logout", adminId: session.user._id }, "success", 200);
+  if (session?.role === "admin") await recordActivity(req, res, { action: "admin.logout", adminId: session.user._id }, "success", 200);
   res.json({ ok: true });
 });
 

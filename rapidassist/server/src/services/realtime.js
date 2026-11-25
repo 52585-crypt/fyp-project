@@ -1,5 +1,5 @@
 const { Server } = require("socket.io");
-const { verifyAccessToken } = require("../utils/jwt");
+const { verifyAccessToken, tokenVersionMatches } = require("../utils/jwt");
 const { User } = require("../models/User");
 const { isObjectIdOrHexString } = require("mongoose");
 const { randomUUID } = require("node:crypto");
@@ -31,7 +31,8 @@ function attachRealtime(server) {
       const token = explicitToken || getAccessTokenFromCookies(socket.request);
       const decoded = verifyAccessToken(token);
       if (!isObjectIdOrHexString(decoded?.sub) || !Number.isFinite(decoded.exp)) throw new Error("Unauthorized");
-      const user = await User.findById(decoded.sub).select("_id role roles");
+      const user = await User.findById(decoded.sub).select("_id role roles tokenVersion");
+      if (user && !tokenVersionMatches(decoded, user)) throw new Error("Unauthorized");
       const role = user && sessionRole(user, decoded.role);
       if (!role || (!trustedOrigin && role === "admin")) throw new Error("Unauthorized");
       socket.data.userId = user.id;
