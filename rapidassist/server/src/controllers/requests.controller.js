@@ -25,6 +25,7 @@ const {
 } = require("../services/dispatch");
 const { notifyRequest, notifyUser } = require("../services/realtime");
 const { createNotificationSafely } = require("../services/notifications");
+const { notifyProviderNearbyOnce } = require("../services/providerNearby");
 const { ensureFinalizedInvoice } = require("../services/payments");
 const { recordActivity, recordRejectedAction } = require("../services/adminActivity");
 const { ensureOperationalLocation } = require("../services/operationalLocation");
@@ -816,7 +817,10 @@ async function updateProviderLocation(req, res, next) {
 
     if (provider.providerState?.activeRequestId) {
       const request = await ServiceRequest.findOne({ _id: provider.providerState.activeRequestId, providerId: provider._id, status: { $nin: ["completed", "cancelled"] } });
-      if (request) notifyRequest(request, "location");
+      if (request) {
+        notifyRequest(request, "location");
+        await notifyProviderNearbyOnce(request, provider, location);
+      }
     }
     res.json({ ok: true, provider: provider.toSafeJSON(req.authRole) });
   } catch (err) {

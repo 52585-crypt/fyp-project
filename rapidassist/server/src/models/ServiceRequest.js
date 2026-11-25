@@ -136,6 +136,8 @@ const serviceRequestSchema = new mongoose.Schema(
     status: { type: String, enum: REQUEST_STATUSES, default: "searching_provider", index: true },
     statusTimeline: [statusTimelineSchema],
     acceptedAt: { type: Date, default: null },
+    // Set once, atomically, when the "provider is nearby" notification was sent (services/providerNearby.js).
+    providerNearbyNotifiedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },
     review: { type: reviewSchema, default: null }
